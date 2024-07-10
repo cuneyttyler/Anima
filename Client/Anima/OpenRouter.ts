@@ -1,5 +1,4 @@
 import OpenAI from "openai"
-import dotenv from 'dotenv'
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const OPENROUTER_BASE_URL =

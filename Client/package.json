@@ -1,8 +1,8 @@
 {
-  "name": "skyrim-inworld",
+  "name": "anima",
   "scripts": {
     "start": "ts-node SkyrimClient.ts",
-    "build": "npx tsc && npx caxa --input . --exclude \".env\" \"*.log\" \"*.ts\" \"Inworld/*.ts\" \"package-lock.json\" \"World\" \".git\" \"*.exe\" --prepare-command \"tsc\" \"{{caxa}}/node_modules/.bin/node\" \"{{caxa}}/jsbuild/Anima.js\" --output Anima.exe"
+    "build": "npx tsc && npx caxa --input . --exclude \".env\" \"*.log\" \"*.ts\" \"Anima/*.ts\" \"package-lock.json\" \"World\" \".git\" \"*.exe\" --prepare-command \"tsc\" \"{{caxa}}/node_modules/.bin/node\" \"{{caxa}}/jsbuild/Anima.js\" --output Anima.exe"
   },
   "extends": "./tsconfig.json",
   "dependencies": {
@@ -10,7 +10,6 @@
     "@google-cloud/text-to-speech": "^5.3.0",
     "@google-cloud/vertexai": "^1.3.0",
     "@grpc/grpc-js": "^1.10.9",
-    "@inworld/nodejs-sdk": "^1.14.1",
     "@stackpath/node-grpc-error-details": "*",
     "audiobuffer-to-wav": "^1.0.0",
     "axios": "^1.3.2",

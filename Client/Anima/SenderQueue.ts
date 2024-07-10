@@ -1,4 +1,4 @@
-import { VoiceTypes } from './Audio/VoiceTypes.js'
+import { VoiceTypes } from './Helpers/VoiceTypes.js'
 import { EventEmitter } from 'events';
 import { GetPayload } from './GenAIController.js';
 import * as fs from 'fs';
@@ -111,7 +111,7 @@ export class SenderQueue extends EventEmitter {
     private async copyFiles(data: SenderData) {
         for(var i = 0; i < VoiceTypes.length; i++) {
             var voiceType = VoiceTypes[i];
-            var outputFolder = process.env.MODS_FOLDER + "\\WithinWorld\\Sound\\Voice\\WithinWorld.esp\\" + voiceType + "\\";
+            var outputFolder = process.env.MODS_FOLDER + "\\Anima\\Sound\\Voice\\Anima.esp\\" + voiceType + "\\";
 
             if (!fs.existsSync(outputFolder)) {
               // Folder does not exist, so create it
@@ -128,7 +128,7 @@ export class SenderQueue extends EventEmitter {
         for(var j = 0; j < VoiceTypes.length; j++) {
             let voiceType = VoiceTypes[j];
 
-            const outputFolder = process.env.MODS_FOLDER + "\\WithinWorld\\Sound\\Voice\\WithinWorld.esp\\" + voiceType + "\\";
+            const outputFolder = process.env.MODS_FOLDER + "\\Anima\\Sound\\Voice\\Anima.esp\\" + voiceType + "\\";
             const audioFile = outputFolder + data.voiceFileName + ".wav";
             const lipFile = outputFolder + data.voiceFileName + ".lip";
 

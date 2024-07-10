@@ -2,10 +2,9 @@ import * as dotenv from 'dotenv'
 import * as fs from 'fs';
 import websocketPlugin, {SocketStream} from "@fastify/websocket"
 import Fastify, {FastifyRequest} from 'fastify'
-import InworldClientManager from "./Anima/DialogueManager.js";
-import DialogueManager from './Anima/DialogueManager.js';
+import DialogueManager from "./Anima/DialogueManager.js";
 import N2N_DialogueManager from './Anima/N2N_DialogueManager.js'
-import EventBus from './EventBus.js';
+import EventBus from './Anima/EventBus.js';
 import path from "path";
 
 const resolved = path.resolve(".env");
@@ -22,8 +21,8 @@ const fastify = Fastify({logger: true});
 fastify.register(websocketPlugin);
 
 const ClientManager = await new DialogueManager(false, 0);
-const ClientManager_N2N_Source = new InworldClientManager(true, 0);
-const ClientManager_N2N_Target = new InworldClientManager(true, 1);
+const ClientManager_N2N_Source = new DialogueManager(true, 0);
+const ClientManager_N2N_Target = new DialogueManager(true, 1);
 
 var n2nDialogueManager = new N2N_DialogueManager(N2N_MAX_STEP_COUNT, ClientManager_N2N_Source, ClientManager_N2N_Target);;
 

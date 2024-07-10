@@ -1,8 +1,8 @@
-import EventBus from '../EventBus.js';
-import InworldClientManager from "./DialogueManager.js";
+import EventBus from './EventBus.js';
+import DialogueManager from "./DialogueManager.js";
 import { setTimeout } from 'node:timers/promises';
 
-export default class DialogueManager {
+export default class N2N_DialogueManager {
     private stepCount = 0;
     private shouldStop = false;
     private endSignal = false;
@@ -20,8 +20,8 @@ export default class DialogueManager {
 
     constructor(
         private maxStepCount,
-        private ClientManager_N2N_Source: InworldClientManager,
-        private ClientManager_N2N_Target: InworldClientManager
+        private ClientManager_N2N_Source: DialogueManager,
+        private ClientManager_N2N_Target: DialogueManager
         ) {}
 
     getRandomNumber(min, max) {

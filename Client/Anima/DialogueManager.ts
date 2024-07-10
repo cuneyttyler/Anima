@@ -1,17 +1,10 @@
 // @ts-check
 import CharacterManager from './CharacterManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
-import EventBus from '../EventBus.js'
+import EventBus from './EventBus.js'
 import * as fs from 'fs';
 
-const WORKSPACE_NAME = process.env.INWORLD_WORKSPACE;
-
-const defaultConfigurationConnection = {
-    autoReconnect: true,
-    disconnectTimeout: 3600 * 60
-}
-
-export default class InworldClientManager {
+export default class DialogueManager {
     private managerId: number;
     private IsConnected : boolean;
     private characterManager : CharacterManager;

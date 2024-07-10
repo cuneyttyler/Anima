@@ -1,7 +1,5 @@
-import axios from "axios";
 import path from "path";
-import * as fs from 'fs';
-import { v4 as uuidv4} from 'uuid';
+import fs from 'fs';
 
 const CHARACTERS = JSON.parse(fs.readFileSync(path.resolve("./World/SkyrimCharacters.json"), 'utf-8'));
 

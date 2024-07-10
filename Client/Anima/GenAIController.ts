@@ -1,8 +1,8 @@
 import OpenRouter from './OpenRouter.js'
-import {AudioData, AudioProcessor} from './Audio/AudioProcessor.js'
-import EventBus from '../EventBus.js'
+import {AudioData, AudioProcessor} from './AudioProcessor.js'
+import EventBus from './EventBus.js'
 import { SenderData, SenderQueue } from './SenderQueue.js';
-import InworldManager from './DialogueManager.js';
+import DialogueManager from './DialogueManager.js';
 import { logToLog } from '../Anima.js';
 
 export function GetPayload(message: string, type: string, duration, is_n2n, speaker) {
@@ -15,12 +15,12 @@ export class GoogleGenAIController {
     private FollowAcceptResponse = "I'll join you.";
     private audioProcessor: AudioProcessor;
     private senderQueue: SenderQueue;
-    private clientManager: InworldManager;
+    private clientManager: DialogueManager;
     private stepCount = 0;
     private stepMessageCount = 0;
     private processedMessageCount = 0;
 
-    constructor(private id: number, clientManager: InworldManager, private socket : WebSocket) {
+    constructor(private id: number, clientManager: DialogueManager, private socket : WebSocket) {
         this.audioProcessor = new AudioProcessor(id);
         this.senderQueue = new SenderQueue(id, clientManager.IsN2N(), socket);
         this.clientManager = clientManager;

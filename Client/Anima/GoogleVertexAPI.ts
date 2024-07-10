@@ -1,4 +1,3 @@
-import {VertexAI} from '@google-cloud/vertexai'
 // Imports the Google Cloud client library
 import { TextToSpeechClient, protos } from '@google-cloud/text-to-speech'
 
