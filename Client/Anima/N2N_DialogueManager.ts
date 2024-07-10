@@ -48,10 +48,6 @@ export default class N2N_DialogueManager {
         this.shouldStop = true;
     }
 
-    running() {
-        return this.started;
-    }
-
     finalizeConversation(source, target, sourceFormId, targetFormId) {
         console.log("Saving conversation history.");
         this.ClientManager_N2N_Source.Finalize()
@@ -108,6 +104,8 @@ export default class N2N_DialogueManager {
             this.ClientManager_N2N_Source.SendNarratedAction("You said: \"" + message + "\"")
             if(!this.endSignal) {
                 this.ClientManager_N2N_Target.Say(message, this.endSignal);
+            } else {
+                this.ClientManager_N2N_Target.SendNarratedAction(this.source + " says to you \"" + message + "\".");
             }
 
             this.sourceHistory.push({
@@ -120,6 +118,7 @@ export default class N2N_DialogueManager {
             });
 
             if(this.endSignal) {
+                this.ClientManager_N2N_Source.SendEndSignal()
                 this.finalizeConversation(this.source, this.target, this.sourceFormId, this.targetFormId);
             }
 
@@ -132,7 +131,6 @@ export default class N2N_DialogueManager {
             if(shouldEnd) {
                 this.stop();
                 this.endSignal = true;
-                this.ClientManager_N2N_Source.SendNarratedAction("You don't need to answer now.");
                 this.ClientManager_N2N_Source.SendNarratedAction("You are about to end the dialogue with " + this.target + ". What do you to say to him/her?");
             }
             this.ClientManager_N2N_Source.Say(message);

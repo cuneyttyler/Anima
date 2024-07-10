@@ -1,27 +1,12 @@
 import {VertexAI} from '@google-cloud/vertexai'
-// Imports the Google Cloud client library
-import { TextToSpeechClient, protos } from '@google-cloud/text-to-speech'
-
-// Import other required libraries
-import fs from 'fs';
-import util from 'util';
-
-// Creates a client
-// Path to the service account key JSON file
-const keyFilePath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-
-// Creates a client
-const client = new TextToSpeechClient({
-  keyFilename: keyFilePath,
-  projectId: process.env.GOOGLE_PROJECT_ID, // Optional, but recommended
-});
+import { GOOGLE_PROJECT_ID } from '../Anima.js';
 
 export default class GoogleGenAI {
   /**
  * TODO(developer): Update these variables before running the sample.
  */
   public static async SendMessage(prompt) {
-    const vertexAI = new VertexAI({project: process.env.GOOGLE_PROJECT_ID, location: 'us-central1'});
+    const vertexAI = new VertexAI({project: GOOGLE_PROJECT_ID, location: 'us-central1'});
 
     const generativeModel = vertexAI.getGenerativeModel({
       model: 'gemini-1.5-flash-001',

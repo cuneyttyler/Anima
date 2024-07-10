@@ -4,7 +4,7 @@ import fs from 'fs';
 const CHARACTERS = JSON.parse(fs.readFileSync(path.resolve("./World/SkyrimCharacters.json"), 'utf-8'));
 
 export default class CharacterManager {
-    private generalPrompt = "When you're asked by someone to follow them like \"Would you like to join me?\", be skeptical, answer \"Of course, I'll join you.'\" if you wish to join them. Reject in a manner you see appropriate otherwise."
+    private generalPrompt = "When you're asked by someone to follow them like \"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, answer \"Of course, I'll join you.'\" if you wish to join them. Reject in a manner you see appropriate otherwise."
 
     GetUserProfile(playerName) {
         return fs.readFileSync(path.resolve("./Profiles/" + playerName + "/profile.txt"), 'utf-8');
@@ -29,7 +29,11 @@ export default class CharacterManager {
             }
         }
 
-        let prompt = "PLEASE ACT AS CHARACTER DESCRIBED BELOW AND OMIT ANY UNNECESSARY ADDITIONS OTHER THAN YOUR REAL SPEECH:"
+        let prompt = "PLEASE ACT AS CHARACTER DESCRIBED BELOW AND OMIT ANY UNNECESSARY ADDITIONS (LIKE NARRATED ACTIONS) OTHER THAN YOUR REAL SPEECH: "
+            + "EXAMPLE INPUT: \"Greetings, how are you today?\", EXAMPLE OUTPUT: \"Thank you, I'm fine\" -- WITHOUT DESCRIBING YOUR BEHAVIOUR. "
+            + "YOUR RESPONSE WILL DIRECTLY BE USED TO MAKE CHARACTER SPEAK SO DO NOT INCLUDE ANYTHING OTHER THAN YOUR SPEECH. "
+            + "FOR EXAMPLE, AFTER CHARACTER SPEAKS, YOU DON'T NEED TO MAKE ROLEPLAYING REMARKS. " 
+            + "PLEASE KEEP YOUR ANSWERS SHORT. "
             + "You are " + character.defaultCharacterDescription.givenName + ". " 
             + "Your role is " + character.defaultCharacterDescription.characterRole + ". "
             + character.defaultCharacterDescription.description + " "

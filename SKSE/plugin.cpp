@@ -474,12 +474,12 @@ public:
 
 class ModPort {
 public:
-    static bool Start(RE::StaticFunctionTag*, RE::Actor* target, string currentDateTime) {
+    static bool Start(RE::StaticFunctionTag*, RE::Actor* target, string voiceType, string currentDateTime) {
         if (target == nullptr) {
             return false;
         }
 
-        SocketManager::getInstance().connectTo(target, currentDateTime);
+        SocketManager::getInstance().connectTo(target, voiceType, currentDateTime);
 
         return true;
     }
@@ -496,12 +496,12 @@ public:
         return true;
     }
 
-    static bool N2N_Initiate(RE::StaticFunctionTag*, RE::Actor* source, RE::Actor* target) {
+    static bool N2N_Initiate(RE::StaticFunctionTag*, RE::Actor* source, RE::Actor* target, string sourceVoiceType, string targetVoiceType) {
         if (source == nullptr || target == nullptr) {
             return false;
         }
 
-        SocketManager::getInstance().connectTo_N2N(source, target);
+        SocketManager::getInstance().connectTo_N2N(source, target, sourceVoiceType, targetVoiceType);
 
         return true;
     }
@@ -600,7 +600,7 @@ void StartClient() {
     Util::WriteLog("Opening: " + clientPath.string(), 4);
     LPCWSTR exePath = clientPath.c_str();
     HINSTANCE result = ShellExecute(NULL, L"open", exePath, NULL, clientPath.parent_path().c_str(), SW_SHOWNORMAL);
-    //StartAudioBus();
+    StartAudioBus();
 }
 
 int GetDebugLevel() {

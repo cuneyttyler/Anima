@@ -2,6 +2,7 @@ import { VoiceTypes } from './Helpers/VoiceTypes.js'
 import { EventEmitter } from 'events';
 import { GetPayload } from './GenAIController.js';
 import * as fs from 'fs';
+import { DEBUG } from '../Anima.js'
 
 class Queue<T> {
     private items: T[] = [];
@@ -28,20 +29,20 @@ class Queue<T> {
 }
 
 export class SenderData {
-    public index: number;
     public text: string;
     public duration: number;
     public audioFile: string;
     public lipFile: string;
+    public voiceType: string;
     public voiceFileName: string;
     public target: number;
 
-    constructor(index, text, audioFile, lipFile, voiceFileName, duration, target) {
-        this.index = index;
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, target) {
         this.text = text;
         this.duration = duration;
         this.audioFile = audioFile;
         this.lipFile = lipFile;
+        this.voiceType = voiceType;
         this.voiceFileName = voiceFileName;
         this.target = target;
     }
@@ -94,14 +95,16 @@ export class SenderQueue extends EventEmitter {
         return new Promise(async (resolve) => {
             try {
                 await this.copyFiles(data)
-                let result = GetPayload(data.text, "chat", data.duration, this.is_n2n, data.target);
-                console.log(`${data.text} - (${this.is_n2n} - ${data.target})`)
-                this.socket.send(JSON.stringify(result));
-                
+                setTimeout(() => {
+                    let result = GetPayload(data.text, "chat", data.duration, this.is_n2n, data.target);
+                    if(!DEBUG)
+                        this.socket.send(JSON.stringify(result));
+                }, 250)
+
                 setTimeout(() => {
                     this.processing = false;
                     this.emit(this.eventName);
-                }, data.duration * 1000 + 500)
+                }, data.duration * 1000)
             } catch(e) {
                 console.error("ERROR: " + e);
             }
@@ -125,17 +128,13 @@ export class SenderQueue extends EventEmitter {
             }
         }
 
-        for(var j = 0; j < VoiceTypes.length; j++) {
-            let voiceType = VoiceTypes[j];
+        outputFolder = process.env.MODS_FOLDER + "\\Anima\\Sound\\Voice\\Anima.esp\\" + data.voiceType + "\\";
+        const audioFile = outputFolder + data.voiceFileName + ".wav";
+        const lipFile = outputFolder + data.voiceFileName + ".lip";
 
-            const outputFolder = process.env.MODS_FOLDER + "\\Anima\\Sound\\Voice\\Anima.esp\\" + voiceType + "\\";
-            const audioFile = outputFolder + data.voiceFileName + ".wav";
-            const lipFile = outputFolder + data.voiceFileName + ".lip";
-
-            // Copying the file to a the same name
-            fs.copyFileSync(data.audioFile, audioFile);
-            fs.copyFileSync(data.lipFile, lipFile);
-        }
+        // Copying the file to a the same name
+        fs.copyFileSync(data.audioFile, audioFile);
+        fs.copyFileSync(data.lipFile, lipFile);
 
         fs.unlinkSync(data.audioFile);
         fs.unlinkSync(data.lipFile);

@@ -1,0 +1,53 @@
+2024-07-10T13:06:59.912Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:16:56.529Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:16:56.534Z - ================ Registering Endpoints ================
+2024-07-10T13:16:56.534Z - =========== Starting Engine ===========
+2024-07-10T13:16:56.536Z - ["Trying to connect to Faendal"]
+2024-07-10T13:16:56.538Z - ["Connection to faendal is succesfull."]
+2024-07-10T13:16:56.551Z - ["[2024-07-10T13:16:56.539Z]","Caught exception: ",{},"unhandledRejection"]
+2024-07-10T13:16:56.619Z - {"code":"EADDRINUSE","errno":-4091,"syscall":"listen","address":"::1","port":3030}
+2024-07-10T13:16:56.624Z - ["[2024-07-10T13:16:56.622Z]",{"code":"EADDRINUSE","errno":-4091,"syscall":"listen","address":"::1","port":3030}]
+2024-07-10T13:19:38.324Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:19:38.329Z - ================ Registering Endpoints ================
+2024-07-10T13:19:38.330Z - =========== Starting Engine ===========
+2024-07-10T13:19:38.332Z - ["Trying to connect to Faendal"]
+2024-07-10T13:19:38.334Z - ["Connection to faendal is succesfull."]
+2024-07-10T13:19:43.447Z - {"code":"EADDRINUSE","errno":-4091,"syscall":"listen","address":"::1","port":3030}
+2024-07-10T13:19:43.452Z - ["[2024-07-10T13:19:43.449Z]",{"code":"EADDRINUSE","errno":-4091,"syscall":"listen","address":"::1","port":3030}]
+2024-07-10T13:19:55.178Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:19:55.183Z - ================ Registering Endpoints ================
+2024-07-10T13:19:55.184Z - =========== Starting Engine ===========
+2024-07-10T13:19:55.187Z - ["Trying to connect to Faendal"]
+2024-07-10T13:19:55.189Z - ["Connection to faendal is succesfull."]
+2024-07-10T13:20:02.293Z - Character said: "I'm a Bosmer, and we're known for our skill with a bow.  I'm happy to share what I know with you. If you're looking for a good challenge,  I'm always up for a good hunt.  I wouldn't want to see you go wrong with all that dangerous wildlife around here." 
+
+2024-07-10T13:20:05.994Z - ["[2024-07-10T13:20:05.993Z]","ERROR during processing audio!"]
+2024-07-10T13:20:05.995Z - ["[2024-07-10T13:20:05.995Z]","ERROR: Error: Error: ENOENT: no such file or directory, stat 'D:\\Dev\\Anima\\Client\\Audio\\Temp\\DialogueGe_AnimaTargetBran_0012980E_1_0_0.wav'"]
+2024-07-10T13:21:34.890Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:21:34.894Z - ================ Registering Endpoints ================
+2024-07-10T13:21:34.895Z - =========== Starting Engine ===========
+2024-07-10T13:21:34.896Z - ["Trying to connect to Faendal"]
+2024-07-10T13:21:34.898Z - ["Connection to faendal is succesfull."]
+2024-07-10T13:21:41.190Z - Character said: 
+"That's no ordinary traveler, friend. That's a draugr.  Best be ready." 
+
+
+
+2024-07-10T13:22:08.939Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:22:08.944Z - ================ Registering Endpoints ================
+2024-07-10T13:22:08.944Z - =========== Starting Engine ===========
+2024-07-10T13:22:08.946Z - ["Trying to connect to Faendal"]
+2024-07-10T13:22:08.947Z - ["Connection to faendal is succesfull."]
+2024-07-10T13:22:15.365Z - Character said: 
+"Looks like a nasty piece of work," Faendal whispers, his voice barely audible above the rustle of the leaves. "Don't worry, I've dealt with these boneheads before." 
+
+2024-07-10T13:26:28.517Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:26:28.524Z - ================ Registering Endpoints ================
+2024-07-10T13:26:28.524Z - =========== Starting Engine ===========
+2024-07-10T13:26:36.720Z - =============================S=T=A=R=T=I=N=G===T=H=E===M=O=D=============================
+2024-07-10T13:26:36.725Z - ================ Registering Endpoints ================
+2024-07-10T13:26:36.726Z - =========== Starting Engine ===========
+2024-07-10T13:26:36.727Z - ["Trying to connect to Faendal"]
+2024-07-10T13:26:36.729Z - ["Connection to faendal is succesfull."]
+2024-07-10T13:26:43.616Z - Character said: >"I'm a Bosmer, and we're known for our skill with a bow.  I'm happy to share what I know with you. If you're looking for a good challenge,  I'm always up for a good hunt.  I wouldn't want to see you go wrong with all that dangerous wildlife around here." 
+

@@ -16,13 +16,14 @@ using websocketpp::lib::placeholders::_2;
 
 class Message {
 public:
-    Message(const string& type, const string& message, const string& id, const string& formId, const string& playerName = "",
+    Message(const string& type, const string& message, const string& id, const string& formId, const string& voiceType, const string& playerName = "",
             const string& location = "",
             const string& currentDateTime = "", const bool stop = false)
         : type(type),
           message(message),
           id(id),
           formId(formId),
+          voiceType(voiceType),
           playerName(playerName),
           location(location),
           currentDateTime(currentDateTime), stop(stop) {}
@@ -32,6 +33,7 @@ public:
                 {"message", message},
                 {"id", id},
                 {"formId", formId},
+                {"voiceType", voiceType},
                 {"playerName", playerName},
                 {"is_n2n", false},
                 {"location", location},
@@ -45,6 +47,7 @@ private:
     string message;
     string id;
     string formId;
+    string voiceType;
     string playerName;
     string location;
     string currentDateTime;
@@ -53,7 +56,7 @@ private:
 
 class N2NMessage {
 public:
-    N2NMessage(const string& type, const string& message, const string& source, const string& target, const string& sourceFormId, const string& targetFormId, const string& playerName, int speaker,
+    N2NMessage(const string& type, const string& message, const string& source, const string& target, const string& sourceFormId, const string& targetFormId, const string& sourceVoiceType, const string& targetVoiceType, const string& playerName, int speaker,
                const string& location, const string& currentDateTime = "")
         : type(type),
           message(message),
@@ -61,6 +64,8 @@ public:
           target(target),
           sourceFormId(sourceFormId),
           targetFormId(targetFormId),
+          sourceVoiceType(sourceVoiceType),
+          targetVoiceType(targetVoiceType),
           playerName(playerName),
           speaker(speaker),
           location(location),
@@ -74,6 +79,8 @@ public:
                 {"target", target}, 
                 {"sourceFormId", sourceFormId},
                 {"targetFormId", targetFormId}, 
+                {"sourceVoiceType", sourceVoiceType},
+                {"targetVoiceType", targetVoiceType},
                 {"playerName", playerName},
                 {"speaker", speaker},
                 {"location", location},
@@ -87,6 +94,8 @@ private:
     string target;
     string sourceFormId;
     string targetFormId;
+    string sourceVoiceType;
+    string targetVoiceType;
     string playerName;
     int speaker;
     string location;
@@ -211,7 +220,7 @@ public:
                 AnimaCaller::ConnectionSuccessful();
             } else if (type == "established" && is_n2n) {
                 AnimaCaller::n2n_established_response_count++;
-                if (AnimaCaller::n2n_established_response_count == 3)
+                if (AnimaCaller::n2n_established_response_count == 2)
                     AnimaCaller::N2N_Init();
             } else if (type == "chat" && !is_n2n) {
                 AnimaCaller::Speak(message, duration);
@@ -276,11 +285,12 @@ public:
 
         if (lastConnected != id) {
             lastConnected = id;
-            Message* messageObj = new Message("connect", "connect request..", id, to_string(form_id), playerName, "", "", stop);
+            Message* messageObj =
+                new Message("connect", "connect request..", id, to_string(form_id), "",  playerName, "", "", stop);
             soc->send_message(messageObj);
         }
 
-        Message* messageObj = new Message("message", message, id, to_string(form_id), playerName, "", "", stop);
+        Message* messageObj = new Message("message", message, id, to_string(form_id), "", playerName, "", "", stop);
         soc->send_message(messageObj);
     }
 
@@ -288,7 +298,7 @@ public:
         Util::WriteLog("Sending STOP signal.", 4);
         ValidateSocket();
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        Message* message = new Message("stop", "stop", "", playerName);
+        Message* message = new Message("stop", "stop", "", "", playerName);
         soc->send_message(message);
     }
 
@@ -296,8 +306,8 @@ public:
         try {
             ValidateSocket();
             auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-            Message* message =
-                new Message("log_event", log, Util::GetActorName(actor), std::to_string(actor->GetFormID()), playerName);
+            Message* message = new Message("log_event", log, Util::GetActorName(actor),
+                                           std::to_string(actor->GetFormID()), "", playerName);
             soc->send_message(message);
         } catch (const exception& e) {
             Util::WriteLog("Exception on SendLogEvent: " + string(e.what()), 1);
@@ -311,8 +321,8 @@ public:
         Util::WriteLog(
             "Sending N2N Start Signal == " + Util::GetActorName(source) + ", " + Util::GetActorName(target) + " ==", 4);
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        N2NMessage* message = new N2NMessage("start", "", source->GetName(), target->GetName(),
-                                             to_string(source->GetFormID()), to_string(target->GetFormID()), playerName, 0,
+        N2NMessage* message = new N2NMessage("start", "", source->GetName(), target->GetName(), to_string(source->GetFormID()),
+            to_string(target->GetFormID()), "", "", playerName, 0,
                            source->GetCurrentLocation() != nullptr ? source->GetCurrentLocation()->GetName()
                            : "", currentDateTime);
         soc->send_message_n2n(message);
@@ -321,7 +331,7 @@ public:
     void SendN2NStopSignal() {
         Util::WriteLog("Sending N2N STOP Signal.", 4);
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        N2NMessage* message = new N2NMessage("stop", "", "", "", "", "", playerName, 0, "");
+        N2NMessage* message = new N2NMessage("stop", "", "", "", "", "", "", "", playerName, 0, "");
         soc->send_message_n2n(message);
     }
 
@@ -342,9 +352,9 @@ public:
             AnimaCaller::conversationActor = conversationActor;
             Message* message;
             if (talk) 
-                 message = new Message("start_listen", "start", lastConnected, "");
+                 message = new Message("start_listen", "start", lastConnected, "", "");
             else
-                 message = new Message("stop_listen", "stop", lastConnected, "");
+                message = new Message("stop_listen", "stop", lastConnected, "", "");
             soc->send_message(message);
         } catch (const exception& e) {
             Util::WriteLog("Exception on controlVoiceInput: " + string(e.what()), 1);
@@ -353,7 +363,7 @@ public:
         }
     }
 
-    void connectTo(RE::Actor* conversationActor, string currentDateTime) {
+    void connectTo(RE::Actor* conversationActor, string voiceType, string currentDateTime) {
         if (conversationActor == nullptr) return;
         ValidateSocket();
         auto id = conversationActor->GetName();
@@ -367,11 +377,11 @@ public:
         AnimaCaller::conversationActor = conversationActor;
         lastConnected = id;
         Message* message =
-            new Message("connect", "connect request..", id, to_string(form_id), playerName, location, currentDateTime);
+            new Message("connect", "connect request..", id, to_string(form_id), voiceType, playerName, location, currentDateTime);
         soc->send_message(message);
     }
 
-    void connectTo_N2N(RE::Actor* sourceActor, RE::Actor* targetActor) {
+    void connectTo_N2N(RE::Actor* sourceActor, RE::Actor* targetActor, string source_voice_type, string target_voice_type) {
         if (sourceActor == nullptr || targetActor == nullptr) return;
         ValidateSocket();
         auto source_id = sourceActor->GetName();
@@ -383,7 +393,7 @@ public:
         AnimaCaller::N2N_SourceActor = sourceActor;
         AnimaCaller::N2N_TargetActor = targetActor;
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        N2NMessage* message = new N2NMessage("connect", "connect", source_id, target_id, to_string(source_form_id), to_string(target_form_id), playerName, 0,"");
+        N2NMessage* message = new N2NMessage("connect", "connect", source_id, target_id, to_string(source_form_id), to_string(target_form_id), source_voice_type, target_voice_type, playerName, 0,"");
         soc->send_message_n2n(message);
     }
 };

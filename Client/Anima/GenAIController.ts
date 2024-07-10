@@ -1,9 +1,11 @@
 import OpenRouter from './OpenRouter.js'
+import GoogleGenAI from './GoogleGenAI.js'
 import {AudioData, AudioProcessor} from './AudioProcessor.js'
 import EventBus from './EventBus.js'
 import { SenderData, SenderQueue } from './SenderQueue.js';
 import DialogueManager from './DialogueManager.js';
-import { logToLog } from '../Anima.js';
+import { logToLog } from './LogUtil.js';
+import { DEBUG } from '../Anima.js'
 
 export function GetPayload(message: string, type: string, duration, is_n2n, speaker) {
     return {"message": message, "type": type, "duration": duration, "is_n2n": is_n2n, "speaker": speaker}
@@ -26,22 +28,22 @@ export class GoogleGenAIController {
         this.clientManager = clientManager;
     }
 
-    async Send(msg) {
-        let response = await OpenRouter.SendMessage(msg)
-        this.ProcessMessage(response)
+    async Send(message, voiceType) {
+        let response = await GoogleGenAI.SendMessage(message)
+        this.ProcessMessage(response, voiceType)
     }
 
     async SummarizeHistory(history) {
-        let response = await OpenRouter.SendMessage("Please summarize this conversation with max. length of 3072 tokens : \n\n" + history)
+        let response = await GoogleGenAI.SendMessage("Please summarize this conversation with max. length of 3072 tokens : \n\n" + history)
         return response;
     }
 
     async SummarizeEvents(events) {
-        let response = await OpenRouter.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
+        let response = await GoogleGenAI.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
         return response;
     }
 
-    async ProcessMessage(msg : any) {
+    async ProcessMessage(message : any, voiceType) {
         if(this.clientManager.IsN2N() && this.clientManager.IsEnding()) {
             return;
         }
@@ -51,32 +53,34 @@ export class GoogleGenAIController {
         var speaker: number = this.clientManager.Speaker();
         if(this.clientManager.IsN2N() && speaker == 0) {
             temp_file_suffix = "0"
-            topic_filename = "DialogueGe_AnimaN2NSourceB_00129811_1"
+            topic_filename = "AnimaDialo_AnimaN2NSourceB_00133A1D_1"
         } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 1) {
             temp_file_suffix = "1"
-            topic_filename = "DialogueGe_AnimaN2NSourceB_00129811_1"
+            topic_filename = "AnimaDialo_AnimaN2NTargetB_00133A20_1"
         } else {
             temp_file_suffix = "2"
-            topic_filename = "DialogueGe_AnimaTargetBran_0012980E_1"
+            topic_filename = "AnimaDialo_AnimaTargetBran_00133A1A_1"
         }
 
-        this.audioProcessor.addAudioStream(new AudioData(this.processingIndex++, msg, topic_filename, this.clientManager.VoiceModel(), this.stepCount, temp_file_suffix, (index, text, audioFile, lipFile, duration) => {
-            this.senderQueue.addData(new SenderData(index, text, audioFile, lipFile, topic_filename, duration, speaker));
-            if(++this.processedMessageCount == this.stepMessageCount) {
-                setTimeout(() => {
-                    this.clientManager.SetInteractionOngoing(false);
-                }, duration * 1000)
-            }
+        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.clientManager.VoiceModel(), this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
+            this.senderQueue.addData(new SenderData(text, audioFile, lipFile, voiceType, topic_filename, duration, speaker));
+            setTimeout(() => {
+                this.clientManager.SetInteractionOngoing(false);
+                this.SendEvent(message, speaker)
+            }, duration * 1000 + 500)
         }))
 
-        console.log(`Character said: ${msg}`)
-        logToLog(`Character said: ${msg}`)
+        console.log(`Character said: ${message}`)
+        logToLog(`Character said: ${message}`)
+    }
 
+    SendEvent(message, speaker) {
         if(!this.clientManager.IsN2N()) {
-            EventBus.GetSingleton().emit('TARGET_RESPONSE', msg);
-            if(msg.includes(this.FollowAcceptResponse)) {
+            EventBus.GetSingleton().emit('TARGET_RESPONSE', message);
+            if(message.includes(this.FollowAcceptResponse)) {
                 let payload = GetPayload("", "follow_request_accepted", 0, this.clientManager.IsN2N(), speaker);
-                this.socket.send(JSON.stringify(payload))
+                if(!DEBUG)
+                    this.socket.send(JSON.stringify(payload))
             }
             if(this.clientManager.IsEnding()) {
                 setTimeout(() => {
@@ -84,20 +88,18 @@ export class GoogleGenAIController {
                 }, 7000)
             }
         } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 0) {
-            EventBus.GetSingleton().emit('N2N_SOURCE_RESPONSE', msg)
+            EventBus.GetSingleton().emit('N2N_SOURCE_RESPONSE', message)
         } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 1) {
-            EventBus.GetSingleton().emit('N2N_TARGET_RESPONSE', msg)
+            EventBus.GetSingleton().emit('N2N_TARGET_RESPONSE', message)
         }
     }
-
     SendEndSignal() {
         this.stepCount = 0;
-        this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.clientManager.IsN2N(), 0)));
-        EventBus.GetSingleton().emit("END");
-    }
-
-    SendUserVoiceInput() {
-        let userData = GetPayload(this.CombinedUserInput, "user_voice", 0, false, 0);
-        this.socket.send(JSON.stringify(userData));
+        if(!DEBUG) {
+            this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.clientManager.IsN2N(), 0)));
+        }
+        if(!this.clientManager.IsN2N()) {
+            EventBus.GetSingleton().emit("END");
+        }
     }
 }

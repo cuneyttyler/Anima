@@ -34,7 +34,6 @@ class Queue<T> {
 }
 
 export class AudioData {
-    public index: number;
     public chunk: string;
     public voiceFileName: string;
     public text: string;
@@ -43,8 +42,7 @@ export class AudioData {
     public temp_file_suffix: string;
     public callback: Function;
 
-    constructor(index, text, voiceFileName, voiceModel, stepCount, temp_file_suffix, callback) {
-        this.index = index;
+    constructor(text, voiceFileName, voiceModel, stepCount, temp_file_suffix, callback) {
         this.text = text;
         this.voiceFileName = voiceFileName;
         this.voiceModel = voiceModel;
@@ -59,8 +57,6 @@ export class AudioProcessor extends EventEmitter {
     private eventName: string;
     private queue: Queue<AudioData>;
     private processing: boolean;
-    private nextSendTime: number = 0;
-    private lastIndex: number = 0;
 
     constructor(id: number) {
         super();
@@ -100,21 +96,12 @@ export class AudioProcessor extends EventEmitter {
         // Simulating async processing with a timeout.
         return new Promise(async (resolve) => {
             try {
-                let output = await this.saveAudio(
-                    data.text, data.index, data.voiceFileName, data.voiceModel, data.stepCount, data.temp_file_suffix);
-                
-                const interval = setInterval(() => {
-                    if(data.index - this.lastIndex <= 1) {
-                        data.callback(data.index, data.text, output[0], output[1], output[2]);
-                        this.lastIndex = data.index;
-                        clearInterval(interval);
-                    }
-                }, 100)
-                
+                let output = await this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.stepCount, data.temp_file_suffix);
+                data.callback(data.text, output[0], output[1], output[2]);
                 this.processing = false;
                 this.emit(this.eventName);
             } catch(e) {
-                console.error("ERROR: " + e);
+                console.error(e);
             }
         });
     }
@@ -133,21 +120,29 @@ export class AudioProcessor extends EventEmitter {
         syncExec(executablePath + " " + args.join(' '));
     }
 
-    async convertAudio(inputFile, outputFile) {
-        await ffmpeg()
-        .input(inputFile)
-        .audioCodec('pcm_s16le') // Set the audio codec to PCM with 16-bit depth
-        .audioFrequency(44100) // Set the sample rate
-        .on('error', function(err) {
-            console.error('Error while converting:', err);
-        })
-        .on('end', function() {
-            console.log('Conversion finished');
-        })
-        .save(outputFile);
+    convertAudio(inputFile, outputFile) {
+        return new Promise((resolve, reject) => {
+            try {
+                ffmpeg()
+                    .input(inputFile)
+                    .audioCodec('pcm_s16le') // Set the audio codec to PCM with 16-bit depth
+                    .audioFrequency(44100) // Set the sample rate
+                    .on('error', function(err) {
+                        console.error('Error while converting:', err);
+                        reject(err); // Reject the promise on error
+                    })
+                    .on('end', function() {
+                        resolve(null); // Resolve the promise without any arguments
+                    })
+                    .save(outputFile);
+            } catch(err) {
+                console.error("ERROR during audio conversion:", err);
+                reject(err); // Catch synchronous errors and reject the promise
+            }
+        });
     }
-
-    private async saveAudio(msg: string, index, voiceFileName: string, voiceModel, stepCount, temp_file_suffix: string) {
+    
+    private async saveAudio(msg: string, voiceFileName: string, voiceModel, stepCount, temp_file_suffix: string) {
         if(!msg) {
             return 0;
         }
@@ -156,17 +151,16 @@ export class AudioProcessor extends EventEmitter {
         const tempFileName = `./Audio/Temp/${fileName}`;
 
         await GoogleVertexAPI.TTS(msg, tempFileName, voiceModel)
-        console.log("TTS applied == OUTOUT => " + tempFileName)
+        waitSync(0.1)
 
         let duration: number = 0;
         try {
-            let audioFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '_' + index + '.wav';
-            let lipFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '_' + index + '.lip';
+            let audioFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.wav';
+            let lipFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.lip';
             await this.convertAudio(tempFileName, audioFile)
-            waitSync(0.5)
-            duration = await this.getAudioDuration(audioFile);
             this.generateLipFile(audioFile, lipFile, msg);
-
+            duration = await this.getAudioDuration(audioFile);
+            
             fs.unlinkSync(tempFileName);
             
             return [audioFile, lipFile, duration];

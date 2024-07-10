@@ -2,6 +2,7 @@
 import CharacterManager from './CharacterManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
+import { DEBUG } from '../Anima.js'
 import * as fs from 'fs';
 
 export default class DialogueManager {
@@ -15,7 +16,9 @@ export default class DialogueManager {
     private speakerName;
     private voice;
     private is_n2n = false;
+    private voiceType;
     private speaker;
+    private prompt;
     private eventBuffer = "";
     private conversationOngoing;
     private isInteractionOngoing;
@@ -41,6 +44,7 @@ export default class DialogueManager {
             //     talker: this.id,
             //     phrase: msg
             // })
+            this.eventBuffer += "You said \"" + msg + "\"."
         });
 
         EventBus.GetSingleton().on('END', async (msg) => {
@@ -70,7 +74,7 @@ export default class DialogueManager {
     }
 
     // Socket version of connection
-    async ConnectToCharacter(characterId : string, formId: string, speakerName : string, playerName : string, socket : WebSocket) {
+    async ConnectToCharacter(characterId : string, formId: string, voiceType: string, speakerName : string, playerName : string, socket : WebSocket) {
         console.log(`Trying to connect to ${characterId}`);
         this.speakerName = speakerName;
         let character = this.characterManager.GetCharacter(characterId);
@@ -78,21 +82,23 @@ export default class DialogueManager {
         if (!character) {
             let errorResult = `Cannot connect to ${characterId}`;
             let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, this.is_n2n, this.speaker);
-            socket.send(JSON.stringify(returnDoesNotExist));
+            if(!DEBUG)
+                socket.send(JSON.stringify(returnDoesNotExist));
             throw errorResult
         }
         this.id = characterId;
         this.formId = formId;
         this.profile = playerName;
         this.voice = character.defaultCharacterAssets.voice
+        this.voiceType = voiceType;
         this.is_ending = false;
 
         this.googleController = new GoogleGenAIController(this.managerId, this, socket);
 
         this.IsConnected = true;
         this.conversationOngoing = true;
-        this.eventBuffer += this.characterManager.PreparePrompt(character)
-        this.eventBuffer += " THESE ARE WHAT HAPPENED PREVIOUSLY: "  + this.GetEvents(characterId, formId, playerName)
+        this.prompt = this.characterManager.PreparePrompt(character)
+        this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + this.GetEvents(characterId, formId, playerName)
 
         let verifyConnection = GetPayload("connection established", "established", 0, this.is_n2n, this.speaker);
 
@@ -100,7 +106,8 @@ export default class DialogueManager {
         (console as any).logToLog(`Connection to ${character.name} is succesfull.`)
         console.log("Sending verify connection, speaker: " + this.speaker)
 
-        socket.send(JSON.stringify(verifyConnection));
+        if(!DEBUG)
+            socket.send(JSON.stringify(verifyConnection));
         
         return true
     }
@@ -223,14 +230,14 @@ export default class DialogueManager {
 
     PrepareMessage(message) {
         this.eventBuffer += this.speakerName + " says to you.\"" + message + "\""
-        return this.eventBuffer 
+        return this.prompt + " " + this.eventBuffer 
     }
 
    Say(message : string, is_ending?) {
         if (this.IsConnected) {
             this.is_ending = is_ending ? is_ending : this.is_ending;
             this.PrepareMessage(message)
-            this.googleController.Send(this.eventBuffer)
+            this.googleController.Send(this.eventBuffer, this.voiceType)
         }
     }
 

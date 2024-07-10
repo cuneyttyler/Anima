@@ -12,7 +12,7 @@
                 "<node_internals>/**"
             ],
             "preLaunchTask": "tsc: watch - tsconfig.json",
-            "program": "${workspaceFolder}/jsbuild/SkyrimClient.js",
+            "program": "${workspaceFolder}/jsbuild/Anima.js",
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ],
