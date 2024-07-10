@@ -1,4 +1,4 @@
-namespace Inworld {
+namespace Anima {
 
 class UpdatePCHook {
 public:

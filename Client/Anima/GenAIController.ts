@@ -51,13 +51,13 @@ export class GoogleGenAIController {
         var speaker: number = this.clientManager.Speaker();
         if(this.clientManager.IsN2N() && speaker == 0) {
             temp_file_suffix = "0"
-            topic_filename = "DialogueGe_InworldN2NSourc_000274FA_1"
+            topic_filename = "DialogueGe_AnimaN2NSourceB_00129811_1"
         } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 1) {
             temp_file_suffix = "1"
-            topic_filename = "DialogueGe_InworldN2NTarge_0005F002_1"
+            topic_filename = "DialogueGe_AnimaN2NSourceB_00129811_1"
         } else {
             temp_file_suffix = "2"
-            topic_filename = "DialogueGe_InworldTargetBr_000274F4_1"
+            topic_filename = "DialogueGe_AnimaTargetBran_0012980E_1"
         }
 
         this.audioProcessor.addAudioStream(new AudioData(this.processingIndex++, msg, topic_filename, this.clientManager.VoiceModel(), this.stepCount, temp_file_suffix, (index, text, audioFile, lipFile, duration) => {

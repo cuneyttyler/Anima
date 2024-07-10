@@ -19,7 +19,7 @@ using namespace RE::BSScript;
 using json = nlohmann::json;
 using namespace std;
 
-static class InworldUtility {
+static class AnimaUtility {
 public:
     static const void StartQuest(const char* questName) {
         auto quest = RE::TESForm::LookupByEditorID<RE::TESQuest>(questName);
@@ -64,10 +64,10 @@ public:
 
             return "";
         } catch (const exception& e) {
-            Util::writeInworldLog("Exception during ==GetActorName==: " + string(e.what()), 1);
+            Util::WriteLog("Exception during ==GetActorName==: " + string(e.what()), 1);
             return "";
         } catch (...) {
-            Util::writeInworldLog("Unkown exception during ==GetActorName==", 1);
+            Util::WriteLog("Unkown exception during ==GetActorName==", 1);
             return "";
         }
     }
@@ -91,7 +91,7 @@ public:
 
     static void ConsoleLog(std::string log) { RE::ConsoleLog::GetSingleton()->Print(log.c_str()); }
     
-    static void writeInworldLog(const std::string& message, int level = 3) {
+    static void WriteLog(const std::string& message, int level = 3) {
         if (level > LOG_LEVEL) {
             return;
         }
@@ -112,7 +112,7 @@ public:
                 break;
         }
 
-        std::ofstream logFile("InworldSkyrim.log", std::ios::app);
+        std::ofstream logFile("Anima.log", std::ios::app);
         if (logFile.is_open()) {
             logFile << levelStr + message << std::endl;
             logFile.close();
@@ -148,9 +148,9 @@ public:
             RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
         } catch (const exception& e) {
-            Util::writeInworldLog("Exception during ==ShowSubtitle==: " + string(e.what()), 1);
+            Util::WriteLog("Exception during ==ShowSubtitle==: " + string(e.what()), 1);
         } catch (...) {
-            Util::writeInworldLog("Unknown exception during ==ShowSubtitle==.", 1);
+            Util::WriteLog("Unknown exception during ==ShowSubtitle==.", 1);
         }
     }
 
@@ -162,16 +162,16 @@ public:
             auto root = hudMenu->GetRuntimeData().root;
             root.Invoke("HideSubtitle", nullptr, nullptr, 0);
         } catch (const exception& e) {
-            Util::writeInworldLog("Exception during ==HideSubtitle==: " + string(e.what()), 1);
+            Util::WriteLog("Exception during ==HideSubtitle==: " + string(e.what()), 1);
         } catch (...) {
-            Util::writeInworldLog("Unknown exception during ==HideSubtitle==.", 1);
+            Util::WriteLog("Unknown exception during ==HideSubtitle==.", 1);
         }
 
         m.unlock();
     }
 };
 
-static class InworldCaller {
+static class AnimaCaller {
 public:
     inline static RE::Actor* conversationActor;
     inline static bool conversationOngoing = false;
@@ -211,8 +211,8 @@ public:
     }
 
     static void N2N_Init() {
-        Util::writeInworldLog("Starting dialogue between " + Util::GetActorName(InworldCaller::N2N_SourceActor) + " and " +
-                        Util::GetActorName(InworldCaller::N2N_TargetActor) + ".", 3);
+        Util::WriteLog("Starting dialogue between " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + " and " +
+                        Util::GetActorName(AnimaCaller::N2N_TargetActor) + ".", 3);
         SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N", "", 1.0f, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         N2N_Init_Source();
@@ -220,41 +220,41 @@ public:
     }
 
     static void N2N_Init_Source() {
-        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N_Source", "", 1.0f, InworldCaller::N2N_SourceActor};
+        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N_Source", "", 1.0f, AnimaCaller::N2N_SourceActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 
     static void N2N_Init_Target() {
-        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N_Target", "", 1.0f, InworldCaller::N2N_TargetActor};
+        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N_Target", "", 1.0f, AnimaCaller::N2N_TargetActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 
     static void Start(RE::Actor* actor) {
-        Util::writeInworldLog("Starting dialogue with " + Util::GetActorName(actor) + ".", 3);
+        Util::WriteLog("Starting dialogue with " + Util::GetActorName(actor) + ".", 3);
         SKSE::ModCallbackEvent modEvent{"BLC_Start", "", 1.0f, actor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-        InworldCaller::conversationActor = actor;
-        InworldCaller::connecting = true;
+        AnimaCaller::conversationActor = actor;
+        AnimaCaller::connecting = true;
     }
 
     static void Stop() {
-        Util::writeInworldLog("Stopping dialogue with " + Util::GetActorName(InworldCaller::conversationActor) + ".", 3);
+        Util::WriteLog("Stopping dialogue with " + Util::GetActorName(AnimaCaller::conversationActor) + ".", 3);
         SKSE::ModCallbackEvent modEvent{"BLC_Stop", "", 1.0f, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-        SetHoldPosition(1, InworldCaller::conversationActor);
-        InworldCaller::stopSignal = false;
-        InworldCaller::connecting = false;
-        InworldCaller::conversationOngoing = false;
-        InworldCaller::conversationActor = nullptr;
+        SetHoldPosition(1, AnimaCaller::conversationActor);
+        AnimaCaller::stopSignal = false;
+        AnimaCaller::connecting = false;
+        AnimaCaller::conversationOngoing = false;
+        AnimaCaller::conversationActor = nullptr;
     }
 
     static void Reset() {
-        InworldCaller::conversationActor = nullptr;
-        InworldCaller::connecting = false;
+        AnimaCaller::conversationActor = nullptr;
+        AnimaCaller::connecting = false;
     }
 
     static void SendFollowRequestAcceptedSignal() {
-        SKSE::ModCallbackEvent modEvent{"BLC_Follow_Request_Accepted", "", 1.0f, InworldCaller::conversationActor};
+        SKSE::ModCallbackEvent modEvent{"BLC_Follow_Request_Accepted", "", 1.0f, AnimaCaller::conversationActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 
@@ -264,21 +264,21 @@ public:
     }
 
     static void N2N_Stop() {
-        Util::writeInworldLog("Stopping dialogue between " + Util::GetActorName(InworldCaller::N2N_SourceActor) + " and " +
-                            Util::GetActorName(InworldCaller::N2N_SourceActor) + ".", 3);
+        Util::WriteLog("Stopping dialogue between " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + " and " +
+                            Util::GetActorName(AnimaCaller::N2N_SourceActor) + ".", 3);
         n2n_established_response_count = 0;
         SKSE::ModCallbackEvent modEvent{"BLC_Stop_N2N", "", 1.0f, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-        InworldCaller::N2N_SourceActor = nullptr;
-        InworldCaller::N2N_TargetActor = nullptr;
+        AnimaCaller::N2N_SourceActor = nullptr;
+        AnimaCaller::N2N_TargetActor = nullptr;
     }
 
     static void ConnectionSuccessful() {
-        if (InworldCaller::connecting) {
-            Util::writeInworldLog("Connected to " + Util::GetActorName(conversationActor) + ".", 3);
-            InworldCaller::conversationOngoing = true;
-            InworldCaller::stopSignal = false;
-            InworldCaller::connecting = false;
+        if (AnimaCaller::connecting) {
+            Util::WriteLog("Connected to " + Util::GetActorName(conversationActor) + ".", 3);
+            AnimaCaller::conversationOngoing = true;
+            AnimaCaller::stopSignal = false;
+            AnimaCaller::connecting = false;
             SetHoldPosition(0, conversationActor);
         }
     }
@@ -289,14 +289,14 @@ public:
     }
 
     static void Speak(std::string message, float duration) {
-        if (InworldCaller::conversationActor == nullptr) {
-            Util::writeInworldLog("SPEAK REQUEST == ConversationActor is NULL == RETURNING.", 2);
+        if (AnimaCaller::conversationActor == nullptr) {
+            Util::WriteLog("SPEAK REQUEST == ConversationActor is NULL == RETURNING.", 2);
             return;
         }
-        SKSE::ModCallbackEvent modEvent{"BLC_Speak", "", 0.0075f, InworldCaller::conversationActor};
+        SKSE::ModCallbackEvent modEvent{"BLC_Speak", "", 0.0075f, AnimaCaller::conversationActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-        //SendResponseLog(InworldCaller::conversationActor, message);
-        SubtitleManager::ShowSubtitle(InworldCaller::conversationActor, message, duration);
+        //SendResponseLog(AnimaCaller::conversationActor, message);
+        SubtitleManager::ShowSubtitle(AnimaCaller::conversationActor, message, duration);
         /*this_thread::sleep_for(chrono::milliseconds((long) (duration * 1000)));
         SubtitleManager::HideSubtitle();*/
     }
@@ -305,19 +305,19 @@ public:
 
     static void SpeakN2N(std::string message, int speaker, float duration) {
         if (speaker == 0) {
-            if (InworldCaller::N2N_SourceActor == nullptr) return;
-            SKSE::ModCallbackEvent modEvent{"BLC_Speak_N2N", "", 0, InworldCaller::N2N_SourceActor};
+            if (AnimaCaller::N2N_SourceActor == nullptr) return;
+            SKSE::ModCallbackEvent modEvent{"BLC_Speak_N2N", "", 0, AnimaCaller::N2N_SourceActor};
             SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-            //SendResponseLog(InworldCaller::N2N_SourceActor, message);
-            SubtitleManager::ShowSubtitle(InworldCaller::N2N_SourceActor, message, duration);
+            //SendResponseLog(AnimaCaller::N2N_SourceActor, message);
+            SubtitleManager::ShowSubtitle(AnimaCaller::N2N_SourceActor, message, duration);
             /*this_thread::sleep_for(chrono::milliseconds((long)(duration * 1000)));
             SubtitleManager::HideSubtitle();*/
         } else {
-            if (InworldCaller::N2N_TargetActor == nullptr) return;
-            SKSE::ModCallbackEvent modEvent{"BLC_Speak_N2N", "", 1, InworldCaller::N2N_TargetActor};
+            if (AnimaCaller::N2N_TargetActor == nullptr) return;
+            SKSE::ModCallbackEvent modEvent{"BLC_Speak_N2N", "", 1, AnimaCaller::N2N_TargetActor};
             SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-            //SendResponseLog(InworldCaller::N2N_TargetActor, message);
-            SubtitleManager::ShowSubtitle(InworldCaller::N2N_TargetActor, message, duration);
+            //SendResponseLog(AnimaCaller::N2N_TargetActor, message);
+            SubtitleManager::ShowSubtitle(AnimaCaller::N2N_TargetActor, message, duration);
             /*this_thread::sleep_for(chrono::milliseconds((long)(duration * 1000)));
             SubtitleManager::HideSubtitle();*/
         }
@@ -350,7 +350,7 @@ public:
         inline static REL::Relocation<ProcessMessage_t> _ProcessMessage;
 
         void ProcessTopic(RE::MenuTopicManager* topicManager, RE::Actor* speaker) {
-            Util::writeInworldLog("Processing dialogue menu with " + Util::GetActorName(speaker), 4);
+            Util::WriteLog("Processing dialogue menu with " + Util::GetActorName(speaker), 4);
 
             if (topicManager->lastSelectedDialogue != nullptr) {
                 RE::BSSimpleList<RE::DialogueResponse*> responses = topicManager->lastSelectedDialogue->responses;
@@ -371,7 +371,7 @@ public:
                         actorsStr += Util::GetActorName(actor) + ", ";
                     }
                     if (actorsStr.length() > 0) actorsStr = actorsStr.substr(0, actorsStr.length() - 2);
-                    Util::writeInworldLog("Sending player event text == " + playerEventText + " == to [" + actorsStr + "] ==", 4);
+                    Util::WriteLog("Sending player event text == " + playerEventText + " == to [" + actorsStr + "] ==", 4);
 
                     lines.insert(playerEventText);
                 }
@@ -389,7 +389,7 @@ public:
                         actorsStr += Util::GetActorName(actor) + ", ";
                     }
                     if (actorsStr.length() > 0) actorsStr = actorsStr.substr(0, actorsStr.length() - 2);
-                    Util::writeInworldLog(
+                    Util::WriteLog(
                         "Sending character event text == " + playerEventText + " == to [" + actorsStr + "]", 4);
                     lines.insert(fullResponse);
                 }
@@ -403,7 +403,7 @@ public:
                 return _ProcessMessage(this, a_message);
             RE::Actor* speaker = static_cast<RE::Actor*>(topicManager->speaker.get().get());
             if (speaker == nullptr) {
-                Util::writeInworldLog("SPEAKER is not ACTOR. RETURNING.", 1);
+                Util::WriteLog("SPEAKER is not ACTOR. RETURNING.", 1);
                 return _ProcessMessage(this, a_message);
             }
 
@@ -443,7 +443,7 @@ public:
             actorsStr += Util::GetActorName(actor) + ", ";
         }
         if (actorsStr.length() > 0) actorsStr = actorsStr.substr(0, actorsStr.length() - 2);
-        Util::writeInworldLog(
+        Util::WriteLog(
             "Sending subtitle  == " + Util::GetActorName(speaker) + " == " + subtitle + " == to [" + actorsStr + "] ==",
             4);
         m.unlock();
@@ -459,18 +459,18 @@ public:
                     lines.insert(subtitle.subtitle.c_str());
                     SendSubtitle(speaker, subtitle.subtitle.c_str());
                 } else if (speaker == nullptr) {
-                    Util::writeInworldLog("SPEAKER is not ACTOR.", 1);
+                    Util::WriteLog("SPEAKER is not ACTOR.", 1);
                 }
             }
         } catch (const exception& e) {
-            Util::writeInworldLog("Exception during ==WatchSubtitles==: " + string(e.what()));
+            Util::WriteLog("Exception during ==WatchSubtitles==: " + string(e.what()));
         } catch (...) {
-            Util::writeInworldLog("Unknown exception during ==WatchSubtitles==.", 1);
+            Util::WriteLog("Unknown exception during ==WatchSubtitles==.", 1);
         }
     }
 };
 
-#include "InworldEventSink.cpp"
+#include "AnimaEventSink.cpp"
 
 class ModPort {
 public:
@@ -485,12 +485,12 @@ public:
     }
 
     static bool Stop(RE::StaticFunctionTag*) {
-        if (InworldCaller::conversationOngoing) {
-            InworldCaller::stopSignal = true;
+        if (AnimaCaller::conversationOngoing) {
+            AnimaCaller::stopSignal = true;
             SocketManager::getInstance().SendStopSignal();
         }
 
-        InworldEventSink::GetSingleton()->conversationPair = nullptr;
+        AnimaEventSink::GetSingleton()->conversationPair = nullptr;
 
 
         return true;
@@ -507,11 +507,11 @@ public:
     }
 
     static bool N2N_Start(RE::StaticFunctionTag*, string currentDateTime) {
-        if (InworldCaller::N2N_SourceActor == nullptr || InworldCaller::N2N_TargetActor == nullptr) {
+        if (AnimaCaller::N2N_SourceActor == nullptr || AnimaCaller::N2N_TargetActor == nullptr) {
             return false;
         }
 
-        SocketManager::getInstance().SendN2NStartSignal(InworldCaller::N2N_SourceActor, InworldCaller::N2N_TargetActor,
+        SocketManager::getInstance().SendN2NStartSignal(AnimaCaller::N2N_SourceActor, AnimaCaller::N2N_TargetActor,
                                                         currentDateTime);
 
         return true;
@@ -565,21 +565,21 @@ public:
 void OnMessage(SKSE::MessagingInterface::Message* message) {
     if (message->type == SKSE::MessagingInterface::kInputLoaded) {
         SocketManager::getInstance().initSocket();
-        RE::BSInputDeviceManager::GetSingleton()->AddEventSink(InworldEventSink::GetSingleton());
+        RE::BSInputDeviceManager::GetSingleton()->AddEventSink(AnimaEventSink::GetSingleton());
     }
 }
 
 bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
-    vm->RegisterFunction("Start", "InworldSKSE", &ModPort::Start);
-    vm->RegisterFunction("Stop", "InworldSKSE", &ModPort::Stop);
-    vm->RegisterFunction("N2N_Initiate", "InworldSKSE", &ModPort::N2N_Initiate);
-    vm->RegisterFunction("N2N_Start", "InworldSKSE", &ModPort::N2N_Start);
-    vm->RegisterFunction("N2N_Stop", "InworldSKSE", &ModPort::N2N_Stop);
-    vm->RegisterFunction("LogEvent", "InworldSKSE", &ModPort::LogEvent);
-    vm->RegisterFunction("WatchSubtitles", "InworldSKSE", &ModPort::WatchSubtitles);
-    vm->RegisterFunction("ClearActors", "InworldSKSE", &ModPort::ClearActors);
-    vm->RegisterFunction("SendActor", "InworldSKSE", &ModPort::SendActor);
-    vm->RegisterFunction("SendResponseLog", "InworldSKSE", &ModPort::SendResponseLog);
+    vm->RegisterFunction("Start", "AnimaSKSE", &ModPort::Start);
+    vm->RegisterFunction("Stop", "AnimaSKSE", &ModPort::Stop);
+    vm->RegisterFunction("N2N_Initiate", "AnimaSKSE", &ModPort::N2N_Initiate);
+    vm->RegisterFunction("N2N_Start", "AnimaSKSE", &ModPort::N2N_Start);
+    vm->RegisterFunction("N2N_Stop", "AnimaSKSE", &ModPort::N2N_Stop);
+    vm->RegisterFunction("LogEvent", "AnimaSKSE", &ModPort::LogEvent);
+    vm->RegisterFunction("WatchSubtitles", "AnimaSKSE", &ModPort::WatchSubtitles);
+    vm->RegisterFunction("ClearActors", "AnimaSKSE", &ModPort::ClearActors);
+    vm->RegisterFunction("SendActor", "AnimaSKSE", &ModPort::SendActor);
+    vm->RegisterFunction("SendResponseLog", "AnimaSKSE", &ModPort::SendResponseLog);
 
     return true;
 }
@@ -588,25 +588,25 @@ bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
 
 void StartAudioBus() {
     auto mainPath = std::filesystem::current_path();
-    auto clientPath = mainPath / "Inworld" / "Audio" / "AudioBloc.exe";
-    Util::writeInworldLog("Opening: " + clientPath.string(), 4);
+    auto clientPath = mainPath / "Anima" / "Audio" / "AudioBloc.exe";
+    Util::WriteLog("Opening: " + clientPath.string(), 4);
     LPCWSTR exePath = clientPath.c_str();
     HINSTANCE result = ShellExecute(NULL, L"open", exePath, NULL, clientPath.parent_path().c_str(), SW_SHOWNORMAL);
 }
 
 void StartClient() {
     auto mainPath = std::filesystem::current_path();
-    auto clientPath = mainPath / "Inworld" / "WithinWorld.exe";
-    Util::writeInworldLog("Opening: " + clientPath.string(), 4);
+    auto clientPath = mainPath / "Anima" / "Anima.exe";
+    Util::WriteLog("Opening: " + clientPath.string(), 4);
     LPCWSTR exePath = clientPath.c_str();
     HINSTANCE result = ShellExecute(NULL, L"open", exePath, NULL, clientPath.parent_path().c_str(), SW_SHOWNORMAL);
-    StartAudioBus();
+    //StartAudioBus();
 }
 
 int GetDebugLevel() {
     try {
         auto mainPath = std::filesystem::current_path();
-        auto clientPath = mainPath / "Inworld" / ".env";
+        auto clientPath = mainPath / "Anima" / ".env";
         std::ifstream envFile(clientPath);  // Open the environment file for reading
         std::string line;
         int logLevel = -1;                       // Default value if CLIENT_PORT is not found
@@ -622,10 +622,10 @@ int GetDebugLevel() {
         if (logLevel == -1) {
             throw new exception();
         }
-        Util::writeInworldLog("LOG_LEVEL is set to " + std::to_string(logLevel), 3);
+        Util::WriteLog("LOG_LEVEL is set to " + std::to_string(logLevel), 3);
         return logLevel;
     } catch (...) {
-        Util::writeInworldLog("LOG_LEVEL can't be read from .env file, assigning default value (3: INFO).", 2);
+        Util::WriteLog("LOG_LEVEL can't be read from .env file, assigning default value (3: INFO).", 2);
         return 3;
     }
 }
@@ -635,12 +635,12 @@ int GetDebugLevel() {
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
     
-    Util::writeInworldLog("Plugin loaded. Initializing components.", 3);
+    Util::WriteLog("Plugin loaded. Initializing components.", 3);
     Util::LOG_LEVEL = GetDebugLevel();
 
     StartClient();
 
-    auto* eventSink = InworldEventSink::GetSingleton();
+    auto* eventSink = AnimaEventSink::GetSingleton();
 
     // ScriptSource
     auto* eventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton();
@@ -660,8 +660,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     EventWatcher::DialogueMenuEx::_ProcessMessage =
         vTable_dm.write_vfunc(0x4, &EventWatcher::DialogueMenuEx::ProcessMessage_Hook);
 
-    Inworld::UpdatePCHook::Install();
-    Inworld::InvokeHook::Install();
+    Anima::UpdatePCHook::Install();
+    Anima::InvokeHook::Install();
 
     Util::GetSettings();
 
