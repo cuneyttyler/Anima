@@ -66,10 +66,12 @@ function _Start(String eventName, String strArg, Float numArg, Form sender)
         return
     EndIf
     debug.Trace("Anima: Start Dialogue")
+    debug.Notification("NPC is listening...")
     ConversationOnGoing.SetValueInt(1)
     target.ForceRefTo(sender as Actor)
     SetHoldPosition("", "", 0, sender)
-    AnimaSKSE.Start(sender as Actor, Utility.GameTimeToString(Utility.GetCurrentGameTime()))
+
+    AnimaSKSE.Start(sender as Actor, GetVoiceType(sender as Actor), Utility.GameTimeToString(Utility.GetCurrentGameTime()))
     CheckDistance()
 endFunction
 
@@ -77,6 +79,13 @@ function _Stop(String eventName, String strArg, Float numArg, Form sender)
     debug.Trace("Anima: Stop Dialogue")
     ConversationOnGoing.SetValueInt(0)
     target.Clear()
+endFunction
+
+string function GetVoiceType(Actor _actor)
+    string str = _actor.GetVoiceType() as string
+    int startIndex = StringUtil.Find(str, "<", 0)
+    int endIndex = StringUtil.Find(str," ", startIndex)
+    return StringUtil.Substring(str, startIndex + 1, endIndex - startIndex - 1)
 endFunction
 
 function CheckDistance()

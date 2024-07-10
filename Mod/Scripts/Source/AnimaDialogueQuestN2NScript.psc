@@ -21,8 +21,8 @@ endFunction
 function CheckN2NDialogue()
    lastTryTime = 0
    retryInterval = 10
-   initiateTimeInterval = 180
-   initiateSamePairTimeInterval = 300
+   initiateTimeInterval = 60
+   initiateSamePairTimeInterval = 120
     
     N2N_ConversationOnGoing.SetValueInt(0)
     N2N_LastSuccessfulStart.SetValueInt(0)
@@ -50,7 +50,7 @@ function CheckN2NDialogue()
                         
                         Debug.Trace("Anima: Sending InitiateConversation Signal For " + sourceActor.GetDisplayName() + " and " + targetActor.GetDisplayName())
                         lastTryTime = _time
-                        AnimaSKSE.N2N_Initiate(sourceActor, targetActor)
+                        AnimaSKSE.N2N_Initiate(sourceActor, targetActor, GetVoiceType(sourceActor), GetVoiceType(targetActor))
                         SetPreviousActors(sourceActor, targetActor)
                     EndIf
                 EndIf
@@ -58,8 +58,6 @@ function CheckN2NDialogue()
         EndIf
     EndWhile
 endFunction
-
-
 
 function SetPreviousActors(Actor source, Actor target)
     previousSource = source
@@ -72,6 +70,13 @@ endFunction
 
 bool function IsVoiceIncluded(Actor _actor) 
     return _AnimaVoiceTypes != None && _AnimaVoiceTypes.GetAt(0) != None && _AnimaVoiceTypes.GetAt(1) != None &&  _actor.GetVoiceType() != None && ((_AnimaVoiceTypes.GetAt(0) as FormList).HasForm(_actor.GetVoiceType()) || (_AnimaVoiceTypes.GetAt(1) as FormList).HasForm(_actor.GetVoiceType())) &&  !_AnimaVoiceTypes_Exclude.HasForm(_actor.GetVoiceType())
+endFunction
+
+string function GetVoiceType(Actor _actor)
+    string str = _actor.GetVoiceType() as string
+    int startIndex = StringUtil.Find(str, "<", 0)
+    int endIndex = StringUtil.Find(str," ", startIndex)
+    return StringUtil.Substring(str, startIndex + 1, endIndex - startIndex - 1)
 endFunction
 
 bool function IsAvailableForDialogue(Actor _actor)
