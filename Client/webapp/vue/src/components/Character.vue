@@ -116,12 +116,8 @@
       }
     }, 
     created() {
-      if(!this.character.voicePitch) {
-        this.character.voicePitch = 0
-      }
     },
     updated() {
-      this.character.voicePitch = 0
     },
     methods: {
         playSound(gender, voice, pitch) {
@@ -135,7 +131,9 @@
         },
         validateNumberFields() {
           try {
-            if(this.character.voicePitch)
+            if(!this.character.voicePitch || this.character.voicePitch != 0 && this.character.voicePitch == "")
+              throw Error()
+            else
               parseFloat(this.character.voicePitch)
 
             if(!this.isBetween(this.character.mood.joy, -100, 100) || !this.isBetween(this.character.mood.fear, -100, 100) 
