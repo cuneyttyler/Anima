@@ -62,7 +62,7 @@ export class GoogleGenAIController {
             topic_filename = "AnimaDialo_AnimaTargetBran_00133A1A_1"
         }
 
-        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.clientManager.VoiceModel(), this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
+        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.clientManager.VoiceModel(), this.clientManager.VoicePitch(), this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
             this.senderQueue.addData(new SenderData(text, audioFile, lipFile, voiceType, topic_filename, duration, speaker));
             setTimeout(() => {
                 this.clientManager.SetInteractionOngoing(false);

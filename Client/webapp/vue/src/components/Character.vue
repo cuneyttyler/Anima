@@ -90,7 +90,7 @@
                 <td><input v-model="character.personality.open"/></td>
             </tr>
             <tr>
-                <td class="first">Personality::Extrovert: </td>
+                <td class="first">Personality::Extravert: </td>
                 <td><input v-model="character.personality.extravert"/></td>
             </tr>
         </table>
@@ -117,17 +117,37 @@
     }, 
     created() {
       if(!this.character.voicePitch) {
-        this.character.voicePitch = 1.0
+        this.character.voicePitch = 0
       }
     },
     updated() {
-      if(!this.character.voicePitch) {
-        this.character.voicePitch = 1.0
-      }
+      this.character.voicePitch = 0
     },
     methods: {
         playSound(gender, voice, pitch) {
           this.$emit("play-sound", gender, voice, pitch)
+        },
+        isBetween(num, min, max) {
+          if(num == null || (num != 0 && num == "")) // check if null
+            throw Error()
+          parseInt(num) // check if number
+          return num <= max && num >= min
+        },
+        validateNumberFields() {
+          try {
+            if(this.character.voicePitch)
+              parseFloat(this.character.voicePitch)
+
+            if(!this.isBetween(this.character.mood.joy, -100, 100) || !this.isBetween(this.character.mood.fear, -100, 100) 
+              || !this.isBetween(this.character.mood.trust, -100, 100) || !this.isBetween(this.character.mood.surprise, -100, 100) 
+              || !this.isBetween(this.character.personality.positive, -100, 100) || !this.isBetween(this.character.personality.peaceful, -100, 100)
+              || !this.isBetween(this.character.personality.open, -100, 100) || !this.isBetween(this.character.personality.extravert, -100, 100))
+                throw Error()
+
+            return true
+          } catch (err) {
+            return false
+          }
         },
         save() {
           this.errorMessage = ""
@@ -141,6 +161,12 @@
               this.errorMessage = "Life stage can be [CHILDHOOD, YOUNG_ADULTHOOD, MIDDLE_ADULTHOOD, LATE_ADULTHOOD]"
               return
             }
+
+          if(!this.validateNumberFields()) {
+            this.errorMessage =  "Voice Pitch needs to be a float. Mood::Joy, Mood::Fear, Mood::Trust, Mood::Surprise, Personality::Positive, Personality::Peaceful, " +
+            "Personality::Open, Personality::Extravert needs to be a number between -100 and 100."
+            return
+          }
 
           api().post('character', this.character)
             .then((response) => {

@@ -15,6 +15,7 @@ export default class DialogueManager {
     private profile;
     private speakerName;
     private voice;
+    private voicePitch;
     private is_n2n = false;
     private voiceType;
     private speaker;
@@ -90,6 +91,7 @@ export default class DialogueManager {
         this.formId = formId;
         this.profile = playerName;
         this.voice = character.voice
+        this.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0
         this.voiceType = voiceType;
         this.is_ending = false;
 
@@ -260,6 +262,10 @@ export default class DialogueManager {
 
     VoiceModel() {
         return this.voice;
+    }
+
+    VoicePitch() {
+        return this.voicePitch;
     }
 
     IsConversationOngoing() {

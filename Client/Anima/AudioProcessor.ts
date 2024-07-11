@@ -38,14 +38,16 @@ export class AudioData {
     public voiceFileName: string;
     public text: string;
     public voiceModel: string;
+    public voicePitch: number;
     public stepCount = 0;
     public temp_file_suffix: string;
     public callback: Function;
 
-    constructor(text, voiceFileName, voiceModel, stepCount, temp_file_suffix, callback) {
+    constructor(text, voiceFileName, voiceModel, voicePitch, stepCount, temp_file_suffix, callback) {
         this.text = text;
         this.voiceFileName = voiceFileName;
         this.voiceModel = voiceModel;
+        this.voicePitch = voicePitch;
         this.stepCount = stepCount;
         this.temp_file_suffix = temp_file_suffix;
         this.callback = callback;
@@ -96,7 +98,7 @@ export class AudioProcessor extends EventEmitter {
         // Simulating async processing with a timeout.
         return new Promise(async (resolve) => {
             try {
-                let output = await this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.stepCount, data.temp_file_suffix, (output) => {
+                let output = await this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.voicePitch, data.stepCount, data.temp_file_suffix, (output) => {
                     data.callback(data.text, output[0], output[1], output[2]);
                     this.processing = false;
                     this.emit(this.eventName);
@@ -125,23 +127,32 @@ export class AudioProcessor extends EventEmitter {
         // if(!pitch) pitch = 1.0
         // let rate = 44100//Math.floor(44100*pitch)
         try {
+            const rate = 22050 * Math.pow(2, pitch / 12)
+            const speedAdjustment = 1 / Math.pow(2, pitch / 12)
             ffmpeg()
-                .input(inputFile)
-                .audioCodec('pcm_s16le') // Set the audio codec to PCM with 16-bit depth
-                .audioFrequency(44100) // Set the sample rate
-                .on('error', function(err) {
-                    console.error('Error while converting:', err);
-                })
-                .on('end', function() {
-                    callback() // Resolve the promise without any arguments
-                })
-                .save(outputFile);
+                    .input(inputFile)
+                    .audioCodec('pcm_s16le') // Set the audio codec to PCM with 16-bit depth
+                    .audioFrequency(44100) // Set the sample rate
+                    .audioFilters([{
+                        filter: 'asetrate',
+                        options: rate
+                    },{
+                        filter: 'atempo',
+                        options: speedAdjustment.toFixed(2)
+                    }])
+                    .on('error', function(err) {
+                        console.error('Error while converting:', err);
+                    })
+                    .on('end', function() {
+                        callback(outputFile)
+                    })
+                    .save(outputFile);
         } catch(err) {
             console.error("ERROR during audio conversion:", err);
         }
     }
     
-    private async saveAudio(msg: string, voiceFileName: string, voiceModel, stepCount, temp_file_suffix: string, callback) {
+    private async saveAudio(msg: string, voiceFileName: string, voiceModel, pitch, stepCount, temp_file_suffix: string, callback) {
         if(!msg) {
             return 0;
         }
@@ -156,7 +167,7 @@ export class AudioProcessor extends EventEmitter {
         try {
             let audioFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.wav';
             let lipFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.lip';
-            this.convertAudio(tempFileName, audioFile, 1.0, async () => {
+            this.convertAudio(tempFileName, audioFile, pitch, async () => {
                 this.generateLipFile(audioFile, lipFile, msg);
                 duration = await this.getAudioDuration(audioFile);
                 fs.unlinkSync(tempFileName);

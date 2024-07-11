@@ -27,8 +27,8 @@ export default  class Api {
 
     ApplyPitch(gender, voice, pitch, callback) {
         const file = "./voices/" + gender.toLowerCase() + "/" + voice + ".mp3"
-        const output_file = "./Audio/Temp/" + voice + ".mp3"
-        new AudioProcessor().convertAudio(file, output_file, pitch, () => {
+        const output_file = "./Audio/Temp/" + voice + ".wav"
+        new AudioProcessor().convertAudio(file, output_file, parseFloat(pitch), () => {
             callback(output_file)
         })    
     }
