@@ -30,7 +30,7 @@ export class GoogleGenAIController {
 
     async Send(message, voiceType) {
         let response = await GoogleGenAI.SendMessage(message)
-        this.ProcessMessage(response, voiceType)
+        this.ProcessMessage(response.replaceAll("\n",""), voiceType)
     }
 
     async SummarizeHistory(history) {

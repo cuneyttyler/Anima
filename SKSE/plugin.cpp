@@ -597,10 +597,10 @@ void StartAudioBus() {
 void StartClient() {
     auto mainPath = std::filesystem::current_path();
     auto clientPath = mainPath / "Anima" / "Anima.exe";
-    Util::WriteLog("Opening: " + clientPath.string(), 4);
+    //Util::WriteLog("Opening: " + clientPath.string(), 4);
     LPCWSTR exePath = clientPath.c_str();
     HINSTANCE result = ShellExecute(NULL, L"open", exePath, NULL, clientPath.parent_path().c_str(), SW_SHOWNORMAL);
-    StartAudioBus();
+    //StartAudioBus();
 }
 
 int GetDebugLevel() {

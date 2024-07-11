@@ -1,55 +1,89 @@
 import path from "path";
 import fs from 'fs';
 
-const CHARACTERS = JSON.parse(fs.readFileSync(path.resolve("./World/SkyrimCharacters.json"), 'utf-8'));
+const CHARACTERS_FILE_PATH = path.resolve("./World/SkyrimCharacters.json")
+const CHARACTERS = JSON.parse(fs.readFileSync(CHARACTERS_FILE_PATH, 'utf-8'));
 
 export default class CharacterManager {
     private generalPrompt = "When you're asked by someone to follow them like \"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, answer \"Of course, I'll join you.'\" if you wish to join them. Reject in a manner you see appropriate otherwise."
 
-    GetUserProfile(playerName) {
-        return fs.readFileSync(path.resolve("./Profiles/" + playerName + "/profile.txt"), 'utf-8');
+    GetUserProfile(profile) {
+        if(!fs.existsSync(path.resolve("./Profiles/" + profile + "/profile.txt")))
+            return null
+        return fs.readFileSync(path.resolve("./Profiles/" + profile + "/profile.txt"), 'utf-8');
+    }
+    profile
+    GetUserProfilePrompt(profile) {
+        let profileText = this.GetUserProfile(profile)
+        if(!profileText) return ""
+        return "THIS IS INFORMATION ABOUT " + profile + " WHOM YOU TALK: " + profileText
+    }
+
+    GetCharacterList() {
+        return CHARACTERS
     }
 
     GetCharacter(name) {
         let character = null;
-        for(let i in (CHARACTERS as any)) {
-            if(name.toLowerCase().replaceAll(" ", "_") == (CHARACTERS as any)[i].name.replaceAll(" ", "_")) {
-                character = (CHARACTERS as any)[i];
+        for(let i in CHARACTERS) {
+            if(name.toLowerCase().replaceAll(" ", "_") == CHARACTERS[i].id.replaceAll(" ", "_")) {
+                character = CHARACTERS[i];
                 break
             }
         }
         return character;
     }
 
-    PreparePrompt(character) {
-        let facts = []
-        if(character.facts.length > 0) {
-            for(let i in character.facts[0].text) {
-                facts.push(character.facts[0].text[i].replace("{Character}", character.defaultCharacterDescription.givenName));
+    SaveCharacter(character) {
+        for(let i in CHARACTERS) {
+            if(CHARACTERS[i].id == character.id) {
+                CHARACTERS[i] = character
+                break
             }
         }
 
-        let prompt = "PLEASE ACT AS CHARACTER DESCRIBED BELOW AND OMIT ANY UNNECESSARY ADDITIONS (LIKE NARRATED ACTIONS) OTHER THAN YOUR REAL SPEECH: "
-            + "EXAMPLE INPUT: \"Greetings, how are you today?\", EXAMPLE OUTPUT: \"Thank you, I'm fine\" -- WITHOUT DESCRIBING YOUR BEHAVIOUR. "
-            + "YOUR RESPONSE WILL DIRECTLY BE USED TO MAKE CHARACTER SPEAK SO DO NOT INCLUDE ANYTHING OTHER THAN YOUR SPEECH. "
-            + "FOR EXAMPLE, AFTER CHARACTER SPEAKS, YOU DON'T NEED TO MAKE ROLEPLAYING REMARKS. " 
+        fs.writeFileSync(CHARACTERS_FILE_PATH, JSON.stringify(CHARACTERS), 'utf8')
+    }
+
+    DeleteCharacter(id) {
+        let index = -1
+        for(let i in CHARACTERS) {
+            if(CHARACTERS[i].id == id) {
+                index = parseInt(i)
+                break
+            }
+        }
+
+        if(index == -1) {
+            return
+        }
+
+        CHARACTERS.splice(index, 1)
+        fs.writeFileSync(CHARACTERS_FILE_PATH, JSON.stringify(CHARACTERS), 'utf8')
+    }
+
+    PreparePrompt(character) {
+        let prompt = "PLEASE ACT AS CHARACTER DESCRIBED BELOW AND DO NOT INCLUDE ANY UNNECESSARY ADDITIONS (LIKE NARRATED ACTIONS) OTHER THAN YOUR REAL SPEECH. "
+            + "YOUR OUTPUT WILL BE USED TO MAKE CHARACTERS SPEAK DIRECTLY. DO NOT INCLUDE ANYTHING OTHER THAN WHAT THE CHARACTERS SAY."
+            + "Example Input: \"Greetings. How are you today?\". Example WRONG OUTPUT: \"\"I'm fine, thank you.\" I said smiling at him.\". Here 'I said smiling at him' part is UNNECESSARY."
             + "PLEASE KEEP YOUR ANSWERS SHORT. "
-            + "You are " + character.defaultCharacterDescription.givenName + ". " 
-            + "Your role is " + character.defaultCharacterDescription.characterRole + ". "
-            + character.defaultCharacterDescription.description + " "
-            + character.defaultCharacterDescription.motivation + " "
-            + character.defaultCharacterDescription.flaws + " "
-            + "This is your speech style: " + character.defaultCharacterDescription.exampleDialogStyle + " "
-            + "This is how you talk (PLEASE TAKE THIS AS A REFERENCE WHEN YOU SPEAK): \"" + character.defaultCharacterDescription.exampleDialog + "\"" + " "
-            + "You are " + character.defaultCharacterDescription.personalityAdjectives.join(', ') + " "
-            + "You are at " + character.defaultCharacterDescription.lifeStage + " of your life." + " "
-            + "These are your hobbies " + character.defaultCharacterDescription.hobbyOrInterests.join(', ') + " "
-            + "These are some additional facts about you: " + facts.join(", ") + " "
+            + "THIS IS YOUR BIOGRAPHY: "
+            + "You are " + character.name + ". " 
+            + "Your role is " + character.characterRole + ". "
+            + character.description + " "
+            + character.motivation + " "
+            + character.flaws + " "
+            + "This is your speech style: " + character.exampleDialogStyle + " "
+            + "This is how you talk (PLEASE TAKE THIS AS A REFERENCE WHEN YOU SPEAK): \"" + character.exampleDialog + "\"" + " "
+            + "You are " + character.personalityAdjectives + " "
+            + "You are at " + character.lifeStage + " of your life." + " "
+            + "These are your hobbies " + character.hobbyOrInterests + " "
+            + "These are some additional facts about you: " + character.facts + " "
             + "These values describe your mood(ranged between -100 and 100): {" + " "
-            + "Joy: " + character.initialMood.joy + ", "
-            + "Fear: " + character.initialMood.fear + ", "
-            + "Trust: " + character.initialMood.trust + ", "
-            + "Surprise: " + character.initialMood.surprise + " "
+            + "Joy: " + character.mood.joy + ", "
+            + "Fear: " + character.mood.fear + ", "
+            + "Trust: " + character.mood.trust + ", "
+            + "Surprise: " + character.mood.surprise + " "
             + "}. "
             + "These values describe your personality(ranged between -100 and 100): {"  + " "
             + "Positive: " + character.personality.positive + ", "

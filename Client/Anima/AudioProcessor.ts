@@ -58,7 +58,7 @@ export class AudioProcessor extends EventEmitter {
     private queue: Queue<AudioData>;
     private processing: boolean;
 
-    constructor(id: number) {
+    constructor(id?: number) {
         super();
         this.id = id;
         this.eventName = 'processNext_' + this.id;
@@ -96,10 +96,11 @@ export class AudioProcessor extends EventEmitter {
         // Simulating async processing with a timeout.
         return new Promise(async (resolve) => {
             try {
-                let output = await this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.stepCount, data.temp_file_suffix);
-                data.callback(data.text, output[0], output[1], output[2]);
-                this.processing = false;
-                this.emit(this.eventName);
+                let output = await this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.stepCount, data.temp_file_suffix, (output) => {
+                    data.callback(data.text, output[0], output[1], output[2]);
+                    this.processing = false;
+                    this.emit(this.eventName);
+                });
             } catch(e) {
                 console.error(e);
             }
@@ -120,29 +121,27 @@ export class AudioProcessor extends EventEmitter {
         syncExec(executablePath + " " + args.join(' '));
     }
 
-    convertAudio(inputFile, outputFile) {
-        return new Promise((resolve, reject) => {
-            try {
-                ffmpeg()
-                    .input(inputFile)
-                    .audioCodec('pcm_s16le') // Set the audio codec to PCM with 16-bit depth
-                    .audioFrequency(44100) // Set the sample rate
-                    .on('error', function(err) {
-                        console.error('Error while converting:', err);
-                        reject(err); // Reject the promise on error
-                    })
-                    .on('end', function() {
-                        resolve(null); // Resolve the promise without any arguments
-                    })
-                    .save(outputFile);
-            } catch(err) {
-                console.error("ERROR during audio conversion:", err);
-                reject(err); // Catch synchronous errors and reject the promise
-            }
-        });
+    convertAudio(inputFile, outputFile, pitch, callback) {
+        // if(!pitch) pitch = 1.0
+        // let rate = 44100//Math.floor(44100*pitch)
+        try {
+            ffmpeg()
+                .input(inputFile)
+                .audioCodec('pcm_s16le') // Set the audio codec to PCM with 16-bit depth
+                .audioFrequency(44100) // Set the sample rate
+                .on('error', function(err) {
+                    console.error('Error while converting:', err);
+                })
+                .on('end', function() {
+                    callback() // Resolve the promise without any arguments
+                })
+                .save(outputFile);
+        } catch(err) {
+            console.error("ERROR during audio conversion:", err);
+        }
     }
     
-    private async saveAudio(msg: string, voiceFileName: string, voiceModel, stepCount, temp_file_suffix: string) {
+    private async saveAudio(msg: string, voiceFileName: string, voiceModel, stepCount, temp_file_suffix: string, callback) {
         if(!msg) {
             return 0;
         }
@@ -157,13 +156,13 @@ export class AudioProcessor extends EventEmitter {
         try {
             let audioFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.wav';
             let lipFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.lip';
-            await this.convertAudio(tempFileName, audioFile)
-            this.generateLipFile(audioFile, lipFile, msg);
-            duration = await this.getAudioDuration(audioFile);
+            this.convertAudio(tempFileName, audioFile, 1.0, async () => {
+                this.generateLipFile(audioFile, lipFile, msg);
+                duration = await this.getAudioDuration(audioFile);
+                fs.unlinkSync(tempFileName);
+                callback( [audioFile, lipFile, duration])
+            })
             
-            fs.unlinkSync(tempFileName);
-            
-            return [audioFile, lipFile, duration];
         } catch(e) {
             console.error("ERROR during processing audio!");
             throw Error(e);

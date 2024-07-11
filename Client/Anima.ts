@@ -6,6 +6,7 @@ import DialogueManager from "./Anima/DialogueManager.js";
 import N2N_DialogueManager from './Anima/N2N_DialogueManager.js'
 import EventBus from './Anima/EventBus.js';
 import {logToLog, logToErrorLog} from './Anima/LogUtil.js'
+import RunWebApp from './webapp/app.js'
 import path from "path";
 import waitSync from 'wait-sync';
 
@@ -144,30 +145,29 @@ function RunInformation(){
     console.log("\x1b[32m", "Errors will show here.");
 }
 
+RunWebApp()
 
-DEBUG = true
+// DEBUG = true
 // let result = await ClientManager.ConnectToCharacter("Faendal", "0", "MaleEvenToned", "Adventurer", "Adventurer", null)
 // if(result) {
 //     console.log("Connection successful.")
-//     // ClientManager.SendNarratedAction("A draugr approaches with an axe in his hands.");
-//     ClientManager.Say("Would you like to join me?")
-//     waitSync(3)
-//     ClientManager.Say("Why did you accept? You don't even know me.")
+//     ClientManager.SendNarratedAction("A draugr approaches with an axe in his hands.");
+//     ClientManager.Say("What do you find interesting about me?")
 //     setTimeout(() => {
 //         EventBus.GetSingleton().emit("END")
 //     }, 3000)
 // }
 
-console.log("Connecting...")
-const message = {source: "Faendal", target: "Gerdur", sourceFormId: "0", targetFormId: "1", playerName: "Adventurer", location: "Riverwood", currentDateTime: "Today"}
-let result = await ClientManager_N2N_Source.ConnectToCharacter(message.source, message.sourceFormId, "MaleEvenToned", message.target, message.playerName, null);
-result = result && await ClientManager_N2N_Target.ConnectToCharacter(message.target, message.targetFormId, "FemaleNord", message.source, message.playerName, null);
+// console.log("Connecting...")
+// const message = {source: "Faendal", target: "Gerdur", sourceFormId: "0", targetFormId: "1", playerName: "Adventurer", location: "Riverwood", currentDateTime: "Today"}
+// let result = await ClientManager_N2N_Source.ConnectToCharacter(message.source, message.sourceFormId, "MaleEvenToned", message.target, message.playerName, null);
+// result = result && await ClientManager_N2N_Target.ConnectToCharacter(message.target, message.targetFormId, "FemaleNord", message.source, message.playerName, null);
 
-n2nDialogueManager.Init(message.source, message.target, message.sourceFormId, message.targetFormId, message.playerName)
+// n2nDialogueManager.Init(message.source, message.target, message.sourceFormId, message.targetFormId, message.playerName)
 
 // let eventMessage = {id: message.source, formId: message.sourceFormId, message:  "A Draugr is approaching with an axe in his hands!!!"}
 // EventBus.GetSingleton().emit("N2N_EVENT", eventMessage);
 // eventMessage = {id: message.target, formId: message.targetFormId, message:  "A Draugr is approaching with an axe in his hands!!!"}
 // EventBus.GetSingleton().emit("N2N_EVENT", eventMessage);
 
-n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)
+// n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)

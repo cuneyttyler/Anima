@@ -17,8 +17,10 @@ private:
         
         bool isEmpty = true;
         for (RE::SubtitleInfo subtitleInfo : subtitleManager->subtitles) {
-            isEmpty = false;
-            break;
+            if (std::string(subtitleInfo.subtitle).find("==EMPTY_SUBTITLE==") == std::string::npos) {
+                isEmpty = false;
+                break;
+            }
         }
         if (isEmpty && SubtitleManager::HideSignal) {
             SubtitleManager::HideSubtitle();

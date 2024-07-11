@@ -59,14 +59,14 @@ export default class DialogueManager {
         });
     }
 
-    InitNormal(message) {
+    async InitNormal(message) {
         let initString = 'In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ';
         // this.dialogueHistory.push({
         //     talker: "DungeonMaster",
         //     phrase: initString
         // });
         this.SendNarratedAction(initString);
-        let events = this.GetEvents(this.id, this.formId, this.profile)
+        let events = await this.GetEvents(this.id, this.formId, this.profile)
         if(events && events != "") {
             console.log("Sending event log for " + message.id);
             this.SendNarratedAction(events);
@@ -89,7 +89,7 @@ export default class DialogueManager {
         this.id = characterId;
         this.formId = formId;
         this.profile = playerName;
-        this.voice = character.defaultCharacterAssets.voice
+        this.voice = character.voice
         this.voiceType = voiceType;
         this.is_ending = false;
 
@@ -179,42 +179,41 @@ export default class DialogueManager {
         }
     }
 
-    GetEventFile(id, formId, profile) {
+    async GetEventFile(id, formId, profile) {
         try {
             id = id.toLowerCase();
             let profileFolder = './Profiles/' + profile;
-            if(!fs.existsSync(profileFolder)) {
-                fs.mkdirSync(profileFolder);
+            if(!await fs.existsSync(profileFolder)) {
+                await fs.mkdirSync(profileFolder);
             }
-            if(!fs.existsSync(profileFolder + '/Events')) {
-                fs.mkdirSync(profileFolder + '/Events');
+            if(!await fs.existsSync(profileFolder + '/Events')) {
+                await fs.mkdirSync(profileFolder + '/Events');
             }
             let fileName = profileFolder + '/Events/' + id + "_" + formId + '.txt'
-            if(!fs.existsSync(fileName)) {
-                fs.writeFileSync(fileName, "", "utf8");
+            if(!await fs.existsSync(fileName)) {
+                await fs.writeFileSync(fileName, "", "utf8");
             }
             return fileName;
         } catch (err) {
-        console.error('Error reading or parsing the file:', err);
-        return
+            console.error('Error reading or parsing the file:', err);
         }
     }
 
-    GetEvents(id, formId, profile) {
-        let eventFile = this.GetEventFile(id, formId, profile);
+    async GetEvents(id, formId, profile) {
+        let eventFile = await this.GetEventFile(id, formId, profile);
         return fs.readFileSync(eventFile, 'utf8')
     }
 
-    SaveEventLog(id, formId, log, profile) {
+    async SaveEventLog(id, formId, log, profile) {
         try {
             id = id.toLowerCase();
-            let eventFile = this.GetEventFile(id, formId, profile);
+            let eventFile = await this.GetEventFile(id, formId, profile);
 
             if(!fs.existsSync(eventFile)) {
                 console.error("Event file not exists: " + eventFile);
                 return;
             }
-            fs.appendFileSync(eventFile, log, 'utf8')
+            await fs.appendFileSync(eventFile, log, 'utf8')
         } catch (err) {
         console.error('Error writing the file:', err);
         return false;
@@ -230,14 +229,14 @@ export default class DialogueManager {
 
     PrepareMessage(message) {
         this.eventBuffer += this.speakerName + " says to you.\"" + message + "\""
-        return this.prompt + " " + this.eventBuffer 
+        return !this.is_n2n ? this.prompt + " " + this.characterManager.GetUserProfilePrompt(this.profile) + " " + this.eventBuffer : this.prompt + " " + this.eventBuffer 
     }
 
    Say(message : string, is_ending?) {
         if (this.IsConnected) {
             this.is_ending = is_ending ? is_ending : this.is_ending;
-            this.PrepareMessage(message)
-            this.googleController.Send(this.eventBuffer, this.voiceType)
+            message = this.PrepareMessage(message)
+            this.googleController.Send(message, this.voiceType)
         }
     }
 

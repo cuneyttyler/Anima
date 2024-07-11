@@ -48,7 +48,7 @@ export default class N2N_DialogueManager {
         this.shouldStop = true;
     }
 
-    finalizeConversation(source, target, sourceFormId, targetFormId) {
+    finalizeConversation() {
         console.log("Saving conversation history.");
         this.ClientManager_N2N_Source.Finalize()
         this.ClientManager_N2N_Target.Finalize()
@@ -101,6 +101,9 @@ export default class N2N_DialogueManager {
         })
 
         EventBus.GetSingleton().on('N2N_SOURCE_RESPONSE', (message) => {
+            if(message == "Let's talk about this later.") {
+                this.finalizeConversation();
+            }
             this.ClientManager_N2N_Source.SendNarratedAction("You said: \"" + message + "\"")
             if(!this.endSignal) {
                 this.ClientManager_N2N_Target.Say(message, this.endSignal);
@@ -119,13 +122,16 @@ export default class N2N_DialogueManager {
 
             if(this.endSignal) {
                 this.ClientManager_N2N_Source.SendEndSignal()
-                this.finalizeConversation(this.source, this.target, this.sourceFormId, this.targetFormId);
+                this.finalizeConversation();
             }
 
             this.stepCount++;
         });
 
         EventBus.GetSingleton().on('N2N_TARGET_RESPONSE', (message) => {
+            if(message == "Let's talk about this later.") {
+                this.finalizeConversation();
+            }
             this.ClientManager_N2N_Target.SendNarratedAction("You said: \"" + message + "\"")
             let shouldEnd = this.shouldEnd();
             if(shouldEnd) {
