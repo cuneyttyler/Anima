@@ -1,8 +1,8 @@
 <template>
   <div id="app">
-    <CharacterList :characters="characters" @show-character="showCharacter" :key="key"/>
-    <Character v-if="character" @character-saved="updateList" @play-sound="playSound" :character="character" :key="key"/>
-    <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="gender" :voices="voices" :key="key"/>
+    <CharacterList :characters="characters" @show-character="showCharacter" @show-add-character="showAddCharacter" :key="listKey"/>
+    <Character v-if="character" @character-saved="updateList" @play-sound="playSound" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
+    <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="character.gender" :voices="voices" :key="key"/>
 
   </div>
 </template>
@@ -22,18 +22,19 @@ export default {
   },
   data() {
     return {
-      key: 0,
+      listKey: 0,
+      characterKey: 0,
       characters: [],
       character: null,
-      gender: null,
-      voices: null
+      voices: null,
+      adding: false,
     }
   },
   created() {
     api().get('character')
       .then((response) => {
           this.characters = response.data
-          this.key++
+          this.listKey++
       })
   },
   methods: {
@@ -45,13 +46,24 @@ export default {
 
       api().get('voices/' + character.gender.toLowerCase())
         .then((response) => {
-          this.gender = character.gender
           this.voices = response.data
         })
+      this.adding = false
+    },
+
+    showAddCharacter() {
+      this.character = {gender: 'FEMALE', mood: {}, personality: {}}
+
+      api().get('voices/' + this.character.gender.toLowerCase())
+        .then((response) => {
+          this.voices = response.data
+        })
+      this.adding = true
     },
 
     voiceSelected(voice) {
       this.character.voice = voice
+      this.characterKey++
     },
 
     playSound(gender, voice, pitch) {

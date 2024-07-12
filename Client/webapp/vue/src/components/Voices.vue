@@ -31,7 +31,7 @@
           this.$emit("voice-selected", voice)
         },
         playSound(voice) {
-          this.$emit('play-sound', this.gender, voice)
+          this.$emit('play-sound', this.gender, voice, 0.0)
         }
     }
   }

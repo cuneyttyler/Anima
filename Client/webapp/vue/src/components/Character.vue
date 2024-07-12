@@ -108,7 +108,7 @@
 
   export default {
     name: 'Character',
-    props: ['character'],
+    props: ['character', 'characters', 'voices', 'adding'],
     data () {
       return {
         responseMessage: "",
@@ -124,17 +124,33 @@
           this.$emit("play-sound", gender, voice, pitch)
         },
         isBetween(num, min, max) {
-          if(num == null || (num != 0 && num == "")) // check if null
-            throw Error()
-          parseInt(num) // check if number
+          if(num != null || num != "") // check if null
+            parseInt(num) // check if number
           return num <= max && num >= min
         },
         validateNumberFields() {
           try {
-            if(!this.character.voicePitch || this.character.voicePitch != 0 && this.character.voicePitch == "")
-              throw Error()
+            if(!this.character.voicePitch ||  this.character.voicePitch == "")
+              this.character.voicePitch = 0  
             else
               parseFloat(this.character.voicePitch)
+
+            if(!this.character.mood.joy || this.character.mood.joy == "")
+              this.character.mood.joy = 0
+            if(!this.character.mood.fear || this.character.mood.fear == "")
+              this.character.mood.fear = 0
+            if(!this.character.mood.trust || this.character.mood.trust == "")
+              this.character.mood.trust = 0
+            if(!this.character.mood.surprise || this.character.mood.surprise == "")
+              this.character.mood.surprise = 0
+            if(!this.character.personality.positive || this.character.personality.positive == "")
+              this.character.personality.positive = 0
+            if(!this.character.personality.peaceful || this.character.personality.peaceful == "")
+              this.character.personality.peaceful = 0
+            if(!this.character.personality.open || this.character.personality.open == "")
+              this.character.personality.open = 0
+            if(!this.character.personality.extravert || this.character.personality.extravert == "")
+              this.character.personality.extravert = 0
 
             if(!this.isBetween(this.character.mood.joy, -100, 100) || !this.isBetween(this.character.mood.fear, -100, 100) 
               || !this.isBetween(this.character.mood.trust, -100, 100) || !this.isBetween(this.character.mood.surprise, -100, 100) 
@@ -147,8 +163,40 @@
             return false
           }
         },
+        validateIdAndName() {
+          if(!this.character.id || this.character.id == "" || !this.character.name || this.character.name == "") {
+            this.errorMessage = "Id and name can't be EMPTY"
+            return false
+          }
+          if(this.adding) {
+            for(let i in this.characters) {
+              if(this.characters[i].id == this.character.id || this.characters[i].name == this.character.name) {
+                this.errorMessage = "A character with this id or name already exists."
+                return false
+              }
+            }
+          }
+          return true
+        },
+        validateVoice() {
+          if(!this.character.voice || this.character.voice == '')
+            return false
+
+          let found = false
+          for(let i in this.voices) {
+            if(this.voices[i] == this.character.voice) {
+              found = true
+              break
+            }
+          }
+          if(!found) {
+            return false
+          }
+          return true
+        },
         save() {
           this.errorMessage = ""
+          if(!this.validateIdAndName()) return false
           if(this.character.gender != "MALE" && this.character.gender != "FEMALE") {
             this.errorMessage = "Gender can be 'MALE' or 'FEMALE'"
             return
@@ -159,6 +207,11 @@
               this.errorMessage = "Life stage can be [CHILDHOOD, YOUNG_ADULTHOOD, MIDDLE_ADULTHOOD, LATE_ADULTHOOD]"
               return
             }
+          
+          if(!this.validateVoice()) {
+            this.errorMessage = 'Voice needs to be a value from the list on the right.'
+            return
+          }
 
           if(!this.validateNumberFields()) {
             this.errorMessage =  "Voice Pitch needs to be a float. Mood::Joy, Mood::Fear, Mood::Trust, Mood::Surprise, Personality::Positive, Personality::Peaceful, " +

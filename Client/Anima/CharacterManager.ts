@@ -35,11 +35,16 @@ export default class CharacterManager {
     }
 
     SaveCharacter(character) {
+        let found = false
         for(let i in CHARACTERS) {
             if(CHARACTERS[i].id == character.id) {
+                found = true
                 CHARACTERS[i] = character
                 break
             }
+        }
+        if(!found) {
+            CHARACTERS.push(character)
         }
 
         fs.writeFileSync(CHARACTERS_FILE_PATH, JSON.stringify(CHARACTERS), 'utf8')

@@ -1,18 +1,23 @@
 <template>
     <div class="character-list">
-        <div class="filter">
-            Filter: <input v-model="filterText"/>
-        </div>
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>Voice</th>
-            </tr>
-            <tr v-for="character,i in filteredCharacters">
-                <td><a href="#" onclick="return false;" @click="openCharacter(character)">{{ character.name }}</a></td>
-                <td>{{ character.voice }}</td>
-            </tr>
-        </table>
+      <div class="filter">
+          Filter: <input v-model="filterText"/>
+      </div>
+      <div class="list">
+          <table>
+              <tr>
+                  <th>Name</th>
+                  <th>Voice</th>
+              </tr>
+              <tr v-for="character,i in filteredCharacters">
+                  <td><a href="#" onclick="return false;" @click="openCharacter(character)">{{ character.name }}</a></td>
+                  <td>{{ character.voice }}</td>
+              </tr>
+          </table>
+      </div>
+      <div class="button">
+        <button @click="showAddCharacter()">Add Character</button>
+      </div>
     </div>
   </template>
   
@@ -54,6 +59,9 @@
     methods: {
         openCharacter(character){
             this.$emit('show-character', character)
+        },
+        showAddCharacter() {
+          this.$emit('show-add-character')
         }
     }
   }
@@ -77,19 +85,24 @@
   }
   .character-list {
     margin-left: 5%;
+  }
+  .character-list .list {
     height: 750px;
     overflow: scroll;
     overflow-x: hidden;
   }
-  .character-list table{
+  .character-list .list table{
     width: 300px;
   }
-  .character-list table tr td, .character-list table tr th{
+  .character-list .list table tr td, .character-list .list table tr th{
     border-style: ridge;
   }
   .character-list .filter {
     padding: 5px;   
     text-align: left;
+  }
+  .character-list .button {
+    text-align: left
   }
   </style>
   
