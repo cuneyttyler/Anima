@@ -9,7 +9,7 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express()
 
-app.use(express.static('webapp/public'))
+app.use(express.static('web'))
 
 let api: Api = new Api()
 

@@ -2,7 +2,9 @@
   "name": "anima",
   "scripts": {
     "start": "ts-node Anima.ts",
-    "build": "npx tsc && npx caxa --input . --exclude \".env\" \"*.log\" \"*.ts\" \"Anima/*.ts\" \"package-lock.json\" \"World\" \".git\" \"*.exe\" --prepare-command \"tsc\" \"{{caxa}}/node_modules/.bin/node\" \"{{caxa}}/jsbuild/Anima.js\" --output Anima.exe"
+    "build-web": "cd webapp/vue/ && npm run build",
+    "build-app": "npx tsc && npx caxa --input . --exclude \".env\" \"*.log\" \"package-lock.json\" \"World\" \".git\" \"*.exe\" --prepare-command \"tsc\" \"{{caxa}}/node_modules/.bin/node\" \"{{caxa}}/jsbuild/Anima.js\" --output Anima.exe",
+    "build": "npm run build-web && npm run build-app"
   },
   "extends": "./tsconfig.json",
   "dependencies": {

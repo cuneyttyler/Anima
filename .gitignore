@@ -13,6 +13,8 @@ Client/Anima.exe*
 Client/Anima.log
 Client/AnimaError.log
 Client/.env
+Client/web/
+Client/webapp/public/
 SKSE/build
 SKSE/.vs
 MOD/Sound/
