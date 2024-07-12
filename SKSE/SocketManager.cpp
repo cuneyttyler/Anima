@@ -216,7 +216,6 @@ public:
                                   "==" + to_string(duration) + "==" + message + "==");
 
             if (type == "established" && !is_n2n) {
-                AnimaCaller::ShowReplyMessage("NPC is listening...");
                 AnimaCaller::ConnectionSuccessful();
             } else if (type == "established" && is_n2n) {
                 AnimaCaller::n2n_established_response_count++;
@@ -333,6 +332,12 @@ public:
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         N2NMessage* message = new N2NMessage("stop", "", "", "", "", "", "", "", playerName, 0, "");
         soc->send_message_n2n(message);
+    }
+
+    void SendHardReset() {
+        Util::WriteLog("Sending HardReset Signal To Client.", 4);
+        Message* message = new Message("hard_reset", "", "", "", "", "");
+        soc->send_message(message);
     }
 
     void ValidateSocket() { 

@@ -17,7 +17,8 @@
                 "${workspaceFolder}/**/*.js"
             ],
             "resolveSourceMapLocations": [
-                "${workspaceFolder}/**/*.js"
+                "${workspaceFolder}/**/*.js",
+                "!**/node_modules/**"
             ],
         }
     ]

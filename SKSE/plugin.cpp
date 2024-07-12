@@ -201,7 +201,7 @@ public:
 
     static void ShowReplyMessage(std::string message) {
         auto messageNew = DisplayMessage(message, 22, 1920);
-        SKSE::ModCallbackEvent modEvent{"BLC_CreateSubTitleEvent", messageNew, 5.0f, nullptr};
+        SKSE::ModCallbackEvent modEvent{"BLC_ShowNotification", messageNew, 5.0f, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 
@@ -321,6 +321,12 @@ public:
             /*this_thread::sleep_for(chrono::milliseconds((long)(duration * 1000)));
             SubtitleManager::HideSubtitle();*/
         }
+    }
+
+    static void HardReset() {
+        Util::WriteLog("Sending HardReset Signal To Mod.", 4);
+        SKSE::ModCallbackEvent modEvent{"BLC_HardReset", "", 0, nullptr};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 };
 
@@ -488,6 +494,12 @@ public:
         if (AnimaCaller::conversationOngoing) {
             AnimaCaller::stopSignal = true;
             SocketManager::getInstance().SendStopSignal();
+        }
+        else {
+            AnimaCaller::stopSignal = false;
+            AnimaCaller::conversationOngoing = false;
+            AnimaCaller::connecting = false;
+            AnimaCaller::conversationActor = nullptr;
         }
 
         AnimaEventSink::GetSingleton()->conversationPair = nullptr;

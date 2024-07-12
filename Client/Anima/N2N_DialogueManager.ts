@@ -10,13 +10,11 @@ export default class N2N_DialogueManager {
     private target;
     private sourceFormId;
     private targetFormId;
-    private playerName;
     private sourceHistory = [];
     private targetHistory = [];
-    private profile;
-    private started = false;
     private initialized = false;
     private conversationOngoing = false;
+    private hardreset = false;
 
     constructor(
         private maxStepCount,
@@ -40,12 +38,17 @@ export default class N2N_DialogueManager {
         this.endSignal = false;
         this.sourceHistory = [];
         this.targetHistory = [];
-        this.started = false;
         this.conversationOngoing = false;
     }
 
     stop() {
         this.shouldStop = true;
+    }
+
+    StopImmediately() {
+        console.log("N2N HARD RESET")
+        this.hardreset = true
+        this.reset()
     }
 
     finalizeConversation() {
@@ -57,8 +60,8 @@ export default class N2N_DialogueManager {
         });
     }
 
-    async Start_N2N_Dialogue( location, currentDateTime) {
-        await setTimeout(1000);
+    async Start_N2N_Dialogue(location, currentDateTime) {
+        this.hardreset = false;
         
         this.ClientManager_N2N_Source.SendNarratedAction("You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.");
         this.ClientManager_N2N_Target.SendNarratedAction("You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.");
@@ -81,8 +84,6 @@ export default class N2N_DialogueManager {
         this.target = target
         this.sourceFormId = sourceFormId
         this.targetFormId = targetFormId
-        this.playerName = playerName
-        this.profile = playerName;
 
         if(!this.initialized) {
             this.InitEvents();
@@ -101,6 +102,8 @@ export default class N2N_DialogueManager {
         })
 
         EventBus.GetSingleton().on('N2N_SOURCE_RESPONSE', (message) => {
+            if(this.hardreset) return
+
             if(message == "Let's talk about this later.") {
                 this.finalizeConversation();
             }
@@ -129,6 +132,8 @@ export default class N2N_DialogueManager {
         });
 
         EventBus.GetSingleton().on('N2N_TARGET_RESPONSE', (message) => {
+            if(this.hardreset) return
+
             if(message == "Let's talk about this later.") {
                 this.finalizeConversation();
             }

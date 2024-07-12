@@ -1,15 +1,17 @@
+import { GoogleAuth } from 'google-auth-library';
 import {VertexAI} from '@google-cloud/vertexai'
-import { GOOGLE_PROJECT_ID } from '../Anima.js';
+import { GOOGLE_PROJECT_ID, KEY_FILE_PATH } from '../Anima.js';
+import axios from 'axios'
+
+
 
 export default class GoogleGenAI {
-  /**
- * TODO(developer): Update these variables before running the sample.
- */
+
   public static async SendMessage(prompt) {
-    const vertexAI = new VertexAI({project: GOOGLE_PROJECT_ID, location: 'us-central1'});
+    const vertexAI = new VertexAI({project: GOOGLE_PROJECT_ID, location: 'us-central1', googleAuthOptions: {keyFile: KEY_FILE_PATH}});
 
     const generativeModel = vertexAI.getGenerativeModel({
-      model: 'gemini-1.0-pro', // gemini-1.5-flash-001, gemini-1.0-pro, text-bison@001
+      model: process.env.GOOGLE_LLM_MODEL,
     });
 
     try {
@@ -22,7 +24,8 @@ export default class GoogleGenAI {
         return contentResponse.candidates[0].content.parts[0].text;
       }
     } catch(e) {
-      return "Let's talk about this later."
+      console.error(e)
+      throw Error(e)
     }
   }
 }

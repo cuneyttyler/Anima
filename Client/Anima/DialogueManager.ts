@@ -20,6 +20,7 @@ export default class DialogueManager {
     private voiceType;
     private speaker;
     private prompt;
+    private hardreset;
     private eventBuffer = "";
     private conversationOngoing;
     private isInteractionOngoing;
@@ -76,16 +77,17 @@ export default class DialogueManager {
 
     // Socket version of connection
     async ConnectToCharacter(characterId : string, formId: string, voiceType: string, speakerName : string, playerName : string, socket : WebSocket) {
+        this.hardreset = false;
         console.log(`Trying to connect to ${characterId}`);
         this.speakerName = speakerName;
         let character = this.characterManager.GetCharacter(characterId);
         (console as any).logToLog(`Trying to connect to ${characterId}`)
         if (!character) {
-            let errorResult = `Cannot connect to ${characterId}`;
+            console.log(`${characterId} is not included in DATABASE`);
             let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, this.is_n2n, this.speaker);
             if(!DEBUG)
                 socket.send(JSON.stringify(returnDoesNotExist));
-            throw errorResult
+            return false
         }
         this.id = characterId;
         this.formId = formId;
@@ -120,6 +122,22 @@ export default class DialogueManager {
         if(!this.isInteractionOngoing && this.googleController) {
             this.googleController.SendEndSignal();
         }   
+    }
+
+    StopImmediately() {
+        console.log("HARDRESET")
+        this.id = null;
+        this.formId = null;
+        this.profile = null;
+        this.voice = null
+        this.voicePitch = 0
+        this.voiceType = null;
+        this.googleController = null
+        this.hardreset = true
+    }
+
+    IsReset() {
+        return this.hardreset;
     }
 
     IsEnding() {

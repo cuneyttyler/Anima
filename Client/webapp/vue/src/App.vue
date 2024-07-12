@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <CharacterList :characters="characters" @show-character="showCharacter" @show-add-character="showAddCharacter" :key="listKey"/>
-    <Character v-if="character" @character-saved="updateList" @play-sound="playSound" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
+    <Character v-if="character" @character-saved="updateList" @play-sound="playSound" @character-view-update="characterKey++" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
     <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="character.gender" :voices="voices" :key="voicesKey"/>
 
   </div>

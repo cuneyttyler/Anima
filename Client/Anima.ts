@@ -86,6 +86,14 @@ fastify.register(async function (fastify) {
                 if(n2nDialogueManager.IsConversationOngoing()) {
                     EventBus.GetSingleton().emit("N2N_EVENT", message);
                 }
+            } else if (message.type == "hard_reset") {
+                
+                if(ClientManager.IsConversationOngoing()) {
+                    ClientManager.StopImmediately();
+                }
+                if(n2nDialogueManager.IsConversationOngoing()) {
+                    n2nDialogueManager.StopImmediately();
+                }
             }
         })
     })
@@ -151,13 +159,14 @@ RunWebApp()
 // let result = await ClientManager.ConnectToCharacter("Faendal", "0", "MaleEvenToned", "Adventurer", "Adventurer", null)
 // if(result) {
 //     console.log("Connection successful.")
-//     ClientManager.SendNarratedAction("A draugr approaches with an axe in his hands.");
+//     // ClientManager.SendNarratedAction("A draugr approaches with an axe in his hands.");
 //     ClientManager.Say("What do you find interesting about me?")
 //     setTimeout(() => {
 //         EventBus.GetSingleton().emit("END")
 //     }, 3000)
 // }
 
+// DEBUG = true
 // console.log("Connecting...")
 // const message = {source: "Faendal", target: "Gerdur", sourceFormId: "0", targetFormId: "1", playerName: "Adventurer", location: "Riverwood", currentDateTime: "Today"}
 // let result = await ClientManager_N2N_Source.ConnectToCharacter(message.source, message.sourceFormId, "MaleEvenToned", message.target, message.playerName, null);

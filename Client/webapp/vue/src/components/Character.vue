@@ -47,7 +47,7 @@
             </tr>
             <tr>
                 <td class="first">Example Dialogue: </td>
-                <td><textarea class="small" v-model="character.exampleDialogue"></textarea></td>
+                <td><textarea class="big" v-model="character.exampleDialog"></textarea></td>
             </tr>
             <tr>
               <td class="first">Facts: </td>
@@ -97,6 +97,7 @@
         <div class="update">
           <button @click="save()">Save</button>
           <button @click="remove()">Delete</button>
+          <button @click="autofill()">Auto Fill</button>
           <span class="response">{{ responseMessage }}</span>
           <span class="error-response">{{ errorMessage }}</span>
         </div>
@@ -232,6 +233,29 @@
           api().delete('character/' + this.character.id)
             .then((response) => {
               window.location.href = ""
+            })
+        },
+        autofill() {
+          this.responseMessage = ""
+          this.errorMessage = ''
+          if(!this.character.name || this.character.name == '') {
+            this.errorMessage = "Name should be filled."
+            return
+          }
+          this.responseMessage = 'Waiting for response...'
+          api().get('autofill/' + this.character.name)
+            .then((response) => {
+              if(response.status == 401) {
+                this.responseMessage = ''
+                this.errorMessage = "Can't connect to GoogleAI. Check your .env for AUTH INFO"
+              } else if(response.status == 500) {
+                this.responseMessage = ''
+                this.errorMessage = "Internal error"
+              } else {
+                this.responseMessage = 'Successful'
+                this.character = response.data
+                this.$emit('character-view-update')
+              }
             })
         }
     }

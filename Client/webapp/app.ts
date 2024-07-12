@@ -74,4 +74,18 @@ export default function RunWebApp() {
             res.download(file)
         })
     });
+
+    app.get('/api/autofill/:name', async function(req,res) {
+        try {
+            let character = await api.Autofill(req.params.name)
+            res.send(character)
+        } catch(err) {
+            if(err.status == 1) {
+                res.sendStatus(401)
+            } else if(err.status == 2) {
+                res.sendStatus(500)
+            }
+            
+        }
+    })
 }

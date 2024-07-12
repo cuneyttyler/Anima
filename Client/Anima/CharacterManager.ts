@@ -70,7 +70,9 @@ export default class CharacterManager {
     PreparePrompt(character) {
         let prompt = "PLEASE ACT AS CHARACTER DESCRIBED BELOW AND DO NOT INCLUDE ANY UNNECESSARY ADDITIONS (LIKE NARRATED ACTIONS) OTHER THAN YOUR REAL SPEECH. "
             + "YOUR OUTPUT WILL BE USED TO MAKE CHARACTERS SPEAK DIRECTLY. DO NOT INCLUDE ANYTHING OTHER THAN WHAT THE CHARACTERS SAY."
-            + "Example Input: \"Greetings. How are you today?\". Example WRONG OUTPUT: \"\"I'm fine, thank you.\" I said smiling at him.\". Here 'I said smiling at him' part is UNNECESSARY."
+            + "CORRECT EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\"== => THAT'S IT!"
+            + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY."
+            + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY."
             + "PLEASE KEEP YOUR ANSWERS SHORT. "
             + "THIS IS YOUR BIOGRAPHY: "
             + "You are " + character.name + ". " 

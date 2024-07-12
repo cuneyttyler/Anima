@@ -29,7 +29,12 @@ export class GoogleGenAIController {
     }
 
     async Send(message, voiceType) {
-        let response = await GoogleGenAI.SendMessage(message)
+        let response = ""
+        try {
+            response = await GoogleGenAI.SendMessage(message)
+        } catch(e) {
+            response = "Let's talk about this later."
+        }
         this.ProcessMessage(response.replaceAll("\n",""), voiceType)
     }
 
@@ -44,6 +49,9 @@ export class GoogleGenAIController {
     }
 
     async ProcessMessage(message : any, voiceType) {
+        if(this.clientManager.IsReset()) {
+            return
+        }
         if(this.clientManager.IsN2N() && this.clientManager.IsEnding()) {
             return;
         }

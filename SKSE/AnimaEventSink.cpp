@@ -176,6 +176,9 @@ public:
                         if (!isOpenedWindow) OnPlayerRequestInput("UITextEntryMenu");
                     }
                     // ] key
+                } else if (buttonEvent->IsDown() && dxScanCode == 26) {
+                    SocketManager::getInstance().SendHardReset();
+                    AnimaCaller::HardReset();
                 } else if (buttonEvent->IsDown() && dxScanCode == 27) {
                     SocketManager::getInstance().SendN2NStopSignal();
                 }
