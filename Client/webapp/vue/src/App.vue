@@ -2,7 +2,7 @@
   <div id="app">
     <CharacterList :characters="characters" @show-character="showCharacter" @show-add-character="showAddCharacter" :key="listKey"/>
     <Character v-if="character" @character-saved="updateList" @play-sound="playSound" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
-    <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="character.gender" :voices="voices" :key="key"/>
+    <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="character.gender" :voices="voices" :key="voicesKey"/>
 
   </div>
 </template>
@@ -24,6 +24,7 @@ export default {
     return {
       listKey: 0,
       characterKey: 0,
+      voicesKey: 0,
       characters: [],
       character: null,
       voices: null,
@@ -36,6 +37,17 @@ export default {
           this.characters = response.data
           this.listKey++
       })
+  },
+  watch: {
+    'character.gender': function(newValue, oldValue) {
+      if(newValue.toLowerCase() != 'male' && newValue.toLowerCase() != 'female')
+        return
+      api().get('voices/' + newValue.toLowerCase())
+        .then((response) => {
+          this.voices = response.data
+        })
+      this.voicesKey++
+    }
   },
   methods: {
     showCharacter(character) {

@@ -121,7 +121,7 @@
     },
     methods: {
         playSound(gender, voice, pitch) {
-          this.$emit("play-sound", gender, voice, pitch)
+          this.$emit("play-sound", gender, voice, pitch ? pitch : 0)
         },
         isBetween(num, min, max) {
           if(num != null || num != "") // check if null
