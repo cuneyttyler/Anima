@@ -51,7 +51,7 @@ fastify.register(async function (fastify) {
     }, (connection : SocketStream, req : FastifyRequest) => {
         connection.socket.on('message', async (msg) => {
             let message = JSON.parse(msg.toString());
-            if(message.type != 'log_event') {
+            if(message.type != 'log_event' && message.type != 'broadcast-set') {
                 console.log("Message received", msg.toString());
             }
             if (message.type == "connect" && !message.is_n2n) {
@@ -71,14 +71,16 @@ fastify.register(async function (fastify) {
                 result = result && await ClientManager_N2N_Target.ConnectToCharacter(message.target, message.targetFormId, message.targetVoiceType, message.source, message.playerName, connection.socket);
 
             } else if (message.type == "start" && message.is_n2n) {
-                n2nDialogueManager.Init(message.source, message.target, message.sourceFormId, message.targetFormId, message.playerName)
+                n2nDialogueManager.Init(message.source, message.target, message.sourceFormId, message.targetFormId, message.playerName, new BroadcastManager(connection.socket))
                 n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)
             } else if (message.type == "stop" && message.is_n2n) {
                 if(n2nDialogueManager) {
                     n2nDialogueManager.stop();
                 }
+            } else if (message.type == "broadcast-set") {
+                BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes)
             } else if (message.type == "broadcast") {
-                new BroadcastManager().ConnectToCharactersAndSay(message.ids, message.formIds, message.voiceTypes, message.playerName, message.playerName, message.message, connection.socket)
+                new BroadcastManager(connection.socket).Send(message.message, message.playerName, null, message.playerName)
             } else if (message.type == "log_event") {
                 
                 if(ClientManager.IsConversationOngoing() && message.id == ClientManager.Id() && message.formId == ClientManager.FormId()) {
@@ -185,4 +187,5 @@ RunWebApp()
 // n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)
 
 // DEBUG = true
-// new BroadcastManager().ConnectToCharactersAndSay(['Faendal', 'Gerdur', 'Alvor'], ['0', '0', '1'], ['MaleEvenToned', 'FemaleNord', 'MaleNord'], 'Adventurer', 'Adventurer', 'Hi, I hope you are enjoying your day.', null)
+// BroadcastManager.SetCharacters(['Faendal', 'Gerdur', 'Alvor'], ['0', '0', '1'], ['MaleEvenToned', 'FemaleNord', 'MaleNord'])
+// new BroadcastManager(null).Send('Hi, I hope you are enjoying your day.','Adventurer', 'Adventurer')

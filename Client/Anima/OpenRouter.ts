@@ -13,16 +13,21 @@ export default class OpenRouter {
       // dangerouslyAllowBrowser: true, // Enable this if you used OAuth to fetch a user-scoped `apiKey` above. See https://openrouter.ai/docs#oauth to learn how.
     })
 
-    const completion = await openai.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "google/gemma-2-9b-it:free",
-    })
-  
-    if(!completion || !completion.choices || completion.choices.length == 0 || !completion.choices[0].message || !completion.choices[0].message.content) {
-      throw Error("ERROR: NO RESPONSE RETURNED FROM OPENROUTER.")
-    }
+    try {
+      const completion = await openai.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: process.env.OPENROUTER_LLM_MODEL,
+      })
     
-    return completion.choices[0].message.content
+      if(!completion || !completion.choices || completion.choices.length == 0 || !completion.choices[0].message || !completion.choices[0].message.content) {
+        throw Error("ERROR: NO RESPONSE RETURNED FROM OPENROUTER.")
+      }
+      
+      return {status: 1, text: completion.choices[0].message.content}
+    } catch(e) {
+      console.error(e)
+      return {status:2}
+    }
   }
   
 }

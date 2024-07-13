@@ -7,15 +7,14 @@ import DialogueManager from './DialogueManager.js';
 import { logToLog } from './LogUtil.js';
 import { DEBUG } from '../Anima.js'
 
-export function GetPayload(message: string, type: string, duration, dialogue_type: number, speaker) {
-    return {"message": message, "type": type, "duration": duration, "dial_type": dialogue_type, "speaker": speaker}
+export function GetPayload(message: string, type: string, duration, dialogue_type: number, speaker: number, speakerName?: string, listenerName?: string) {
+    return {"message": message, "type": type, "duration": duration, "dial_type": dialogue_type, "speaker": speaker, "speakerName": speakerName, "listenerName": listenerName}
 }
 
 export class GoogleGenAIController {
     private FollowAcceptResponse = "I'll join you.";
     private audioProcessor: AudioProcessor;
     private senderQueue: SenderQueue;
-    private clientManager: DialogueManager;
     private stepCount = 0;
 
     constructor(private id: number, private type: number, private character, private voiceType: string, private speaker: number, private socket : WebSocket) {
@@ -25,22 +24,26 @@ export class GoogleGenAIController {
 
     async Send(message) {
         console.log("PROMPT SENT: " + message)
-        let response = await GoogleGenAI.SendMessage(message)
+        let response
+        if(process.env.LLM_PROVIDER == "OPENROUTER") {
+            response = await OpenRouter.SendMessage(message)
+        } else if(process.env.LLM_PROVIDER == "GOOGLE") {
+            response = await GoogleGenAI.SendMessage(message)
+        }
         if(response.status == 1) {
             this.ProcessMessage(response.text)
-            console.log("RESPONSE RECEIVED: " + response.text)
+            // console.log("RESPONSE RECEIVED: " + response.text)
         } else {
             this.ProcessMessage("Let's talk about this later.")
         } 
     }
-
-    async SummarizeHistory(history) {
-        let response = await GoogleGenAI.SendMessage("Please summarize this conversation with max. length of 3072 tokens : \n\n" + history)
-        return response;
-    }
-
     async SummarizeEvents(events) {
-        let response = await GoogleGenAI.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
+        let response
+        if(process.env.LLM_PROVIDER == "OPENROUTER") {
+            response = await OpenRouter.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
+        } else if(process.env.LLM_PROVIDER == "GOOGLE") {
+            response = await GoogleGenAI.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
+        }
         if(response.status == 2) {
             return events
         }
@@ -48,11 +51,12 @@ export class GoogleGenAIController {
     }
 
     async ProcessMessage(message : any) {
-        if(message.includes("NOT_ANSWERING")) {
+        if(this.type == 2 && (message.toLowerCase().includes("not_answering") || message.toLowerCase().includes("not answering") || message == "Let's talk about this later.")) {
+            console.log("CHARACTER NOT ANSWERING BROADCAST MESSAGE")
             return
         }
 
-        // message = message.replaceAll("\n","")
+        message = message.replaceAll("\n","").replaceAll("**","")
         // const re = new RegExp("((\"[^\"]+\")[^\"]*)(\"[^\"]*\")*[^\"]*");
         // let match = message.match(re)
         // message = (match[2] + match[3]).replaceAll("\"", "")

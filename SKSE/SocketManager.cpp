@@ -106,7 +106,8 @@ private:
 class BroadcastMessage {
 public:
     BroadcastMessage(const string& type, const string& message, const vector<string> ids, const vector<string> formIds,
-            const vector<string> voiceTypes, const string& playerName = "", const string& location = "",
+                     const vector<string> voiceTypes, const string& speaker, const string& listener,
+                     const string& playerName = "", const string& location = "",
             const string& currentDateTime = "")
         : type(type),
           message(message),
@@ -115,12 +116,15 @@ public:
           voiceTypes(voiceTypes),
           playerName(playerName),
           location(location),
-          currentDateTime(currentDateTime) {}
+          currentDateTime(currentDateTime),
+          speaker(speaker),
+          listener(listener){}
 
     json toJson() const {
         return {{"type", type},       {"message", message},       {"ids", ids},
                 {"formIds", formIds}, {"voiceTypes", voiceTypes}, {"playerName", playerName},
-                {"is_n2n", false},    {"location", location},     {"currentDateTime", currentDateTime}};
+                {"is_n2n", false},    {"location", location},     {"currentDateTime", currentDateTime},
+                {"speaker", speaker}, {"listener", listener}};
     }
 
 private:
@@ -132,7 +136,9 @@ private:
     string playerName;
     string location;
     string currentDateTime;
-};
+    string speaker;
+    string listener;
+    };
     
 class AnimaSocketController {
 
@@ -172,11 +178,6 @@ public:
             AnimaCaller::Reset();
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         }
-    }
-
-    static AnimaSocketController* GetSingleton() {
-        static AnimaSocketController singleton;
-        return &singleton;
     }
 
     int getClientPort() {
@@ -285,6 +286,8 @@ public:
                 AnimaCaller::SpeakN2N(message, speaker, duration);
             } else if (type == "chat" && dial_type == 2) {
                 AnimaCaller::SpeakBroadcast(message, speaker, duration);
+            } else if (type == "broadcast" && dial_type == 2) {
+                AnimaCaller::SpeakBroadcast(message, speaker, duration);
             } else if (type == "end_interaction") {
             } else if (type == "end" && dial_type == 0) {
                 AnimaCaller::Stop();
@@ -355,7 +358,7 @@ public:
         soc->send_message(messageObj);
     }
 
-    void sendBroadcast(std::string message, map<RE::Actor*, string> actors) {
+    void SendBroadcastActors(map<RE::Actor*, string> actors) {
         if (actors.size() == 0) return;
 
         vector<string> names;
@@ -363,16 +366,26 @@ public:
         vector<string> voiceTypes;
 
         map<RE::Actor*, string>::iterator iter;
-        for (iter = actors.begin(); iter != actors.end(); iter++) { 
+        for (iter = actors.begin(); iter != actors.end(); iter++) {
             names.push_back(iter->first->GetName());
             formIds.push_back(to_string(iter->first->GetFormID()));
             voiceTypes.push_back(iter->second);
         }
 
+        BroadcastMessage* messageObj =
+            new BroadcastMessage("broadcast-set", "", names, formIds, voiceTypes, "", "", "", "");
+        soc->send_message_broadcast(messageObj);
+    }
+
+    void SendBroadcast(std::string message, std::string speaker, std::string listener) {
+        vector<string> names;
+        vector<string> formIds;
+        vector<string> voiceTypes;
+
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
 
-        BroadcastMessage* messageObj =
-            new BroadcastMessage("broadcast", message, names, formIds, voiceTypes, playerName, "");
+        BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes, speaker,
+                                                            listener, playerName, "", "");
         soc->send_message_broadcast(messageObj);
     }
 

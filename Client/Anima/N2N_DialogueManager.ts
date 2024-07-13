@@ -1,5 +1,7 @@
 import EventBus from './EventBus.js';
 import DialogueManager from "./DialogueManager.js";
+import BroadcastManager from "./BroadcastManager.js"
+
 import { setTimeout } from 'node:timers/promises';
 
 export default class N2N_DialogueManager {
@@ -10,6 +12,8 @@ export default class N2N_DialogueManager {
     private target;
     private sourceFormId;
     private targetFormId;
+    private playerName;
+    private broadcastManager: BroadcastManager;
     private sourceHistory = [];
     private targetHistory = [];
     private initialized = false;
@@ -66,7 +70,7 @@ export default class N2N_DialogueManager {
         this.ClientManager_N2N_Source.SendNarratedAction("You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.");
         this.ClientManager_N2N_Target.SendNarratedAction("You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.");
 
-        this.ClientManager_N2N_Source.Say("As you walk around in " + location + ", you see " + this.target + ". What do you to say to him/her? Please answer as if you are talking to him/her.");
+        this.ClientManager_N2N_Source.StartN2N("As you walk around in " + location + ", you see " + this.target + ". What do you to say to them? Please answer as if you are talking to him/her.");
     
         this.sourceHistory.push({
             talker: "DungeonMaster",
@@ -79,11 +83,13 @@ export default class N2N_DialogueManager {
         this.conversationOngoing = true;
     }
 
-    Init(source, target, sourceFormId, targetFormId, playerName) {
+    Init(source, target, sourceFormId, targetFormId, playerName, broadcastManager) {
         this.source = source
         this.target = target
         this.sourceFormId = sourceFormId
         this.targetFormId = targetFormId
+        this.playerName = playerName
+        this.broadcastManager = broadcastManager
 
         if(!this.initialized) {
             this.InitEvents();
@@ -106,12 +112,17 @@ export default class N2N_DialogueManager {
 
             if(message == "Let's talk about this later.") {
                 this.finalizeConversation();
+                return
             }
             this.ClientManager_N2N_Source.SendNarratedAction("You said: \"" + message + "\"")
             if(!this.endSignal) {
                 this.ClientManager_N2N_Target.Say(message);
             } else {
                 this.ClientManager_N2N_Target.SendNarratedAction(this.source + " says to you \"" + message + "\".");
+            }
+
+            if(process.env.N2N_BROADCAST && process.env.N2N_BROADCAST.toLowerCase() == 'true') {
+                this.broadcastManager.Send(message, this.source, this.target, this.playerName)
             }
 
             this.sourceHistory.push({
@@ -136,6 +147,7 @@ export default class N2N_DialogueManager {
 
             if(message == "Let's talk about this later.") {
                 this.finalizeConversation();
+                return
             }
             this.ClientManager_N2N_Target.SendNarratedAction("You said: \"" + message + "\"")
             let shouldEnd = this.shouldEnd();
@@ -146,6 +158,10 @@ export default class N2N_DialogueManager {
             }
             this.ClientManager_N2N_Source.Say(message);
             
+            if(process.env.N2N_BROADCAST.toLowerCase() == 'true') {
+                this.broadcastManager.Send(message, this.target, this.source, this.playerName)
+            }
+
             this.sourceHistory.push({
                 talker: this.target,
                 phrase: message

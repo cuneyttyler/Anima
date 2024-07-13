@@ -17,6 +17,7 @@ export default class DialogueManager {
     private speakerName;
     private is_n2n = false;
     private voiceType;
+    private socket;
     private speaker;
     private prompt;
     private hardreset;
@@ -95,12 +96,13 @@ export default class DialogueManager {
         this.profile = playerName;
         this.voiceType = voiceType;
         this.is_ending = false;
+        this.socket = socket;
         this.googleController = new GoogleGenAIController(this.managerId, !this.is_n2n ? 0 : 1, this.character, this.voiceType, this.speaker, socket);
 
         this.IsConnected = true;
         this.conversationOngoing = true;
         this.prompt = this.characterManager.PreparePrompt(character)
-        this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + this.GetEvents(characterId, formId, playerName)
+        this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.GetEvents(characterId, formId, playerName)
 
         let verifyConnection = GetPayload("connection established", "established", 0, !this.is_n2n ? 0 : 1, this.speaker);
 
@@ -133,24 +135,13 @@ export default class DialogueManager {
         this.hardreset = true
     }
 
-    IsReset() {
-        return this.hardreset;
-    }
-
-    IsEnding() {
-        return this.is_ending;
-    }
-
-    SetInteractionOngoing(val: boolean) {
-        this.isInteractionOngoing = val;
-    }
-
     async GetEventFile(id, formId, profile) {
         try {
             id = id.toLowerCase();
             let profileFolder = './Profiles/' + profile;
             if(!await fs.existsSync(profileFolder)) {
                 await fs.mkdirSync(profileFolder);
+                await fs.writeFileSync(profileFolder + "/profile.txt", "", "utf8")
             }
             if(!await fs.existsSync(profileFolder + '/Events')) {
                 await fs.mkdirSync(profileFolder + '/Events');
@@ -167,7 +158,7 @@ export default class DialogueManager {
 
     async GetEvents(id, formId, profile) {
         let eventFile = await this.GetEventFile(id, formId, profile);
-        return fs.readFileSync(eventFile, 'utf8')
+        return await fs.readFileSync(eventFile, 'utf8')
     }
 
     async SaveEventLog(id, formId, log, profile) {
@@ -189,18 +180,27 @@ export default class DialogueManager {
     async Finalize() {
         let events = await this.googleController.SummarizeEvents(this.eventBuffer)
         await this.SaveEventLog(this.id, this.formId, events, this.profile)
-        // let history = await this.googleController.SummarizeHistory(this.dialogueHistory)
-        // this.SaveDialogueHistory(this.id, this.formId, history, this.profile)
     }
 
     PrepareMessage(message) {
-        this.eventBuffer += " == CURRENT EVENT ==> " + this.speakerName + " says to you.\"" + message + "\""
-        return !this.is_n2n ? this.prompt + " " + this.characterManager.GetUserProfilePrompt(this.profile) + " " + this.eventBuffer : this.prompt + " " + this.eventBuffer 
+        this.eventBuffer += " == CURRENT EVENT ==> " + this.speakerName + " says to you: \"" + message + "\""
+        return !this.is_n2n ? this.prompt + this.characterManager.GetUserProfilePrompt(this.profile)  + this.eventBuffer : this.prompt + this.eventBuffer 
     }
 
    Say(message : string, broadcast?) {
         if (this.IsConnected) {
             message = this.PrepareMessage(message)
+            this.googleController.Send(message)
+        }
+    }
+
+    PrepareN2NStartMessage(message) {
+        return this.prompt + "\n========================\n== CURRENT EVENT ==> " + message 
+    }
+
+    StartN2N(message : string, broadcast?) {
+        if (this.IsConnected) {
+            message = this.PrepareN2NStartMessage(message)
             this.googleController.Send(message)
         }
     }
@@ -225,5 +225,17 @@ export default class DialogueManager {
 
     IsConversationOngoing() {
         return this.conversationOngoing;
+    }
+
+    SetInteractionOngoing(val: boolean) {
+        this.isInteractionOngoing = val;
+    }
+
+    IsReset() {
+        return this.hardreset;
+    }
+
+    IsEnding() {
+        return this.is_ending;
     }
 }

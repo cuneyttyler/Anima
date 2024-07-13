@@ -604,6 +604,11 @@ public:
         EventWatcher::m.lock();
         EventWatcher::actors.insert(actor);
         EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
+        AnimaCaller::broadcastActors.clear();
+        for (RE::Actor* actor : EventWatcher::actors) {
+            AnimaCaller::broadcastActors.insert(std::pair(actor, EventWatcher::voiceMap.at(actor->GetName())));
+        }
+        SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors);
         EventWatcher::m.unlock();
 
         return true;

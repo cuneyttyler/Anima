@@ -44,16 +44,11 @@ class AnimaEventSink : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
                 }
 
                 if (AnimaEventSink::GetSingleton()->sendingBroadcast) {
-                    std::thread(
-                        [](RE::Actor* actor, std::string msg) {
-                            AnimaCaller::broadcastActors.clear();
-                            for (RE::Actor* actor : EventWatcher::actors) {
-                                AnimaCaller::broadcastActors.insert(std::pair(actor, EventWatcher::voiceMap.at(actor->GetName())));
-                            }
-                            SocketManager::getInstance().sendBroadcast(msg, AnimaCaller::broadcastActors);
+                    std::thread([](std::string msg) { 
+                            SocketManager::getInstance().SendBroadcast(
+                                msg, RE::PlayerCharacter::GetSingleton()->GetName(), "");
                             AnimaEventSink::GetSingleton()->sendingBroadcast = false;
-                        },
-                        conversationActor, playerMessage)
+                        }, playerMessage)
                         .detach();
                 } else {
                     std::thread(
@@ -194,6 +189,7 @@ public:
                         !AnimaCaller::conversationOngoing && !AnimaCaller::connecting) {
                         AnimaCaller::Start(conversationPair);
                     } else if (buttonEvent->IsDown() && AnimaCaller::conversationOngoing && !AnimaCaller::stopSignal) {
+                        AnimaEventSink::GetSingleton()->sendingBroadcast = false;
                         if (!isOpenedWindow) OnPlayerRequestInput("UITextEntryMenu");
                     }
                     // ] key
