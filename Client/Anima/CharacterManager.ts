@@ -26,7 +26,7 @@ export default class CharacterManager {
     GetCharacter(name) {
         let character = null;
         for(let i in CHARACTERS) {
-            if(name.toLowerCase().replaceAll(" ", "_") == CHARACTERS[i].id.replaceAll(" ", "_")) {
+            if(name.toLowerCase().replaceAll(" ", "_") == CHARACTERS[i].id.toLowerCase().replaceAll(" ", "_")) {
                 character = CHARACTERS[i];
                 break
             }

@@ -7,35 +7,31 @@ import DialogueManager from './DialogueManager.js';
 import { logToLog } from './LogUtil.js';
 import { DEBUG } from '../Anima.js'
 
-export function GetPayload(message: string, type: string, duration, is_n2n, speaker) {
-    return {"message": message, "type": type, "duration": duration, "is_n2n": is_n2n, "speaker": speaker}
+export function GetPayload(message: string, type: string, duration, dialogue_type: number, speaker) {
+    return {"message": message, "type": type, "duration": duration, "dial_type": dialogue_type, "speaker": speaker}
 }
 
 export class GoogleGenAIController {
-    private CombinedUserInput : string = "";
-    private processingIndex : number = 0;
     private FollowAcceptResponse = "I'll join you.";
     private audioProcessor: AudioProcessor;
     private senderQueue: SenderQueue;
     private clientManager: DialogueManager;
     private stepCount = 0;
-    private stepMessageCount = 0;
-    private processedMessageCount = 0;
 
-    constructor(private id: number, clientManager: DialogueManager, private socket : WebSocket) {
+    constructor(private id: number, private type: number, private character, private voiceType: string, private speaker: number, private socket : WebSocket) {
         this.audioProcessor = new AudioProcessor(id);
-        this.senderQueue = new SenderQueue(id, clientManager.IsN2N(), socket);
-        this.clientManager = clientManager;
+        this.senderQueue = new SenderQueue(id, type, socket);
     }
 
-    async Send(message, voiceType) {
-        let response = ""
-        try {
-            response = await GoogleGenAI.SendMessage(message)
-        } catch(e) {
-            response = "Let's talk about this later."
-        }
-        this.ProcessMessage(response.replaceAll("\n",""), voiceType)
+    async Send(message) {
+        console.log("PROMPT SENT: " + message)
+        let response = await GoogleGenAI.SendMessage(message)
+        if(response.status == 1) {
+            this.ProcessMessage(response.text)
+            console.log("RESPONSE RECEIVED: " + response.text)
+        } else {
+            this.ProcessMessage("Let's talk about this later.")
+        } 
     }
 
     async SummarizeHistory(history) {
@@ -45,68 +41,92 @@ export class GoogleGenAIController {
 
     async SummarizeEvents(events) {
         let response = await GoogleGenAI.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
-        return response;
+        if(response.status == 2) {
+            return events
+        }
+        return response.text;
     }
 
-    async ProcessMessage(message : any, voiceType) {
-        if(this.clientManager.IsReset()) {
+    async ProcessMessage(message : any) {
+        if(message.includes("NOT_ANSWERING")) {
             return
         }
-        if(this.clientManager.IsN2N() && this.clientManager.IsEnding()) {
-            return;
-        }
+
+        // message = message.replaceAll("\n","")
+        // const re = new RegExp("((\"[^\"]+\")[^\"]*)(\"[^\"]*\")*[^\"]*");
+        // let match = message.match(re)
+        // message = (match[2] + match[3]).replaceAll("\"", "")
 
         var temp_file_suffix = "0"
         var topic_filename = ""
-        var speaker: number = this.clientManager.Speaker();
-        if(this.clientManager.IsN2N() && speaker == 0) {
+        if (this.type == 0){
             temp_file_suffix = "0"
-            topic_filename = "AnimaDialo_AnimaN2NSourceB_00133A1D_1"
-        } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 1) {
-            temp_file_suffix = "1"
-            topic_filename = "AnimaDialo_AnimaN2NTargetB_00133A20_1"
-        } else {
-            temp_file_suffix = "2"
             topic_filename = "AnimaDialo_AnimaTargetBran_00133A1A_1"
+        } else if(this.type == 1 && this.speaker == 0) {
+            temp_file_suffix = "1"
+            topic_filename = "AnimaDialo_AnimaN2NSourceB_00133A1D_1"
+        } else if(this.type == 1 && this.speaker == 1) {
+            temp_file_suffix = "2"
+            topic_filename = "AnimaDialo_AnimaN2NTargetB_00133A20_1"
+        } else if(this.type == 2) {
+            if(this.speaker == 0) {
+                temp_file_suffix = "3"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2B_1"
+            }
+            if(this.speaker == 1) {
+                temp_file_suffix = "4"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2C_1"
+            }
+            if(this.speaker == 2) {
+                temp_file_suffix = "5"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2D_1"
+            }
+            if(this.speaker == 3) {
+                temp_file_suffix = "6"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2E_1"
+            }
+            if(this.speaker == 4) {
+                temp_file_suffix = "7"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2F_1"
+            }
         }
 
-        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.clientManager.VoiceModel(), this.clientManager.VoicePitch(), this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
-            this.senderQueue.addData(new SenderData(text, audioFile, lipFile, voiceType, topic_filename, duration, speaker));
+        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
+            this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker));
             setTimeout(() => {
-                this.clientManager.SetInteractionOngoing(false);
-                this.SendEvent(message, speaker)
+                if(this.type == 0) {
+                    EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
+                }
+                this.SendEvent(message, this.speaker)
             }, duration * 1000 + 500)
         }))
 
-        console.log(`Character said: ${message}`)
-        logToLog(`Character said: ${message}`)
+        console.log(`Character said(${this.speaker}): ${message}`)
+        logToLog(`Character said(${this.speaker}): ${message}`)
     }
 
     SendEvent(message, speaker) {
-        if(!this.clientManager.IsN2N()) {
+        if(this.type == 0) {
             EventBus.GetSingleton().emit('TARGET_RESPONSE', message);
             if(message.includes(this.FollowAcceptResponse)) {
-                let payload = GetPayload("", "follow_request_accepted", 0, this.clientManager.IsN2N(), speaker);
+                let payload = GetPayload("", "follow_request_accepted", 0, 0, speaker);
                 if(!DEBUG)
                     this.socket.send(JSON.stringify(payload))
             }
-            if(this.clientManager.IsEnding()) {
-                setTimeout(() => {
-                    this.SendEndSignal()
-                }, 7000)
-            }
-        } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 0) {
+        } else if(this.type == 1 && this.speaker == 0) {
             EventBus.GetSingleton().emit('N2N_SOURCE_RESPONSE', message)
-        } else if(this.clientManager.IsN2N() && this.clientManager.Speaker() == 1) {
+        } else if(this.type == 1 && this.speaker == 1) {
             EventBus.GetSingleton().emit('N2N_TARGET_RESPONSE', message)
+        } else if(this.type == 2) {
+            
         }
     }
     SendEndSignal() {
         this.stepCount = 0;
         if(!DEBUG) {
-            this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.clientManager.IsN2N(), 0)));
+            this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.type, 0)));
         }
-        if(!this.clientManager.IsN2N()) {
+        if(this.type == 0) {
             EventBus.GetSingleton().emit("END");
         }
     }

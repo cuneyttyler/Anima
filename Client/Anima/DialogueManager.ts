@@ -10,12 +10,11 @@ export default class DialogueManager {
     private IsConnected : boolean;
     private characterManager : CharacterManager;
     private googleController : GoogleGenAIController;
+    private character;
     private id;
     private formId;
     private profile;
     private speakerName;
-    private voice;
-    private voicePitch;
     private is_n2n = false;
     private voiceType;
     private speaker;
@@ -42,35 +41,34 @@ export default class DialogueManager {
 
     Init() {
         EventBus.GetSingleton().on('TARGET_RESPONSE', (msg) => {
-            // this.dialogueHistory.push({
-            //     talker: this.id,
-            //     phrase: msg
-            // })
             this.eventBuffer += "You said \"" + msg + "\"."
+            if(this.is_ending) {
+                setTimeout(() => {
+                    this.SendEndSignal()
+                }, 7000)
+            }
+        });
+
+        EventBus.GetSingleton().on('INTERACTION_ONGOING', (val) => {
+            this.isInteractionOngoing = val;
         });
 
         EventBus.GetSingleton().on('END', async (msg) => {
             if(!this.id) return;
 
             await this.Finalize()
-            // this.SaveDialogueHistory(this.id, this.formId, this.dialogueHistory, this.profile);
-            // this.dialogueHistory = [];
             this.profile = null;
             this.id = null;
             this.formId = null;
         });
     }
 
-    async InitNormal(message) {
-        let initString = 'In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ';
-        // this.dialogueHistory.push({
-        //     talker: "DungeonMaster",
-        //     phrase: initString
-        // });
+    async InitNormal(initString) {
+        if(!this.id) return
         this.SendNarratedAction(initString);
         let events = await this.GetEvents(this.id, this.formId, this.profile)
         if(events && events != "") {
-            console.log("Sending event log for " + message.id);
+            console.log("Sending event log for " + this.id);
             this.SendNarratedAction(events);
         }
     }
@@ -84,27 +82,27 @@ export default class DialogueManager {
         (console as any).logToLog(`Trying to connect to ${characterId}`)
         if (!character) {
             console.log(`${characterId} is not included in DATABASE`);
-            let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, this.is_n2n, this.speaker);
+            let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, !this.is_n2n ? 0 : 1, this.speaker);
             if(!DEBUG)
                 socket.send(JSON.stringify(returnDoesNotExist));
             return false
         }
+        
+        character.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0
+        this.character = character
         this.id = characterId;
         this.formId = formId;
         this.profile = playerName;
-        this.voice = character.voice
-        this.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0
         this.voiceType = voiceType;
         this.is_ending = false;
-
-        this.googleController = new GoogleGenAIController(this.managerId, this, socket);
+        this.googleController = new GoogleGenAIController(this.managerId, !this.is_n2n ? 0 : 1, this.character, this.voiceType, this.speaker, socket);
 
         this.IsConnected = true;
         this.conversationOngoing = true;
         this.prompt = this.characterManager.PreparePrompt(character)
         this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + this.GetEvents(characterId, formId, playerName)
 
-        let verifyConnection = GetPayload("connection established", "established", 0, this.is_n2n, this.speaker);
+        let verifyConnection = GetPayload("connection established", "established", 0, !this.is_n2n ? 0 : 1, this.speaker);
 
         console.log("Connection to " + character.name + " is succesfull" + JSON.stringify(verifyConnection));
         (console as any).logToLog(`Connection to ${character.name} is succesfull.`)
@@ -126,11 +124,10 @@ export default class DialogueManager {
 
     StopImmediately() {
         console.log("HARDRESET")
+        this.character = null
         this.id = null;
         this.formId = null;
         this.profile = null;
-        this.voice = null
-        this.voicePitch = 0
         this.voiceType = null;
         this.googleController = null
         this.hardreset = true
@@ -146,57 +143,6 @@ export default class DialogueManager {
 
     SetInteractionOngoing(val: boolean) {
         this.isInteractionOngoing = val;
-    }
-
-    GetDialogueHistory(id, formId, profile) {
-        try {
-            id = id.toLowerCase();
-            let profileFolder = './Profiles/' + profile;
-            if(!fs.existsSync(profileFolder)) { 
-                fs.mkdirSync(profileFolder); 
-            }
-            if(!fs.existsSync(profileFolder + '/Conversations')) {
-                fs.mkdirSync(profileFolder + '/Conversations'); 
-            }
-            let fileName = profileFolder + '/Conversations/' + id + "_" + formId + '.json'
-            if(!fs.existsSync(fileName)) return
-            let data = fs.readFileSync(fileName, 'utf8')
-            return data
-        } catch (err) {
-          console.error('Error reading or parsing the file:', err);
-          return
-        }
-    }
-
-    async PrepareHistory(history) {
-        let text = ""
-        for(let i in history) {
-            text += history[i].talker + " said: " + history[i].phrase
-        }
-
-        return await this.googleController.SummarizeHistory(text)
-    }
-
-    async SaveDialogueHistory(id, formId, history, profile) {
-        try {
-            id = id.toLowerCase();
-            let previousHistory = this.GetDialogueHistory(id, formId, profile)
-            let newHistory = null;
-            if(previousHistory) {
-                newHistory = previousHistory.concat(await this.PrepareHistory(history))
-            } else {
-                newHistory = this.PrepareHistory(history);
-            }
-            let fileName = './Profiles/' + profile + '/Conversations/' + id + "_" + formId + '.txt'
-
-            if(fs.existsSync(fileName)) {
-                fs.unlinkSync(fileName)
-            }
-            fs.writeFileSync(fileName, JSON.stringify(newHistory), 'utf8')
-        } catch (err) {
-          console.error('Error writing the file:', err);
-          return false;
-        }
     }
 
     async GetEventFile(id, formId, profile) {
@@ -248,15 +194,14 @@ export default class DialogueManager {
     }
 
     PrepareMessage(message) {
-        this.eventBuffer += this.speakerName + " says to you.\"" + message + "\""
+        this.eventBuffer += " == CURRENT EVENT ==> " + this.speakerName + " says to you.\"" + message + "\""
         return !this.is_n2n ? this.prompt + " " + this.characterManager.GetUserProfilePrompt(this.profile) + " " + this.eventBuffer : this.prompt + " " + this.eventBuffer 
     }
 
-   Say(message : string, is_ending?) {
+   Say(message : string, broadcast?) {
         if (this.IsConnected) {
-            this.is_ending = is_ending ? is_ending : this.is_ending;
             message = this.PrepareMessage(message)
-            this.googleController.Send(message, this.voiceType)
+            this.googleController.Send(message)
         }
     }
 
@@ -278,23 +223,7 @@ export default class DialogueManager {
         return this.formId
     }
 
-    VoiceModel() {
-        return this.voice;
-    }
-
-    VoicePitch() {
-        return this.voicePitch;
-    }
-
     IsConversationOngoing() {
         return this.conversationOngoing;
-    }
-
-    IsN2N() {
-        return this.is_n2n;
-    }
-
-    Speaker() {
-        return this.speaker;
     }
 }

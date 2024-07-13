@@ -102,6 +102,38 @@ private:
     string currentDateTime;
 };
 
+
+class BroadcastMessage {
+public:
+    BroadcastMessage(const string& type, const string& message, const vector<string> ids, const vector<string> formIds,
+            const vector<string> voiceTypes, const string& playerName = "", const string& location = "",
+            const string& currentDateTime = "")
+        : type(type),
+          message(message),
+          ids(ids),
+          formIds(formIds),
+          voiceTypes(voiceTypes),
+          playerName(playerName),
+          location(location),
+          currentDateTime(currentDateTime) {}
+
+    json toJson() const {
+        return {{"type", type},       {"message", message},       {"ids", ids},
+                {"formIds", formIds}, {"voiceTypes", voiceTypes}, {"playerName", playerName},
+                {"is_n2n", false},    {"location", location},     {"currentDateTime", currentDateTime}};
+    }
+
+private:
+    string type;
+    string message;
+    vector<string> ids;
+    vector<string> formIds;
+    vector<string> voiceTypes;
+    string playerName;
+    string location;
+    string currentDateTime;
+};
+    
 class AnimaSocketController {
 
 public:
@@ -130,12 +162,15 @@ public:
         } catch (const std::exception& e) {
             Util::WriteLog("Exception during socket connection: " + string(e.what()), 1);
             AnimaCaller::Reset();
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         } catch (websocketpp::lib::error_code e) {
             Util::WriteLog("Exception during socket connection.", 1);
             AnimaCaller::Reset();
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         } catch (...) {
             Util::WriteLog("Unknown exception during socket connection.", 1);
             AnimaCaller::Reset();
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         }
     }
 
@@ -185,8 +220,12 @@ public:
             c.send(con->get_handle(), message_str, websocketpp::frame::opcode::text);
         } catch (const exception& e) {
             Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
         } catch (...) {
             Util::WriteLog("Unkown exception during send_message", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
         }
     }
 
@@ -197,8 +236,27 @@ public:
             c.send(con->get_handle(), message_str, websocketpp::frame::opcode::text);
         } catch (const exception& e) {
             Util::WriteLog("Exception during send_message_n2n: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         } catch (...) {
             Util::WriteLog("Unkown exception during send_message_n2n", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+        }
+    }
+
+    void send_message_broadcast(BroadcastMessage* message) {
+        // Send a JSON message to the server
+        try {
+            json messageJson = message->toJson();
+            std::string message_str = messageJson.dump();
+            c.send(con->get_handle(), message_str, websocketpp::frame::opcode::text);
+        } catch (const exception& e) {
+            Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        } catch (...) {
+            Util::WriteLog("Unkown exception during send_message", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
         }
     }
 
@@ -208,37 +266,39 @@ public:
 
             std::string message = j["message"];
             std::string type = j["type"];
-            bool is_n2n = j["is_n2n"];
+            int dial_type = j["dial_type"];
             int speaker = j["speaker"];
             float duration = j["duration"];
 
-            Util::WriteLog("ON_MESSAGE ==" + type + "==" + to_string(is_n2n) + "==" + to_string(speaker) +
+            Util::WriteLog("ON_MESSAGE ==" + type + "==" + to_string(dial_type) + "==" + to_string(speaker) +
                                   "==" + to_string(duration) + "==" + message + "==");
 
-            if (type == "established" && !is_n2n) {
+            if (type == "established" && dial_type == 0) {
                 AnimaCaller::ConnectionSuccessful();
-            } else if (type == "established" && is_n2n) {
+            } else if (type == "established" && dial_type == 1) {
                 AnimaCaller::n2n_established_response_count++;
                 if (AnimaCaller::n2n_established_response_count == 2)
                     AnimaCaller::N2N_Init();
-            } else if (type == "chat" && !is_n2n) {
+            } else if (type == "chat" && dial_type == 0) {
                 AnimaCaller::Speak(message, duration);
-            } else if (type == "chat" && is_n2n) {
+            } else if (type == "chat" && dial_type == 1) {
                 AnimaCaller::SpeakN2N(message, speaker, duration);
+            } else if (type == "chat" && dial_type == 2) {
+                AnimaCaller::SpeakBroadcast(message, speaker, duration);
             } else if (type == "end_interaction") {
-            } else if (type == "end" && !is_n2n) {
+            } else if (type == "end" && dial_type == 0) {
                 AnimaCaller::Stop();
-            } else if (type == "follow_request_accepted" && !is_n2n) {
+            } else if (type == "follow_request_accepted" && dial_type == 0) {
                 AnimaCaller::SendFollowRequestAcceptedSignal();
-            } else if (type == "end" && is_n2n) {
+            } else if (type == "end" && dial_type == 1) {
                 AnimaCaller::N2N_Stop();
-            } else if (type == "doesntexist" && !is_n2n) {
+            } else if (type == "doesntexist" && dial_type == 0) {
                 Util::WriteLog("NPC doesn't exist in database == " +
                                 Util::GetActorName(AnimaCaller::conversationActor) + " ==.", 4);
                 AnimaCaller::ShowReplyMessage(message);
                 AnimaCaller::conversationActor = nullptr;
                 AnimaCaller::connecting = false;
-            } else if (type == "doesntexist" && is_n2n) {
+            } else if (type == "doesntexist" && dial_type == 1) {
                 Util::WriteLog(
                     "NPC doesn't exist in database == " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + ", " +
                     Util::GetActorName(AnimaCaller::N2N_TargetActor) + " ==.", 4);
@@ -249,8 +309,10 @@ public:
         } 
         catch (const exception& e) {
             Util::WriteLog("Exception on on_message: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         } catch (...) {
             Util::WriteLog("Unkown exception during on_message", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         }
     }
 };
@@ -293,6 +355,27 @@ public:
         soc->send_message(messageObj);
     }
 
+    void sendBroadcast(std::string message, map<RE::Actor*, string> actors) {
+        if (actors.size() == 0) return;
+
+        vector<string> names;
+        vector<string> formIds;
+        vector<string> voiceTypes;
+
+        map<RE::Actor*, string>::iterator iter;
+        for (iter = actors.begin(); iter != actors.end(); iter++) { 
+            names.push_back(iter->first->GetName());
+            formIds.push_back(to_string(iter->first->GetFormID()));
+            voiceTypes.push_back(iter->second);
+        }
+
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+
+        BroadcastMessage* messageObj =
+            new BroadcastMessage("broadcast", message, names, formIds, voiceTypes, playerName, "");
+        soc->send_message_broadcast(messageObj);
+    }
+
     void SendStopSignal() {
         Util::WriteLog("Sending STOP signal.", 4);
         ValidateSocket();
@@ -310,8 +393,10 @@ public:
             soc->send_message(message);
         } catch (const exception& e) {
             Util::WriteLog("Exception on SendLogEvent: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         } catch (...) {
             Util::WriteLog("Unkown exception during SendLogEvent", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         }
     }
 
@@ -363,8 +448,10 @@ public:
             soc->send_message(message);
         } catch (const exception& e) {
             Util::WriteLog("Exception on controlVoiceInput: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         } catch (...) {
             Util::WriteLog("Unkown exception during controlVoiceInput", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
         }
     }
 

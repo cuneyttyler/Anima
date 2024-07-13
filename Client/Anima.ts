@@ -4,6 +4,7 @@ import websocketPlugin, {SocketStream} from "@fastify/websocket"
 import Fastify, {FastifyRequest} from 'fastify'
 import DialogueManager from "./Anima/DialogueManager.js";
 import N2N_DialogueManager from './Anima/N2N_DialogueManager.js'
+import BroadcastManager from './Anima/BroadcastManager.js'
 import EventBus from './Anima/EventBus.js';
 import {logToLog, logToErrorLog} from './Anima/LogUtil.js'
 import RunWebApp from './webapp/app.js'
@@ -24,7 +25,7 @@ export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 export const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
 
 export let DEBUG = false;
-const N2N_MAX_STEP_COUNT = 5;
+const N2N_MAX_STEP_COUNT = process.env.N2N_MAX_STEP_COUNT ? process.env.N2N_MAX_STEP_COUNT : 5;
 
 const fastify = Fastify({logger: true});
 fastify.register(websocketPlugin);
@@ -56,7 +57,7 @@ fastify.register(async function (fastify) {
             if (message.type == "connect" && !message.is_n2n) {
                 let result = await ClientManager.ConnectToCharacter(message.id, message.formId, message.voiceType, message.playerName, message.playerName, connection.socket);
                 if(result) {
-                    ClientManager.InitNormal(message);
+                    ClientManager.InitNormal('In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ');
                 }
             } else if (message.type == "message" && !message.is_n2n) {
                 if(message.stop) {
@@ -76,6 +77,8 @@ fastify.register(async function (fastify) {
                 if(n2nDialogueManager) {
                     n2nDialogueManager.stop();
                 }
+            } else if (message.type == "broadcast") {
+                new BroadcastManager().ConnectToCharactersAndSay(message.ids, message.formIds, message.voiceTypes, message.playerName, message.playerName, message.message, connection.socket)
             } else if (message.type == "log_event") {
                 
                 if(ClientManager.IsConversationOngoing() && message.id == ClientManager.Id() && message.formId == ClientManager.FormId()) {
@@ -180,3 +183,6 @@ RunWebApp()
 // EventBus.GetSingleton().emit("N2N_EVENT", eventMessage);
 
 // n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)
+
+// DEBUG = true
+// new BroadcastManager().ConnectToCharactersAndSay(['Faendal', 'Gerdur', 'Alvor'], ['0', '0', '1'], ['MaleEvenToned', 'FemaleNord', 'MaleNord'], 'Adventurer', 'Adventurer', 'Hi, I hope you are enjoying your day.', null)

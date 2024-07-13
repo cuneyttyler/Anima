@@ -38,15 +38,21 @@ function CheckN2NDialogue()
                 Actor targetActor = game.FindRandomActorFromRef(sourceActor, 350)
 
                 If targetActor != None && targetActor != sourceActor && targetActor != Game.GetPlayer() && IsAvailableForDialogue(targetActor)
-		    Debug.Trace("Anima: Target Actor = " + targetActor.GetDisplayName())                    
+		            Debug.Trace("Anima: Target Actor = " + targetActor.GetDisplayName())                    
 
+                    Debug.Trace("_time: " + _time)
+                    Debug.Trace("N2N_LastSuccessfulStart: " + N2N_LastSuccessfulStart.GetValueInt())
+                    Debug.Trace("INTERVAL: " + interval)
+                    
                     Int interval = initiateTimeInterval
                     If IsSameActors(sourceActor, targetActor)
                         interval = initiateSamePairTimeInterval
                     EndIf
-                    Debug.Trace("DIFF: " + (_time - N2N_LastSuccessfulStart.GetValueInt()))
-                    Debug.Trace("INTERVAL: " + interval)
-                    If N2N_ConversationOnGoing != None && N2N_ConversationOnGoing.GetValueInt() == 0 && (lastTryTime == 0 || _time - N2N_LastSuccessfulStart.GetValueInt() > interval)
+                    Int diff = _time - N2N_LastSuccessfulStart.GetValueInt()
+                    If diff < 0
+                        N2N_LastSuccessfulStart.SetValueInt(0)
+                    EndIf
+                    If N2N_ConversationOnGoing != None && N2N_ConversationOnGoing.GetValueInt() == 0 && (lastTryTime == 0 || diff > interval)
                         
                         Debug.Trace("Anima: Sending InitiateConversation Signal For " + sourceActor.GetDisplayName() + " and " + targetActor.GetDisplayName())
                         lastTryTime = _time
@@ -65,7 +71,7 @@ function SetPreviousActors(Actor source, Actor target)
 endFunction
 
 bool function IsSameActors(Actor source, Actor target)
-    return source != None && target != None && (source == previousSource && target == previousTarget) || (source == previousTarget || target == previousSource)
+    return source != None && target != None && previousSource != None && previousTarget != None && (source == previousSource && target == previousTarget) || (source == previousTarget || target == previousSource)
 endFunction 
 
 bool function IsVoiceIncluded(Actor _actor) 
@@ -80,6 +86,6 @@ string function GetVoiceType(Actor _actor)
 endFunction
 
 bool function IsAvailableForDialogue(Actor _actor)
-    return IsVoiceIncluded(_actor) && _actor.GetCombatState() == 0 && normalTarget.GetActorRef() != _actor && _actor.GetCurrentScene() == None && _actor.IsEnabled() && !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious()
+    return IsVoiceIncluded(_actor) && _actor.GetCombatState() == 0 && normalTarget.GetActorRef() != _actor && _actor.GetCurrentScene() == None && _actor.IsEnabled() && !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
 endFunction
 

@@ -72,6 +72,31 @@ public:
         }
     }
 
+    template <typename K, typename V>
+    static K GetKeyAtIndex(map<K, V>& mapRef, int index) {
+        for (const auto& entry : mapRef) {
+            if (index == 0) {
+                return entry.first;
+            }
+            index--;
+        }
+
+        return nullptr;
+    }
+
+    template <typename K, typename V>
+    static V GetValueAtIndex(map<K, V>& mapRef, int index) {
+        for (const auto& entry : mapRef) {
+            if (index == 0) {
+                return entry.second;
+            }
+            index--;
+        }
+
+        V defaultValue;
+        return defaultValue;
+    }
+
     static std::string toLower(std::string s) {
         for (char& c : s) c = tolower(c);
         return s;
@@ -180,6 +205,8 @@ public:
     inline static int n2n_established_response_count = 0;
     inline static RE::Actor* N2N_SourceActor;
     inline static RE::Actor* N2N_TargetActor;
+    inline static map<RE::Actor*, string> broadcastActors;
+
     static std::string DisplayMessage(std::string str, int fontSize, int width) {
         std::stringstream ss(str);
         std::string word;
@@ -295,10 +322,7 @@ public:
         }
         SKSE::ModCallbackEvent modEvent{"BLC_Speak", "", 0.0075f, AnimaCaller::conversationActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-        //SendResponseLog(AnimaCaller::conversationActor, message);
         SubtitleManager::ShowSubtitle(AnimaCaller::conversationActor, message, duration);
-        /*this_thread::sleep_for(chrono::milliseconds((long) (duration * 1000)));
-        SubtitleManager::HideSubtitle();*/
     }
 
     static void EndInteraction() { SubtitleManager::HideSubtitle(); }
@@ -308,18 +332,27 @@ public:
             if (AnimaCaller::N2N_SourceActor == nullptr) return;
             SKSE::ModCallbackEvent modEvent{"BLC_Speak_N2N", "", 0, AnimaCaller::N2N_SourceActor};
             SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-            //SendResponseLog(AnimaCaller::N2N_SourceActor, message);
             SubtitleManager::ShowSubtitle(AnimaCaller::N2N_SourceActor, message, duration);
-            /*this_thread::sleep_for(chrono::milliseconds((long)(duration * 1000)));
-            SubtitleManager::HideSubtitle();*/
         } else {
             if (AnimaCaller::N2N_TargetActor == nullptr) return;
             SKSE::ModCallbackEvent modEvent{"BLC_Speak_N2N", "", 1, AnimaCaller::N2N_TargetActor};
             SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-            //SendResponseLog(AnimaCaller::N2N_TargetActor, message);
             SubtitleManager::ShowSubtitle(AnimaCaller::N2N_TargetActor, message, duration);
-            /*this_thread::sleep_for(chrono::milliseconds((long)(duration * 1000)));
-            SubtitleManager::HideSubtitle();*/
+        }
+    }
+
+    static void SpeakBroadcast(std::string message, int speaker, float duration) {
+        if (AnimaCaller::broadcastActors.size() == 0) return;
+        RE::Actor* actor = Util::GetKeyAtIndex<RE::Actor*, string>(AnimaCaller::broadcastActors, speaker);
+        if (actor != nullptr) {
+            Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()), 4);
+            SKSE::ModCallbackEvent modEvent{
+                "BLC_Speak_Broadcast","",speaker, actor
+            };
+            SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+            SubtitleManager::ShowSubtitle(actor, message, duration);
+        } else {
+            Util::WriteLog("SpeakBroadcast: ACTOR NULL");
         }
     }
 
@@ -327,6 +360,12 @@ public:
         Util::WriteLog("Sending HardReset Signal To Mod.", 4);
         SKSE::ModCallbackEvent modEvent{"BLC_HardReset", "", 0, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+        AnimaCaller::conversationOngoing = false;
+        AnimaCaller::connecting = false;
+        AnimaCaller::stopSignal = false;
+        AnimaCaller::conversationActor = nullptr;
+        AnimaCaller::N2N_SourceActor = nullptr;
+        AnimaCaller::N2N_TargetActor = nullptr;
     }
 };
 
@@ -432,6 +471,7 @@ public:
     };
 
     inline static set<RE::Actor*> actors;
+    inline static map<string, string> voiceMap;
 
     static void SendSubtitle(RE::Actor* speaker, string subtitle) {
         if (subtitle.length() == 0) return;
@@ -554,14 +594,16 @@ public:
     static bool ClearActors(RE::StaticFunctionTag*) {
         EventWatcher::m.lock();
         EventWatcher::actors.clear();
+        EventWatcher::voiceMap.clear();
         EventWatcher::m.unlock();
 
         return true;
     }
 
-    static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor) {
+    static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice) {
         EventWatcher::m.lock();
         EventWatcher::actors.insert(actor);
+        EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
         EventWatcher::m.unlock();
 
         return true;

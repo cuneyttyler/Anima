@@ -53,20 +53,20 @@ export default  class Api {
             + "\n Mood and personality can be a value between -100 and 100."
             + "\n PLEASE ONLY INCLUDE THE JSON STRING IN YOUR MESSAGE. OMIT ANYTHING OTHER THAN JSON STRING."
 
-        let response:string = ""
-        try {
-            response = await GoogleGenAI.SendMessage(prompt)
-        } catch(err) {
-            console.error(err)
-            throw new CustomError(err, 1)
+        let response = await GoogleGenAI.SendMessage(prompt)
+        if(response.status == 1) {
+            let text = response.text.replace("json","").replaceAll('```','').replaceAll("\n","")
+            try{
+                return JSON.parse(text)
+            } catch(err) {
+                console.error("ERROR PARSING JSON ==> " + JSON.stringify(text))
+                throw new CustomError(err, 2)
+            }
+        } else if(response.status == 2) {
+            console.error("ERROR during connecting to GOOGLE VERTEX AI")
+            throw new CustomError("ERROR during connecting to GOOGLE VERTEX AI", 1)
         }
         
-        response = response.replace("json","").replaceAll('```','').replaceAll("\n","")
-        try{
-            return JSON.parse(response)
-        } catch(err) {
-            console.error("ERROR PARSING JSON ==> " + JSON.stringify(response))
-            throw new CustomError(err, 2)
-        }
+        
     }
 }

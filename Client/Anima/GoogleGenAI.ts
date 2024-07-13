@@ -21,11 +21,11 @@ export default class GoogleGenAI {
       || !contentResponse.candidates[0].content.parts || contentResponse.candidates[0].content.parts.length == 0) {
         throw Error("ERROR: NO RESPONSE RETURNED FROM GOOGLE GENAI")
       } else {
-        return contentResponse.candidates[0].content.parts[0].text;
+        return {status: 1, text: contentResponse.candidates[0].content.parts[0].text}
       }
     } catch(e) {
       console.error(e)
-      throw Error(e)
+      return {status: 2}
     }
   }
 }

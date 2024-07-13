@@ -29,7 +29,12 @@ class AnimaEventSink : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
             } else if (a_result.IsString()) {
                 auto playerMessage = std::string(a_result.GetString());
 
-                if (Util::trim(playerMessage).length() == 0) return;
+                
+
+                if (Util::trim(playerMessage).length() == 0) {
+                    AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                    return;
+                }
 
                 Util::WriteLog("Received input == " + playerMessage + " ==.", 4);
 
@@ -38,12 +43,27 @@ class AnimaEventSink : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
                     AnimaCaller::stopSignal = true;
                 }
 
-                std::thread(
-                    [](RE::Actor* actor, std::string msg) {
-                        SocketManager::getInstance().sendMessage(msg, actor, AnimaCaller::stopSignal);
-                    },
-                    conversationActor, playerMessage)
-                    .detach();
+                if (AnimaEventSink::GetSingleton()->sendingBroadcast) {
+                    std::thread(
+                        [](RE::Actor* actor, std::string msg) {
+                            AnimaCaller::broadcastActors.clear();
+                            for (RE::Actor* actor : EventWatcher::actors) {
+                                AnimaCaller::broadcastActors.insert(std::pair(actor, EventWatcher::voiceMap.at(actor->GetName())));
+                            }
+                            SocketManager::getInstance().sendBroadcast(msg, AnimaCaller::broadcastActors);
+                            AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                        },
+                        conversationActor, playerMessage)
+                        .detach();
+                } else {
+                    std::thread(
+                        [](RE::Actor* actor, std::string msg) {
+                            SocketManager::getInstance().sendMessage(msg, actor, AnimaCaller::stopSignal);
+                            AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                        },
+                        conversationActor, playerMessage)
+                        .detach();
+                }
 
                 EventWatcher::SendSubtitle(RE::PlayerCharacter::GetSingleton(), playerMessage);
             }
@@ -63,6 +83,7 @@ public:
     RE::Actor* conversationPair;
     bool pressingKey = false;
     bool isOpenedWindow = false;
+    bool sendingBroadcast = true;
     bool isMenuInitialized = false;
 
     static AnimaEventSink* GetSingleton() {
@@ -176,7 +197,16 @@ public:
                         if (!isOpenedWindow) OnPlayerRequestInput("UITextEntryMenu");
                     }
                     // ] key
+                } else if (dxScanCode == 22) {
+                    if (buttonEvent->IsDown()) {
+                        if (!isOpenedWindow) {
+                            sendingBroadcast = true;
+                            OnPlayerRequestInput("UITextEntryMenu");
+                        }
+                    }
+                    // ] key
                 } else if (buttonEvent->IsDown() && dxScanCode == 26) {
+                    conversationPair = nullptr;
                     SocketManager::getInstance().SendHardReset();
                     AnimaCaller::HardReset();
                 } else if (buttonEvent->IsDown() && dxScanCode == 27) {

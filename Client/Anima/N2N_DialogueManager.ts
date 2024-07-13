@@ -109,7 +109,7 @@ export default class N2N_DialogueManager {
             }
             this.ClientManager_N2N_Source.SendNarratedAction("You said: \"" + message + "\"")
             if(!this.endSignal) {
-                this.ClientManager_N2N_Target.Say(message, this.endSignal);
+                this.ClientManager_N2N_Target.Say(message);
             } else {
                 this.ClientManager_N2N_Target.SendNarratedAction(this.source + " says to you \"" + message + "\".");
             }

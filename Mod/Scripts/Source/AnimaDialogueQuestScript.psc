@@ -3,6 +3,11 @@ Scriptname AnimaDialogueQuestScript extends Quest
 topic property target_topic auto
 topic property source_n2n_topic auto
 topic property target_n2n_topic auto
+topic property broadcast_topic_1 auto
+topic property broadcast_topic_2 auto
+topic property broadcast_topic_3 auto
+topic property broadcast_topic_4 auto
+topic property broadcast_topic_5 auto
 referencealias property target auto
 referencealias property source_n2n auto
 referencealias property target_n2n auto
@@ -29,9 +34,12 @@ function OnInit()
     self.RegisterForModEvent("BLC_Start_N2N_Target", "Start_N2N_Target")
     self.RegisterForModEvent("BLC_Stop_N2N", "Stop_N2N")
     self.RegisterForModEvent("BLC_Speak_N2N", "Speak_N2N")
+    self.RegisterForModEvent("BLC_Speak_Broadcast", "Speak_Broadcast")
     self.RegisterForModEvent("BLC_TravelToNPCLocation", "TravelToNPCLocation")
     self.RegisterForModEvent("BLC_SetHoldPosition", "SetHoldPosition")
     self.RegisterForModEvent("BLC_SendResponseLog", "SendResponseLog")
+    self.RegisterForModEvent("BLC_ShowNotification", "ShowNotification")
+    self.RegisterForModEvent("BLC_HardReset", "HardReset")
  
    ConversationOngoing.SetValueInt(0)
    N2N_ConversationOngoing.SetValueInt(0)
@@ -42,6 +50,10 @@ function SetHoldPosition(String eventName, String strArg, Float numArg, Form sen
     if numArg as Int == 0
         (sender as Actor).SetLookAt(Game.GetPlayer())
     endIf
+endFunction
+
+function ShowNotification(String eventName, String strArg, Float numArg, Form sender)
+    Debug.Notification(strArg)
 endFunction
 
 function TravelToNPCLocation(String eventName, String strArg, Float numArg, Form sender)
@@ -109,6 +121,30 @@ function Speak(String eventName, String strArg, Float numArg, Form sender)
     debug.Trace("Anima: " + target.GetActorRef().GetDisplayName() + " speaked.")
 endFunction
 
+function Speak_Broadcast(String eventName, String strArg, Float numArg, Form sender) 
+    If (sender as Actor) == None
+        debug.Trace("Anima: Broadcast Speak request == Actor NULL, returning.")
+        Return
+    EndIf
+    debug.Trace("Anima: Broadcast Speak request for " + (sender as Actor).GetDisplayName())
+    If numArg == 0
+        (sender as Actor).Say(broadcast_topic_1)
+    EndIf
+    If numArg == 1
+        (sender as Actor).Say(broadcast_topic_2)
+    EndIf
+    If numArg == 2
+        (sender as Actor).Say(broadcast_topic_3)
+    EndIf
+    If numArg == 3
+        (sender as Actor).Say(broadcast_topic_4)
+    EndIf
+    If numArg == 4
+        (sender as Actor).Say(broadcast_topic_5)
+    EndIf
+    debug.Trace("Anima: " + (sender as Actor).GetDisplayName() + "(" + numARg + ") speaked.")
+endFunction
+
 function Start_N2N(String eventName, String strArg, Float numArg, Form sender)
     Debug.Trace("Anima: Starting N2N Dialogue.")
     N2N_ConversationOnGoing.SetValue(1)
@@ -164,6 +200,25 @@ function Reset_N2N()
     AnimaSKSE.N2N_Stop()
 endFunction
 
+function HardReset(String eventName, String strArg, Float numArg, Form sender)
+    debug.Trace("Anima: HARDRESET")
+    ConversationOnGoing.SetValueInt(0)
+    N2N_ConversationOnGoing.SetValueInt(0)
+    target.Clear()
+    If source_n2n.GetActorRef() != None
+        source_n2n.GetActorRef().Disable()
+        Utility.Wait(0.1)
+        source_n2n.GetActorRef().Enable()
+    EndIf
+    If target_n2n.GetActorRef() != None
+        target_n2n.GetActorRef().Disable()
+        Utility.Wait(0.1)
+        target_n2n.GetActorRef().Enable()
+    EndIf
+    source_n2n.Clear()
+    target_n2n.Clear()
+endfunction
+
 function SendResponseLog(String eventName, String strArg, Float numArg, Form sender)
     AnimaSKSE.SendResponseLog(sender as Actor, strArg)
 endfunction
@@ -184,5 +239,5 @@ bool function IsVoiceIncluded(Actor _actor)
 endFunction
 
 bool function IsAvailableForDialogue(Actor _actor)
-    return IsVoiceIncluded(_actor) && _actor.GetCombatState() == 0 && _actor.IsEnabled()&& !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious()
+    return IsVoiceIncluded(_actor) && _actor.GetCombatState() == 0 && _actor.IsEnabled()&& !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious()  && _actor.GetSleepState() == 0
 endFunction

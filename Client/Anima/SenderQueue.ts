@@ -35,31 +35,31 @@ export class SenderData {
     public lipFile: string;
     public voiceType: string;
     public voiceFileName: string;
-    public target: number;
+    public speaker: number;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, target) {
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker) {
         this.text = text;
         this.duration = duration;
         this.audioFile = audioFile;
         this.lipFile = lipFile;
         this.voiceType = voiceType;
         this.voiceFileName = voiceFileName;
-        this.target = target;
+        this.speaker = speaker;
     }
 }
 
 export class SenderQueue extends EventEmitter {
     private id: number;
-    private is_n2n: boolean;
+    private type: number;
     private eventName: string;
     private socket: WebSocket;
     private queue: Queue<SenderData>;
     private processing: boolean;
 
-    constructor(id: number, is_n2n: boolean, socket: WebSocket) {
+    constructor(id: number, type: number, socket: WebSocket) {
         super();
         this.id = id;
-        this.is_n2n = is_n2n,
+        this.type = type,
         this.socket = socket;
         this.eventName = 'processNext_' + this.id;
         this.queue = new Queue<SenderData>();
@@ -96,7 +96,7 @@ export class SenderQueue extends EventEmitter {
             try {
                 await this.copyFiles(data)
                 setTimeout(() => {
-                    let result = GetPayload(data.text, "chat", data.duration, this.is_n2n, data.target);
+                    let result = GetPayload(data.text, "chat", data.duration, this.type, data.speaker);
                     if(!DEBUG)
                         this.socket.send(JSON.stringify(result));
                 }, 250)
