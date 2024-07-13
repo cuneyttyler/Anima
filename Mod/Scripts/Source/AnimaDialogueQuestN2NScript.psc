@@ -32,7 +32,7 @@ function CheckN2NDialogue()
         _time = _time % 1000
 
         If N2N_ConversationOnGoing != None && N2N_ConversationOnGoing.GetValueInt() == 0
-            Actor sourceActor = game.FindRandomActorFromRef(Game.GetPlayer(), 700)
+            Actor sourceActor = game.FindRandomActorFromRef(Game.GetPlayer(), 1000)
             If sourceActor != None && sourceActor != Game.GetPlayer() && IsAvailableForDialogue(sourceActor)
                 Debug.Trace("Anima: Source Actor = " + sourceActor.GetDisplayName())
                 Actor targetActor = game.FindRandomActorFromRef(sourceActor, 350)

@@ -22,7 +22,7 @@ GlobalVariable property N2N_LastSuccessfulStart auto
 faction property CurrentFollowerFaction auto
 faction property PotentialFollowerFaction auto
 quest property DialogueFollower auto
-; quest property AnimaDialogueQuest auto
+quest property AnimaEventLoggerQuest auto
 
 function OnInit()
     self.RegisterForModEvent("BLC_Start", "_Start")
@@ -204,6 +204,12 @@ function HardReset(String eventName, String strArg, Float numArg, Form sender)
     debug.Trace("Anima: HARDRESET")
     ConversationOnGoing.SetValueInt(0)
     N2N_ConversationOnGoing.SetValueInt(0)
+    N2N_LastSuccessfulStart.SetValueInt(N2N_LastSuccessfulStart.GetValueInt() - 120)
+    If target.GetActorRef() != None
+        target.GetActorRef().Disable()
+        Utility.Wait(0.1)
+        target.GetActorRef().Enable()
+    EndIf
     target.Clear()
     If source_n2n.GetActorRef() != None
         source_n2n.GetActorRef().Disable()
