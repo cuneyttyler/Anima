@@ -158,7 +158,7 @@ export default class N2N_DialogueManager {
             }
             this.ClientManager_N2N_Source.Say(message);
             
-            if(process.env.N2N_BROADCAST.toLowerCase() == 'true') {
+            if(process.env.N2N_BROADCAST && process.env.N2N_BROADCAST.toLowerCase() == 'true') {
                 this.broadcastManager.Send(message, this.target, this.source, this.playerName)
             }
 

@@ -29,6 +29,9 @@ export class GoogleGenAIController {
             response = await OpenRouter.SendMessage(message)
         } else if(process.env.LLM_PROVIDER == "GOOGLE") {
             response = await GoogleGenAI.SendMessage(message)
+        } else {
+            console.error("LLM_PROVIDER is missing in your .env file")
+            return
         }
         if(response.status == 1) {
             this.ProcessMessage(response.text)
@@ -43,6 +46,9 @@ export class GoogleGenAIController {
             response = await OpenRouter.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
         } else if(process.env.LLM_PROVIDER == "GOOGLE") {
             response = await GoogleGenAI.SendMessage("Please summarize this events with max. length of 3072 tokens : \n\n" + events)
+        } else {
+            console.error("LLM_PROVIDER is missing in your .env file")
+            return
         }
         if(response.status == 2) {
             return events
