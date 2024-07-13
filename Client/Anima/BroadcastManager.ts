@@ -104,6 +104,10 @@ export default class BroadcastManager {
         }
     }
 
+    static CellActorsPrompt() {
+        return BroadcastManager.ids ? "These actors are in current CELL: [" + BroadcastManager.ids.join(',') + "]\n========================\n" : ""
+    }
+
     BroadcastPrompt(message) {
         return "THIS IS A BROADCAST MESSAGE(NOT SPECIFICALLY SPOKEN TO YOU - YOU DON'T NEED TO ANSWER. ONLY RESPOND IF YOU REALLY HAVE SOMETHING TO SAY AND IF YOU KNOW THE TALKER.). " 
             + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER == CURRENT EVENT ==> " 
@@ -111,7 +115,7 @@ export default class BroadcastManager {
     }
 
     PrepareMessage(i, message) {
-        return this.prompts[i] + this.BroadcastPrompt(message) + this.characterManager.GetUserProfilePrompt(this.profile) + " " + this.eventBuffers[i]
+        return this.prompts[i] + BroadcastManager.CellActorsPrompt() + this.BroadcastPrompt(message) + this.characterManager.GetUserProfilePrompt(this.profile) + " " + this.eventBuffers[i]
     }
 
    Say(i, message : string) {

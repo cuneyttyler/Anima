@@ -4,6 +4,7 @@ import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
 import * as fs from 'fs';
+import BroadcastManager from './BroadcastManager.js';
 
 export default class DialogueManager {
     private managerId: number;
@@ -184,7 +185,7 @@ export default class DialogueManager {
 
     PrepareMessage(message) {
         this.eventBuffer += " == CURRENT EVENT ==> " + this.speakerName + " says to you: \"" + message + "\""
-        return !this.is_n2n ? this.prompt + this.characterManager.GetUserProfilePrompt(this.profile)  + this.eventBuffer : this.prompt + this.eventBuffer 
+        return !this.is_n2n ? this.prompt + this.characterManager.GetUserProfilePrompt(this.profile)  + BroadcastManager.CellActorsPrompt() + this.eventBuffer : this.prompt + BroadcastManager.CellActorsPrompt() + this.eventBuffer 
     }
 
    Say(message : string, broadcast?) {
@@ -195,7 +196,7 @@ export default class DialogueManager {
     }
 
     PrepareN2NStartMessage(message) {
-        return this.prompt + "\n========================\n== CURRENT EVENT ==> " + message 
+        return this.prompt + BroadcastManager.CellActorsPrompt() + "== CURRENT EVENT ==> " + message 
     }
 
     StartN2N(message : string, broadcast?) {
