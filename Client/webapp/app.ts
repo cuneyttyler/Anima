@@ -88,4 +88,20 @@ export default function RunWebApp() {
             
         }
     })
+
+    app.post('/api/chat', async function(req,res) {
+        if(!req.body.ids || !req.body.text || req.body.ids.length == 0) {
+            res.sendStatus(400)
+            return
+        }
+
+        api.SendBroadcast(req.body.ids, req.body.speaker, req.body.text, (response) => {
+            res.send(response)
+        })
+    })
+
+    app.get('/api/prepareDataset', function(req,res) {
+        api.PrepareDataset()
+        res.sendStatus(200)
+    })
 }

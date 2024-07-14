@@ -1,10 +1,10 @@
 import * as dotenv from 'dotenv'
-import * as fs from 'fs';
 import websocketPlugin, {SocketStream} from "@fastify/websocket"
 import Fastify, {FastifyRequest} from 'fastify'
 import DialogueManager from "./Anima/DialogueManager.js";
 import N2N_DialogueManager from './Anima/N2N_DialogueManager.js'
 import BroadcastManager from './Anima/BroadcastManager.js'
+import FileManager from './Anima/FileManager.js';
 import EventBus from './Anima/EventBus.js';
 import {logToLog, logToErrorLog} from './Anima/LogUtil.js'
 import RunWebApp from './webapp/app.js'
@@ -25,11 +25,15 @@ export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 export const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
 
 export let DEBUG = false;
+export function SET_DEBUG(debug) {
+    DEBUG = debug
+}
 const N2N_MAX_STEP_COUNT = process.env.N2N_MAX_STEP_COUNT ? process.env.N2N_MAX_STEP_COUNT : 5;
 
 const fastify = Fastify({logger: true});
 fastify.register(websocketPlugin);
 
+const fileManager = new FileManager()
 const ClientManager = new DialogueManager(false, 0);
 const ClientManager_N2N_Source = new DialogueManager(true, 0);
 const ClientManager_N2N_Target = new DialogueManager(true, 1);
@@ -80,13 +84,13 @@ fastify.register(async function (fastify) {
             } else if (message.type == "broadcast-set") {
                 BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes)
             } else if (message.type == "broadcast") {
-                new BroadcastManager(connection.socket).Send(message.message, message.playerName, null, message.playerName)
+                new BroadcastManager(connection.socket).Say(message.message, message.playerName, null, message.playerName)
             } else if (message.type == "log_event") {
                 
                 if(ClientManager.IsConversationOngoing() && message.id == ClientManager.Id() && message.formId == ClientManager.FormId()) {
                     ClientManager.SendNarratedAction(message.message + " ");
                 } else {
-                    ClientManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
+                    fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 }
                 if(n2nDialogueManager.IsConversationOngoing()) {
                     EventBus.GetSingleton().emit("N2N_EVENT", message);
@@ -187,5 +191,5 @@ RunWebApp()
 // n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)
 
 // DEBUG = true
-// BroadcastManager.SetCharacters(['Faendal', 'Gerdur', 'Alvor'], ['0', '0', '1'], ['MaleEvenToned', 'FemaleNord', 'MaleNord'])
-// new BroadcastManager(null).Send('Hi, I hope you are enjoying your day.','Adventurer', 'Adventurer')
+// BroadcastManager.SetCharacters(['Eerie', 'Ilynn', 'Llynn', 'Arynn'], ['0', '1', '2', '3'], ['FemaleNord', 'FemaleChild', 'FemaleChild', 'MaleChild'])
+// new BroadcastManager(null).Say('Hi, I hope you are enjoying your day.', 'Uriel', null, 'Uriel')

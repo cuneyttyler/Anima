@@ -16,7 +16,8 @@
           </table>
       </div>
       <div class="button">
-        <button @click="showAddCharacter()">Add Character</button>
+        <button v-if="page == 'home'" @click="showAddCharacter()">Add Character</button>
+        <button v-if="page == 'chat'" @click="addCharacter()">Add Character</button>
       </div>
     </div>
   </template>
@@ -26,7 +27,7 @@
 
   export default {
     name: 'CharacterList',
-    props: ['characters'],
+    props: ['page', 'characters'],
     data () {
       return {
         filterText: "",
@@ -58,7 +59,10 @@
     },
     methods: {
         openCharacter(character){
+          if(this.page == 'home')
             this.$emit('show-character', character)
+          else if(this.page == 'chat')
+            this.$emit('add-character', character)
         },
         showAddCharacter() {
           this.$emit('show-add-character')

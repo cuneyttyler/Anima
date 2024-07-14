@@ -1,13 +1,19 @@
 // @ts-check
 import CharacterManager from './CharacterManager.js';
+import PromptManager from './PromptManager.js';
+import FileManager from './FileManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
+import EventBus from './EventBus.js';
+import { DEBUG } from '../Anima.js';
+
 import * as fs from 'fs';
 
 export default class BroadcastManager {
-    private instance;
     private characterManager : CharacterManager;
+    private promptManager : PromptManager;
+    private fileManager: FileManager;
     private socket;
-    private static ids;
+    public static ids;
     private static formIds;
     private static voiceTypes;
     private profile;
@@ -19,7 +25,20 @@ export default class BroadcastManager {
 
     constructor(socket: WebSocket) {
         this.characterManager = new CharacterManager();
+        this.promptManager = new PromptManager();
+        this.fileManager = new FileManager();
         this.socket = socket;
+
+        EventBus.GetSingleton().removeAllListeners('BROADCAST_RESPONSE')
+        EventBus.GetSingleton().on('BROADCAST_RESPONSE', (i, message) => {
+            if(DEBUG) {
+                for(let j in this.characters) {
+                    this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " " + (message ? (i == j 
+                        ? "You" : this.characters[i].name) + " said : " + message : (i == j ? "You" : this.characters[i].name) + " didn't answered."), this.profile)
+                }
+            }
+            EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", i, message)
+        })
     }
 
     static SetCharacters(ids, formIds, voiceTypes) {
@@ -29,7 +48,7 @@ export default class BroadcastManager {
     }
 
     // Socket version of connection
-    async Send(message: string, speakerName : string, listenerName: string, playerName : string) {
+    async Say(message: string, speakerName : string, listenerName: string, playerName : string) {
         if(!BroadcastManager.ids) return
         console.log(`Trying to connect to ${BroadcastManager.ids.join(', ')}`);
         this.speaker = speakerName;
@@ -48,79 +67,26 @@ export default class BroadcastManager {
             character.voiceType = BroadcastManager.voiceTypes[i]
             character.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0
             this.characters.push(character)
-            this.prompts.push(this.characterManager.PreparePrompt(character))
-            this.eventBuffers.push("HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.GetEvents(BroadcastManager.ids[i], BroadcastManager.formIds[i], playerName)) + "\n========================\n"
+            this.prompts.push(this.promptManager.PrepareCharacterPrompt(character))
+            this.eventBuffers.push("HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(BroadcastManager.ids[i], BroadcastManager.formIds[i], playerName)) + "\n========================\n"
         }
         
         if(this.characters.length == 0) return false;
 
+        console.log("Broadcasting \"" + message + "\"")
         for(let i in this.characters) {
             if(this.characters[i].id.toLowerCase() == this.speaker || this.characters[i].id.toLowerCase() == this.listener) continue
-            this.Say(i, message)
+            this.Send(i, message)
         }
 
         return true
-    }
+    }  
 
-    async GetEventFile(id, formId, profile) {
-        try {
-            id = id.toLowerCase();
-            let profileFolder = './Profiles/' + profile;
-            if(!await fs.existsSync(profileFolder)) {
-                await fs.mkdirSync(profileFolder);
-                await fs.writeFileSync(profileFolder + "/profile.txt", "", "utf8")
-            }
-            if(!await fs.existsSync(profileFolder + '/Events')) {
-                await fs.mkdirSync(profileFolder + '/Events');
-            }
-            let fileName = profileFolder + '/Events/' + id + "_" + formId + '.txt'
-            if(!await fs.existsSync(fileName)) {
-                await fs.writeFileSync(fileName, "", "utf8");
-            }
-            return fileName;
-        } catch (err) {
-            console.error('Error reading or parsing the file:', err);
-        }
-    }
-
-    async GetEvents(id, formId, profile) {
-        let eventFile = await this.GetEventFile(id, formId, profile);
-        return await fs.readFileSync(eventFile, 'utf8')
-    }
-
-    async SaveEventLog(id, formId, log, profile) {
-        try {
-            id = id.toLowerCase();
-            let eventFile = await this.GetEventFile(id, formId, profile);
-
-            if(!fs.existsSync(eventFile)) {
-                console.error("Event file not exists: " + eventFile);
-                return;
-            }
-            await fs.appendFileSync(eventFile, log, 'utf8')
-        } catch (err) {
-        console.error('Error writing the file:', err);
-        return false;
-        }
-    }
-
-    static CellActorsPrompt() {
-        return BroadcastManager.ids ? "These actors are in current CELL: [" + BroadcastManager.ids.join(',') + "]\n========================\n" : ""
-    }
-
-    BroadcastPrompt(message) {
-        return "THIS IS A BROADCAST MESSAGE(NOT SPECIFICALLY SPOKEN TO YOU - YOU DON'T NEED TO ANSWER. ONLY RESPOND IF YOU REALLY HAVE SOMETHING TO SAY AND IF YOU KNOW THE TALKER.). " 
-            + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER == CURRENT EVENT ==> " 
-            + this.speaker + " says to " + (!this.listener ? "the crowd" : this.listener) + ": " + message + "\"" + "\n========================\n"
-    }
-
-    PrepareMessage(i, message) {
-        return this.prompts[i] + BroadcastManager.CellActorsPrompt() + this.BroadcastPrompt(message) + this.characterManager.GetUserProfilePrompt(this.profile) + " " + this.eventBuffers[i]
-    }
-
-   Say(i, message : string) {
-        message = this.PrepareMessage(i, message)
+   Send(i, message : string) {
+        let messageToSend = this.promptManager.PrepareBroadcastMessage(i, this.profile, this.speaker, this.listener, this.characters[i], message, this.eventBuffers[i])
         let googleController = new GoogleGenAIController(4, 2, this.characters[i], this.characters[i].voiceType, parseInt(i), this.socket);
-        googleController.Send(message)
+        googleController.Send(messageToSend)
+        if(DEBUG)
+            this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, this.promptManager.BroadcastEventMessage(this.speaker, this.listener, message), this.profile)
     }
 }

@@ -1,15 +1,16 @@
 // @ts-check
 import CharacterManager from './CharacterManager.js';
+import PromptManager from './PromptManager.js';
+import FileManager from './FileManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
-import * as fs from 'fs';
-import BroadcastManager from './BroadcastManager.js';
 
 export default class DialogueManager {
     private managerId: number;
-    private IsConnected : boolean;
     private characterManager : CharacterManager;
+    private promptManager : PromptManager;
+    private fileManager: FileManager;
     private googleController : GoogleGenAIController;
     private character;
     private id;
@@ -18,9 +19,7 @@ export default class DialogueManager {
     private speakerName;
     private is_n2n = false;
     private voiceType;
-    private socket;
     private speaker;
-    private prompt;
     private hardreset;
     private eventBuffer = "";
     private conversationOngoing;
@@ -35,6 +34,8 @@ export default class DialogueManager {
 
     constructor(is_n2n, speaker) {
         this.characterManager = new CharacterManager();
+        this.promptManager = new PromptManager();
+        this.fileManager = new FileManager();
         this.managerId = !is_n2n ? 0 : speaker + 1;
         this.is_n2n = is_n2n;
         this.speaker = speaker;
@@ -68,7 +69,7 @@ export default class DialogueManager {
     async InitNormal(initString) {
         if(!this.id) return
         this.SendNarratedAction(initString);
-        let events = await this.GetEvents(this.id, this.formId, this.profile)
+        let events = await this.fileManager.GetEvents(this.id, this.formId, this.profile)
         if(events && events != "") {
             console.log("Sending event log for " + this.id);
             this.SendNarratedAction(events);
@@ -97,13 +98,10 @@ export default class DialogueManager {
         this.profile = playerName;
         this.voiceType = voiceType;
         this.is_ending = false;
-        this.socket = socket;
         this.googleController = new GoogleGenAIController(this.managerId, !this.is_n2n ? 0 : 1, this.character, this.voiceType, this.speaker, socket);
 
-        this.IsConnected = true;
         this.conversationOngoing = true;
-        this.prompt = this.characterManager.PreparePrompt(character)
-        this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.GetEvents(characterId, formId, playerName)
+        this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(characterId, formId, playerName)
 
         let verifyConnection = GetPayload("connection established", "established", 0, !this.is_n2n ? 0 : 1, this.speaker);
 
@@ -136,74 +134,30 @@ export default class DialogueManager {
         this.hardreset = true
     }
 
-    async GetEventFile(id, formId, profile) {
-        try {
-            id = id.toLowerCase();
-            let profileFolder = './Profiles/' + profile;
-            if(!await fs.existsSync(profileFolder)) {
-                await fs.mkdirSync(profileFolder);
-                await fs.writeFileSync(profileFolder + "/profile.txt", "", "utf8")
-            }
-            if(!await fs.existsSync(profileFolder + '/Events')) {
-                await fs.mkdirSync(profileFolder + '/Events');
-            }
-            let fileName = profileFolder + '/Events/' + id + "_" + formId + '.txt'
-            if(!await fs.existsSync(fileName)) {
-                await fs.writeFileSync(fileName, "", "utf8");
-            }
-            return fileName;
-        } catch (err) {
-            console.error('Error reading or parsing the file:', err);
-        }
-    }
-
-    async GetEvents(id, formId, profile) {
-        let eventFile = await this.GetEventFile(id, formId, profile);
-        return await fs.readFileSync(eventFile, 'utf8')
-    }
-
-    async SaveEventLog(id, formId, log, profile) {
-        try {
-            id = id.toLowerCase();
-            let eventFile = await this.GetEventFile(id, formId, profile);
-
-            if(!fs.existsSync(eventFile)) {
-                console.error("Event file not exists: " + eventFile);
-                return;
-            }
-            await fs.appendFileSync(eventFile, log, 'utf8')
-        } catch (err) {
-        console.error('Error writing the file:', err);
-        return false;
-        }
-    }
+    
 
     async Finalize() {
         let events = await this.googleController.SummarizeEvents(this.eventBuffer)
-        await this.SaveEventLog(this.id, this.formId, events, this.profile)
+        await this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile)
     }
 
-    PrepareMessage(message) {
-        this.eventBuffer += " == CURRENT EVENT ==> " + this.speakerName + " says to you: \"" + message + "\""
-        return !this.is_n2n ? this.prompt + this.characterManager.GetUserProfilePrompt(this.profile)  + BroadcastManager.CellActorsPrompt() + this.eventBuffer : this.prompt + BroadcastManager.CellActorsPrompt() + this.eventBuffer 
-    }
+    
 
    Say(message : string, broadcast?) {
-        if (this.IsConnected) {
-            message = this.PrepareMessage(message)
-            this.googleController.Send(message)
-        }
-    }
-
-    PrepareN2NStartMessage(message) {
-        return this.prompt + BroadcastManager.CellActorsPrompt() + "== CURRENT EVENT ==> " + message 
+        this.eventBuffer += " == CURRENT EVENT ==> " + this.speakerName + " says to you: \"" + message + "\""
+        let messageToSend
+        if(!this.is_n2n) {
+            messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.character, this.eventBuffer)
+       } else {
+        messageToSend = this.promptManager.PrepareN2NDialogueMessage(this.character, this.eventBuffer)
+       }
+       
+        this.googleController.Send(messageToSend)
     }
 
     StartN2N(message : string, broadcast?) {
-        if (this.IsConnected) {
-            message = this.PrepareN2NStartMessage(message)
-            this.googleController.Send(message)
-        }
+        let messageToSend = this.promptManager.PrepareN2NStartMessage(this.character, message)
+        this.googleController.Send(messageToSend)
     }
 
     SendNarratedAction(message: string) {

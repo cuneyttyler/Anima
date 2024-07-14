@@ -23,7 +23,7 @@ export class GoogleGenAIController {
     }
 
     async Send(message) {
-        console.log("PROMPT SENT: " + message)
+        console.log("PROMPT SENT: " + message.prompt + message.message)
         let response
         if(process.env.LLM_PROVIDER == "OPENROUTER") {
             response = await OpenRouter.SendMessage(message)
@@ -58,7 +58,7 @@ export class GoogleGenAIController {
 
     async ProcessMessage(message : any) {
         if(this.type == 2 && (message.toLowerCase().includes("not_answering") || message.toLowerCase().includes("not answering") || message == "Let's talk about this later.")) {
-            console.log("CHARACTER NOT ANSWERING BROADCAST MESSAGE")
+            EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.speaker, null)
             return
         }
 
@@ -109,10 +109,13 @@ export class GoogleGenAIController {
                 }
                 this.SendEvent(message, this.speaker)
             }, duration * 1000 + 500)
+            if(this.type == 2) {
+                EventBus.GetSingleton().emit('BROADCAST_RESPONSE', this.speaker, message)
+            }
         }))
 
-        console.log(`Character said(${this.speaker}): ${message}`)
-        logToLog(`Character said(${this.speaker}): ${message}`)
+        console.log(`${this.character.name} said(${this.speaker}): ${message}`)
+        logToLog(`${this.character.name} said(${this.speaker}): ${message}`)
     }
 
     SendEvent(message, speaker) {

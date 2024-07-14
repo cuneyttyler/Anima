@@ -7,7 +7,7 @@ import axios from 'axios'
 
 export default class GoogleGenAI {
 
-  public static async SendMessage(prompt) {
+  public static async SendMessage(message) {
     const vertexAI = new VertexAI({project: GOOGLE_PROJECT_ID, location: 'us-central1', googleAuthOptions: {keyFile: KEY_FILE_PATH}});
 
     const generativeModel = vertexAI.getGenerativeModel({
@@ -15,7 +15,12 @@ export default class GoogleGenAI {
     });
 
     try {
-      const resp = await generativeModel.generateContent(prompt);
+      let request = {contents: [
+          // {role: 'user', parts: [{text: message.prompt}]}, 
+          // {role: 'system', parts: [{text: "Sure, I understand. I'll roleplay."}]},
+          {role: 'user', parts: [{text: message.message}]}
+      ], systemInstruction: message.prompt}
+      const resp = await generativeModel.generateContent(request);
       const contentResponse = await resp.response;
       if(!contentResponse || !contentResponse.candidates || contentResponse.candidates.length == 0 || !contentResponse.candidates[0].content 
       || !contentResponse.candidates[0].content.parts || contentResponse.candidates[0].content.parts.length == 0) {

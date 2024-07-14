@@ -169,7 +169,7 @@ public:
         try {
             RE::SubtitleInfo* subtitleInfo = GetSubtitle(actor, subtitle);
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*subtitleInfo);
-            this_thread::sleep_for(2s);
+            this_thread::sleep_for(5s);
             RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
         } catch (const exception& e) {
