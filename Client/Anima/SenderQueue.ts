@@ -1,5 +1,6 @@
 import { VoiceTypes } from './Helpers/VoiceTypes.js'
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'events'
+import EventBus from './EventBus.js';
 import { GetPayload } from './GenAIController.js';
 import * as fs from 'fs';
 import { DEBUG } from '../Anima.js'
@@ -28,7 +29,7 @@ class Queue<T> {
     }
 }
 
-export class SenderData {
+export class SenderData extends EventEmitter {
     public text: string;
     public duration: number;
     public audioFile: string;
@@ -36,8 +37,10 @@ export class SenderData {
     public voiceType: string;
     public voiceFileName: string;
     public speaker: number;
+    public listener: string;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker) {
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, listener) {
+        super();
         this.text = text;
         this.duration = duration;
         this.audioFile = audioFile;
@@ -45,16 +48,17 @@ export class SenderData {
         this.voiceType = voiceType;
         this.voiceFileName = voiceFileName;
         this.speaker = speaker;
+        this.listener = listener;
     }
 }
 
-export class SenderQueue extends EventEmitter {
-    private id: number;
+export class SenderQueue extends EventEmitter{
+    public id: number;
     private type: number;
     private eventName: string;
     private socket: WebSocket;
     private queue: Queue<SenderData>;
-    private processing: boolean;
+    public processing: boolean;
 
     constructor(id: number, type: number, socket: WebSocket) {
         super();
@@ -70,7 +74,7 @@ export class SenderQueue extends EventEmitter {
     addData(data: SenderData): void {
         this.queue.enqueue(data);
         if (!this.processing) {
-            this.emit(this.eventName);
+            this.emit(this.eventName, this);
         }
     }
 
@@ -102,8 +106,17 @@ export class SenderQueue extends EventEmitter {
                 }, 250)
 
                 setTimeout(() => {
-                    this.processing = false;
-                    this.emit(this.eventName);
+                    if(this.type != 2) {
+                        this.processing = false;
+                        this.emit(this.eventName);
+                    } else {
+                        setTimeout(() => {
+                            this.processing = false;
+                            EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.speaker, data.listener, data.text)
+                            EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
+                            EventBus.GetSingleton().emit('processNext_broadcast')
+                        }, 1000)
+                    }
                 }, data.duration * 1000)
             } catch(e) {
                 console.error("ERROR: " + e);

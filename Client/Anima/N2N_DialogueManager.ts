@@ -70,7 +70,7 @@ export default class N2N_DialogueManager {
         this.ClientManager_N2N_Source.SendNarratedAction("You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.");
         this.ClientManager_N2N_Target.SendNarratedAction("You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.");
 
-        this.ClientManager_N2N_Source.StartN2N("As you walk around in " + location + ", you see " + this.target + ". What do you to say to them? Please answer as if you are talking to him/her.");
+        this.ClientManager_N2N_Source.StartN2N(location, this.target);
     
         this.sourceHistory.push({
             talker: "DungeonMaster",
@@ -107,6 +107,10 @@ export default class N2N_DialogueManager {
             }
         })
 
+        EventBus.GetSingleton().on("N2N_EVENT", () => {
+            this.ClientManager_N2N_Source.SendEndSignal()
+        })
+
         EventBus.GetSingleton().on('N2N_SOURCE_RESPONSE', (message) => {
             if(this.hardreset) return
 
@@ -122,7 +126,7 @@ export default class N2N_DialogueManager {
             }
 
             if(process.env.N2N_BROADCAST && process.env.N2N_BROADCAST.toLowerCase() == 'true') {
-                this.broadcastManager.Say(message, this.source, this.target, this.playerName)
+                this.broadcastManager.Say(message, this.source, this.target)
             }
 
             this.sourceHistory.push({
@@ -159,7 +163,7 @@ export default class N2N_DialogueManager {
             this.ClientManager_N2N_Source.Say(message);
             
             if(process.env.N2N_BROADCAST && process.env.N2N_BROADCAST.toLowerCase() == 'true') {
-                this.broadcastManager.Say(message, this.target, this.source, this.playerName)
+                this.broadcastManager.Say(message, this.target, this.source)
             }
 
             this.sourceHistory.push({

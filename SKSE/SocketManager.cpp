@@ -277,9 +277,7 @@ public:
             if (type == "established" && dial_type == 0) {
                 AnimaCaller::ConnectionSuccessful();
             } else if (type == "established" && dial_type == 1) {
-                AnimaCaller::n2n_established_response_count++;
-                if (AnimaCaller::n2n_established_response_count == 2)
-                    AnimaCaller::N2N_Init();
+                AnimaCaller::N2N_Init();
             } else if (type == "chat" && dial_type == 0) {
                 AnimaCaller::Speak(message, duration);
             } else if (type == "chat" && dial_type == 1) {
@@ -434,7 +432,7 @@ public:
 
     void SendHardReset() {
         Util::WriteLog("Sending HardReset Signal To Client.", 4);
-        Message* message = new Message("hard_reset", "", "", "", "", "");
+        Message* message = new Message("hard-reset", "", "", "", "", "");
         soc->send_message(message);
     }
 

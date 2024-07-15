@@ -1,14 +1,14 @@
-import CharacterManager from "../Anima/CharacterManager.js"
 import { AudioProcessor } from "../Anima/AudioProcessor.js"
 import {MALE_VOICES, FEMALE_VOICES} from './voices.js'
 import GoogleGenAI from "../Anima/GoogleGenAI.js"
+import CharacterManager from "../Anima/CharacterManager.js"
+import DialogueManager from "../Anima/DialogueManager.js"
 import BroadcastManager from "../Anima/BroadcastManager.js"
 import EventBus from "../Anima/EventBus.js"
-import { DEBUG, SET_DEBUG } from "../Anima.js"
+import { SET_DEBUG } from "../Anima.js"
 
 import fs from 'fs'
-import path from 'path'
-import PromptManager from "../Anima/PromptManager.js"
+import waitSync from 'wait-sync'
 
 class CustomError extends Error {
     status?: number; // Explicitly declaring the status property
@@ -22,7 +22,6 @@ class CustomError extends Error {
 
 export default  class Api {
     private characterManager: CharacterManager = new CharacterManager()
-    private static NUM_RESPONSES = 0;
 
     CharacterList() {
         return this.characterManager.GetCharacterList()
@@ -60,7 +59,7 @@ export default  class Api {
             + "\n Mood and personality can be a value between -100 and 100."
             + "\n PLEASE ONLY INCLUDE THE JSON STRING IN YOUR MESSAGE. OMIT ANYTHING OTHER THAN JSON STRING."
 
-        let response = await GoogleGenAI.SendMessage(prompt)
+        let response = await GoogleGenAI.SendMessage({prompt: null, message: prompt})
         if(response.status == 1) {
             let text = response.text.replace("json","").replaceAll('```','').replaceAll("\n","")
             try{
@@ -75,7 +74,21 @@ export default  class Api {
         }
     }
 
-    SendBroadcast(ids, speaker, text, callback) {
+    async SendNormal(ids, speaker, text, callback) {
+        SET_DEBUG(true)
+
+        let dialogueManager = new DialogueManager(0)
+        await dialogueManager.ConnectToCharacter(ids[0], "0", "MaleNord", speaker, speaker, null)
+        dialogueManager.Say(text)
+
+        EventBus.GetSingleton().removeAllListeners('WEB_TARGET_RESPONSE')
+        EventBus.GetSingleton().on('WEB_TARGET_RESPONSE', (message) => {
+           callback(message)
+            SET_DEBUG(false)
+        })
+    }
+
+    async SendN2N(ids, text, io) {
         SET_DEBUG(true)
 
         let formIds = []
@@ -87,47 +100,39 @@ export default  class Api {
         }
 
         BroadcastManager.SetCharacters(ids, formIds, voiceTypes)
-        new BroadcastManager(null).Say(text, speaker, null, speaker)
+        await new BroadcastManager('Adventurer', null)
 
-        let numResponses = 0
-        let responses = []
+        const ClientManager_N2N = new DialogueManager(true)
+        await ClientManager_N2N.ConnectToCharacter(ids[0], "0", "MaleNord", ids[1], "Adventurer", null);
+        ClientManager_N2N.StartN2N("Riverwood", ids[1])
 
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
         EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
-            responses.push(ids[speaker] + ": " + (message ? message : " ==NOT ANSWERED=="))
-            if(++numResponses == ids.length) {
-                numResponses = 0
-                callback(responses.join('\n==========\n'))
-                setTimeout(() => {
-                    SET_DEBUG(false)
-                }, 5000)             
-            }
+            let response = ids[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
+
+            io.emit('chat_response', response + '\n==========\n')
         })
     }
 
-    PrepareDataset() {
-        const raw_dataset = JSON.parse(fs.readFileSync(path.resolve("./skyrim_dataset_raw.json"), 'utf-8'));
+    async SendBroadcast(ids, speaker, text, io) {
+        SET_DEBUG(true)
 
-        let final_data = []
-        let count = 0
-        raw_dataset.forEach((d) => {
-            const character_1 = this.characterManager.GetCharacter(d[0].character_1.toLowerCase())
-            const text_1 = d[0].text_1
-            const text_2 = d[1].text_2
+        let formIds = []
+        let voiceTypes = []
 
-            if(!character_1)
-                return
+        for(let i in ids) {
+            formIds.push(0)
+            voiceTypes.push("MaleNord")
+        }
 
-            let prompt = new PromptManager().PrepareDialogueMessage("Uriel", character_1, text_1)
-            
-            let messages = []
-            messages.push({role: 'user', content: prompt}, {role: 'model', content: text_2})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+        BroadcastManager.SetCharacters(ids, formIds, voiceTypes)
+        await new BroadcastManager(speaker, null).Say(text, speaker, null)
+
+        EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
+        EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
+            let response = ids[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
+
+            io.emit('chat_response', response + '\n==========\n')
         })
-
-        fs.writeFileSync('skyrim_dataset.jsonl', final_data.join('\n'), 'utf8')
-        console.log("Written " + count + " lines.")
-        console.log("DONE")
     }
 }   

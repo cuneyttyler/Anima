@@ -1,9 +1,12 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 import cors from 'cors'
+import DatasetProcessing from '../Anima/DatasetProcessing.js'
+import EventBus from '../Anima/EventBus.js'
 import Api from './api.js'
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
+import { Server } from 'socket.io';
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 
@@ -12,11 +15,33 @@ const app = express()
 app.use(express.static('web'))
 
 let api: Api = new Api()
+let dp: DatasetProcessing = new DatasetProcessing()
 
 export default function RunWebApp() {
-    app.listen(3000, () => {
+    const server = app.listen(3000, () => {
         console.log("Web interface listening on port 3000")
     })
+
+    const io = new Server(server, {
+        cors: {
+            origin: ['http://localhost:3000', 'http://localhost:8080']
+          }
+    })
+
+    io.on('connection', (socket) => {        
+        socket.on('disconnect', () => {
+            EventBus.GetSingleton().removeAllListeners('WEB_TARGET_RESPONSE')
+            EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
+        });
+        
+        socket.on('chat', (data) => {
+            if(data.type == 1) {
+                api.SendN2N(data.ids, data.text, io)
+            } else if(data.type == 2) {
+                api.SendBroadcast(data.ids, data.speaker, data.text, io)
+            }
+        });
+      });
 
     // Parse application/x-www-form-urlencoded
     app.use(bodyParser.urlencoded({ extended: false }));
@@ -95,13 +120,24 @@ export default function RunWebApp() {
             return
         }
 
-        api.SendBroadcast(req.body.ids, req.body.speaker, req.body.text, (response) => {
-            res.send(response)
-        })
+        if(req.body.type == 0) {
+            api.SendNormal(req.body.ids, req.body.speaker, req.body.text, (response) => {
+                res.send(response)
+            })
+        } else if(req.body.type == 1) {
+            api.SendBroadcast(req.body.ids, req.body.speaker, req.body.text, (response) => {
+                res.send(response)
+            })
+        } else {
+            res.sendStatus(400)
+        }
     })
 
-    app.get('/api/prepareDataset', function(req,res) {
-        api.PrepareDataset()
-        res.sendStatus(200)
+    app.get('/api/prepareDataset', async function(req,res) {
+        await dp.PrepareDataset_v2()
+    })
+
+    app.get('/api/postprocessDataset', async function(req,res) {
+        await dp.PostProcessDataset_v2()
     })
 }

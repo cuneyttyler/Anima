@@ -10,6 +10,7 @@ import {logToLog, logToErrorLog} from './Anima/LogUtil.js'
 import RunWebApp from './webapp/app.js'
 import path from "path";
 import waitSync from 'wait-sync';
+import { BroadcastQueue } from './Anima/BroadcastQueue.js';
 
 const resolved = path.resolve(".env");
 logToLog("Reading .env from location: " + resolved);
@@ -21,6 +22,7 @@ try {
 
 export const KEY_FILE_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
 export const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID
+export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 export const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
 
@@ -34,11 +36,12 @@ const fastify = Fastify({logger: true});
 fastify.register(websocketPlugin);
 
 const fileManager = new FileManager()
-const ClientManager = new DialogueManager(false, 0);
-const ClientManager_N2N_Source = new DialogueManager(true, 0);
-const ClientManager_N2N_Target = new DialogueManager(true, 1);
+const ClientManager = new DialogueManager(false);
+const ClientManager_N2N = new DialogueManager(true)
 
-var n2nDialogueManager = new N2N_DialogueManager(N2N_MAX_STEP_COUNT, ClientManager_N2N_Source, ClientManager_N2N_Target);;
+export let BROADCAST_QUEUE = new BroadcastQueue(null)
+export let N2N_SPEAKER
+export let N2N_LISTENER
 
 RunInformation();
 
@@ -53,7 +56,11 @@ fastify.register(async function (fastify) {
     fastify.get('/chat', {
         websocket: true
     }, (connection : SocketStream, req : FastifyRequest) => {
+        DEBUG = false
+        BROADCAST_QUEUE = new BroadcastQueue(connection.socket)
+
         connection.socket.on('message', async (msg) => {
+
             let message = JSON.parse(msg.toString());
             if(message.type != 'log_event' && message.type != 'broadcast-set') {
                 console.log("Message received", msg.toString());
@@ -71,38 +78,29 @@ fastify.register(async function (fastify) {
             } else if (message.type == "stop" && !message.is_n2n) {
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
-                let result =  await ClientManager_N2N_Source.ConnectToCharacter(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.playerName, connection.socket);
-                result = result && await ClientManager_N2N_Target.ConnectToCharacter(message.target, message.targetFormId, message.targetVoiceType, message.source, message.playerName, connection.socket);
-
+                await ClientManager_N2N.ConnectToCharacter(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.playerName, connection.socket);
             } else if (message.type == "start" && message.is_n2n) {
-                n2nDialogueManager.Init(message.source, message.target, message.sourceFormId, message.targetFormId, message.playerName, new BroadcastManager(connection.socket))
-                n2nDialogueManager.Start_N2N_Dialogue(message.location, message.currentDateTime)
+                ClientManager_N2N.SendNarratedAction("You are at " + message.location + ". It's " + message.currentDateTime + ". Please keep your answers short if possible.")
+                ClientManager_N2N.StartN2N(message.location, message.target)
             } else if (message.type == "stop" && message.is_n2n) {
-                if(n2nDialogueManager) {
-                    n2nDialogueManager.stop();
-                }
-            } else if (message.type == "broadcast-set") {
+                new BroadcastManager(message.playerName, connection.socket).Say("STOP TALKING", "DungeonMaster", null)
+            } else if (message.type == "set-current-cell") {
+                DialogueManager.SetCharacters(message.ids)
+            }  else if (message.type == "broadcast-set") {
                 BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes)
             } else if (message.type == "broadcast") {
-                new BroadcastManager(connection.socket).Say(message.message, message.playerName, null, message.playerName)
+                new BroadcastManager(message.playerName,connection.socket).Say(message.message, message.playerName, null)
             } else if (message.type == "log_event") {
+                fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 
                 if(ClientManager.IsConversationOngoing() && message.id == ClientManager.Id() && message.formId == ClientManager.FormId()) {
                     ClientManager.SendNarratedAction(message.message + " ");
-                } else {
-                    fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 }
-                if(n2nDialogueManager.IsConversationOngoing()) {
-                    EventBus.GetSingleton().emit("N2N_EVENT", message);
-                }
-            } else if (message.type == "hard_reset") {
-                
+            } else if (message.type == "hard-reset") {
                 if(ClientManager.IsConversationOngoing()) {
                     ClientManager.StopImmediately();
                 }
-                if(n2nDialogueManager.IsConversationOngoing()) {
-                    n2nDialogueManager.StopImmediately();
-                }
+                new BroadcastManager(message.playerName, connection.socket).Say("STOP TALKING", "DungeonMaster", null)
             }
         })
     })

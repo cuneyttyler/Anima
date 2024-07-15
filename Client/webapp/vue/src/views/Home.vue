@@ -1,9 +1,14 @@
 <template>
     <div id="home">
-      <CharacterList :characters="characters" @show-character="showCharacter" @show-add-character="showAddCharacter" :page="page" :key="listKey"/>
-      <Character v-if="character" @character-saved="updateList" @play-sound="playSound" @character-view-update="characterKey++" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
-      <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="character.gender" :voices="voices" :key="voicesKey"/>
-  
+      <div class="router">
+        <router-link to="/chat">Chat</router-link>
+        <hr>
+      </div>
+      <div class="home-inner">
+        <CharacterList :characters="characters" @show-character="showCharacter" @show-add-character="showAddCharacter" :page="page" :key="listKey"/>
+        <Character v-if="character" @character-saved="updateList" @play-sound="playSound" @character-view-update="updateCharacter" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
+        <Voices v-if="character" @voice-selected="voiceSelected" @play-sound="playSound" :gender="character.gender" :voices="voices" :key="voicesKey"/>
+      </div>  
     </div>
   </template>
   
@@ -73,6 +78,11 @@
           })
         this.adding = true
       },
+
+      updateCharacter(character) {
+        this.character = character
+        this.characterKey++
+      },
   
       voiceSelected(voice) {
         this.character.voice = voice
@@ -108,15 +118,12 @@
   </script>
   
   <style>
-  #app {
-    font-family: 'Avenir', Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-align: center;
-    color: #2c3e50;
-    margin-top: 60px;
-    padding: 0 0 50px 0;
+  .home-inner {
     display: flex;
+  }
+  .router {
+    text-align:left;
+    margin: 0 20px 0 20px;
   }
   </style>
   

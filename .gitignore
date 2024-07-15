@@ -15,6 +15,7 @@ Client/AnimaError.log
 Client/.env
 Client/web/
 Client/webapp/public/
+Client/other/
 SKSE/build
 SKSE/.vs
 MOD/Sound/

@@ -202,7 +202,6 @@ public:
     inline static bool conversationOngoing = false;
     inline static bool stopSignal = false;
     inline static bool connecting = false;
-    inline static int n2n_established_response_count = 0;
     inline static RE::Actor* N2N_SourceActor;
     inline static RE::Actor* N2N_TargetActor;
     inline static map<RE::Actor*, string> broadcastActors;
@@ -293,7 +292,6 @@ public:
     static void N2N_Stop() {
         Util::WriteLog("Stopping dialogue between " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + " and " +
                             Util::GetActorName(AnimaCaller::N2N_SourceActor) + ".", 3);
-        n2n_established_response_count = 0;
         SKSE::ModCallbackEvent modEvent{"BLC_Stop_N2N", "", 1.0f, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         AnimaCaller::N2N_SourceActor = nullptr;

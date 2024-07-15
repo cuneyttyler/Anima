@@ -88,7 +88,7 @@
     color: #42b983;
   }
   .character-list {
-    margin-left: 5%;
+    margin-left: 60px;
   }
   .character-list .list {
     height: 750px;

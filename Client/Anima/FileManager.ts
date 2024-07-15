@@ -37,7 +37,7 @@ export default class FileManager {
                 console.error("Event file not exists: " + eventFile);
                 return;
             }
-            await fs.appendFileSync(eventFile, log, 'utf8')
+            await fs.writeFileSync(eventFile, log, 'utf8')
         } catch (err) {
         console.error('Error writing the file:', err);
         return false;

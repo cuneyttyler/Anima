@@ -254,7 +254,7 @@
               } else {
                 this.responseMessage = 'Successful'
                 this.character = response.data
-                this.$emit('character-view-update')
+                this.$emit('character-view-update', this.character)
               }
             })
         }
@@ -307,12 +307,12 @@
     width: 20px;
     height: 20px; 
   }
+  
   .character .update {
     text-align: left;
     margin-top: 20px;
   }
-  .character .update .response {
-  }
+
   .character .update .error-response {
     max-width: 500px;
     position: absolute;

@@ -29,8 +29,6 @@ class AnimaEventSink : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
             } else if (a_result.IsString()) {
                 auto playerMessage = std::string(a_result.GetString());
 
-                
-
                 if (Util::trim(playerMessage).length() == 0) {
                     AnimaEventSink::GetSingleton()->sendingBroadcast = false;
                     return;
