@@ -77,7 +77,7 @@ export default  class Api {
     async SendNormal(ids, speaker, text, callback) {
         SET_DEBUG(true)
 
-        let dialogueManager = new DialogueManager(0)
+        let dialogueManager = new DialogueManager()
         await dialogueManager.ConnectToCharacter(ids[0], "0", "MaleNord", speaker, speaker, null)
         dialogueManager.Say(text)
 

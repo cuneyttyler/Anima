@@ -95,11 +95,12 @@ public:
                 auto actorObject = event->crosshairRef->As<RE::Actor>();
 
                 if (talkingWith && actorObject) {
-                    conversationPair = nullptr;
                     auto className = talkingWith->npcClass->fullName;
                     auto raceName = talkingWith->race->fullName;
 
                     conversationPair = actorObject;
+                } else {
+                    conversationPair = nullptr;
                 }
             } catch (...) {
             }

@@ -65,10 +65,11 @@ export class GoogleGenAIController {
             if(this.type == 0) {
                 return
             } else if(this.type == 1) {
-                EventBus.GetSingleton().emit("N2N_END")
-            } else if(this.type == 2) {
                 EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.speaker, null)
                 EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
+                if(messageType == 1) {
+                    EventBus.GetSingleton().emit('N2N_END')
+                }
                 return
             } else {
                 console.error("UNKNOWN TYPE: " + this.type)
@@ -142,7 +143,7 @@ export class GoogleGenAIController {
     }
 
     SendVerifyConnection() {
-        let verifyConnection = GetPayload("connection established", "established", 0, 1, 0);
+        let verifyConnection = GetPayload("connection established", "established", 0, this.type, 0);
 
         console.log("Connection to " + this.character.name + " is succesfull" + JSON.stringify(verifyConnection));
         (console as any).logToLog(`Connection to ${this.character.name} is succesfull.`)            
@@ -150,11 +151,11 @@ export class GoogleGenAIController {
             this.socket.send(JSON.stringify(verifyConnection));
     }
 
-    SendEndSignal(type?) {
+    SendEndSignal() {
         console.log("*** SEND_END_SIGNAL ***")
         this.stepCount = 0;
         if(!DEBUG) {
-            this.socket.send(JSON.stringify(GetPayload("", "end", 0, type ? type : this.type, 0)));
+            this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.type, 0)));
         }
         if(this.type == 0) {
             EventBus.GetSingleton().emit("END");

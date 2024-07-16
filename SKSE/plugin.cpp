@@ -176,8 +176,8 @@ public:
             index++;
         }
 
-        if (index > equalIndex) {
-            Util::WriteLog("NEW_SUBTITLE_FOUND");
+        if (equalIndex != -1 && index > equalIndex) {
+            Util::WriteLog("NEW_SUBTITLE_FOUND " + string(RE::SubtitleManager::GetSingleton()->subtitles[index-1].subtitle));
         }
 
         return index > equalIndex;
@@ -185,7 +185,7 @@ public:
 
     static void ShowSubtitle(RE::Actor* actor, string subtitle, float duration) {
         try {
-            Util::WriteLog("SHOW_SUBTITLE");
+            Util::WriteLog("SHOW_SUBTITLE " + subtitle);
             RE::SubtitleInfo* subtitleInfo = GetSubtitle(actor, subtitle);
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*subtitleInfo);
             if (!CheckNewSubtitle(subtitleInfo)) {

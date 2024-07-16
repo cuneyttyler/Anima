@@ -35,8 +35,8 @@ const fastify = Fastify({logger: true});
 fastify.register(websocketPlugin);
 
 const fileManager = new FileManager()
-const ClientManager = new DialogueManager(false);
-const ClientManager_N2N = new DialogueManager(true)
+const ClientManager = new DialogueManager();
+const ClientManager_N2N = new DialogueManager()
 let broadcastManager : BroadcastManager
 
 export let BROADCAST_QUEUE = new BroadcastQueue(null)
@@ -66,8 +66,9 @@ fastify.register(async function (fastify) {
             if (message.type == "connect" && !message.is_n2n) {
                 let result = await ClientManager.ConnectToCharacter(message.id, message.formId, message.voiceType, message.playerName, message.playerName, connection.socket);
                 if(result) {
-                    ClientManager.InitNormal('In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ');
+                    ClientManager.InititializeSession('In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ');
                 }
+                if(broadcastManager) broadcastManager.Stop()
             } else if (message.type == "message" && !message.is_n2n) {
                 if(message.stop) {
                     ClientManager.Stop();
@@ -76,6 +77,7 @@ fastify.register(async function (fastify) {
             } else if (message.type == "stop" && !message.is_n2n) {
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
+                if(ClientManager.IsConversationOngoing()) return
                 broadcastManager = new BroadcastManager(message.playerName,connection.socket)
                 await broadcastManager.ConnectToCharacters()
                 await broadcastManager.StartN2N(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.targetFormId, message.location, message.currentDateTime)
@@ -88,11 +90,13 @@ fastify.register(async function (fastify) {
             } else if (message.type == "cellactors-set") {
                 BroadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
-                if(broadcastManager) await broadcastManager.Say(message.message, message.playerName, null)
+                if(!broadcastManager) broadcastManager = new BroadcastManager(message.playerName, connection.socket) 
+                await broadcastManager.ConnectToCharacters()
+                await broadcastManager.Say(message.message, message.playerName, null)
             } else if (message.type == "log_event") {
                 fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 
-                if(ClientManager.IsConversationOngoing() && message.id == ClientManager.Id() && message.formId == ClientManager.FormId()) {
+                if(ClientManager.IsConversationOngoing() && message.id == ClientManager.GetId() && message.formId == ClientManager.GetFormId()) {
                     ClientManager.SendNarratedAction(message.message + " ");
                 }
             } else if (message.type == "hard-reset") {

@@ -64,6 +64,7 @@ export default class BroadcastManager {
 
     async ConnectToCharacters() {
         if(!BroadcastManager.names) return
+        this.stop = false
         console.log(`Trying to connect to ${BroadcastManager.names.join(', ')}`);
         this.characters = []
         for(let i in BroadcastManager.names) {
@@ -81,7 +82,7 @@ export default class BroadcastManager {
             this.characters.push(character)
             this.prompts.push(this.promptManager.PrepareCharacterPrompt(character))
             this.eventBuffers.push("HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(BroadcastManager.names[i], BroadcastManager.formIds[i], this.profile)) + "\n========================\n"
-            let googleController = new GoogleGenAIController(4, 2, this.characters[i], null, this.characters[i].voiceType,  parseInt(i), this.socket);
+            let googleController = new GoogleGenAIController(4, 1, this.characters[i], null, this.characters[i].voiceType,  parseInt(i), this.socket);
             this.googleControllers.push(googleController)
         }
     }
@@ -116,7 +117,7 @@ export default class BroadcastManager {
 
         console.log("Broadcasting ==> " + speakerName + "\"" + message + "\"")
         for(let i in this.characters) {
-            if(this.speaker && this.characters[i].name.toLowerCase() == this.speaker.toLowerCase()) continue
+            if(this.speaker && this.characters[i].name.toLowerCase() == this.speaker.toLowerCase() && this.CheckCharacterStillInScene(i, this.characters[i])) continue
             this.Send(i, message)
         }
 
@@ -128,6 +129,15 @@ export default class BroadcastManager {
         this.googleControllers[i].Send(messageToSend)
         if(DEBUG)
             this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, this.promptManager.BroadcastEventMessage(this.speaker, this.listener, message), this.profile)
+    }
+
+    CheckCharacterStillInScene(i, character) {
+        let index = BroadcastManager.formIds.findIndex(id => id == character.formId)
+        if(index == -1) {
+            this.characters.splice(i, 1)
+            return false
+        }
+        return true
     }
 
     async Stop() {

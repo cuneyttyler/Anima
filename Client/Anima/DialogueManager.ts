@@ -5,7 +5,6 @@ import FileManager from './FileManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
-import BroadcastManager from './BroadcastManager.js';
 
 export default class DialogueManager {
     private managerId: number;
@@ -18,13 +17,11 @@ export default class DialogueManager {
     private formId;
     private profile;
     private listener;
-    private is_n2n = false;
     private voiceType;
-    private hardreset;
     private eventBuffer = "";
     private conversationOngoing;
     private isInteractionOngoing;
-    private is_ending = false;
+    private isEnding = false;
     public static currentCellActors;
 
     currentCapabilities = {
@@ -33,22 +30,21 @@ export default class DialogueManager {
         narratedActions: true
     }
 
-    constructor(is_n2n) {
+    constructor() {
         this.characterManager = new CharacterManager();
         this.promptManager = new PromptManager();
         this.fileManager = new FileManager();
-        this.managerId = !is_n2n ? 0 : 1;
-        this.is_n2n = is_n2n;
-        this.Init()
+        this.managerId = 0;
+        this.InitEvents()
     }
 
-    Init() {
+    InitEvents() {
         EventBus.GetSingleton().on('TARGET_RESPONSE', (msg) => {
             this.eventBuffer += "You said \"" + msg + "\"."
-            if(this.is_ending) {
+            if(this.isEnding) {
                 setTimeout(() => {
-                    this.SendEndSignal()
-                }, 7000)
+                    EventBus.GetSingleton().emit('END')
+                }, 5000)
             }
         });
 
@@ -60,13 +56,15 @@ export default class DialogueManager {
             if(!this.id) return;
 
             await this.Finalize()
+            this.SendEndSignal()
+            this.conversationOngoing = false;
             this.profile = null;
             this.id = null;
             this.formId = null;
         });
     }
 
-    async InitNormal(initString) {
+    async InititializeSession(initString) {
         if(!this.id) return
         this.SendNarratedAction(initString);
         let events = await this.fileManager.GetEvents(this.id, this.formId, this.profile)
@@ -78,14 +76,13 @@ export default class DialogueManager {
 
     // Socket version of connection
     async ConnectToCharacter(characterId : string, formId: string, voiceType: string, listener : string, playerName : string, socket : WebSocket) {
-        this.hardreset = false;
         console.log(`Trying to connect to ${characterId}`);
         this.listener = listener;
         let character = this.characterManager.GetCharacter(characterId);
         (console as any).logToLog(`Trying to connect to ${characterId}`)
         if (!character) {
             console.log(`${characterId} is not included in DATABASE`);
-            let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, !this.is_n2n ? 0 : 1, 0);
+            let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, 0, 0);
             if(!DEBUG)
                 socket.send(JSON.stringify(returnDoesNotExist));
             return false
@@ -97,30 +94,21 @@ export default class DialogueManager {
         this.formId = formId;
         this.profile = playerName;
         this.voiceType = voiceType;
-        this.is_ending = false;
-        this.googleController = new GoogleGenAIController(this.managerId, !this.is_n2n ? 0 : 1, this.character, this.listener, this.voiceType, 
-            BroadcastManager.names && this.is_n2n ? BroadcastManager.names.findIndex(n => n.toLowerCase() == this.character.name.toLowerCase()) : 0, socket);
+        this.isEnding = false;
+        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.listener, this.voiceType, 0, socket);
 
         this.conversationOngoing = true;
         this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(characterId, formId, playerName)
 
-        if(!this.is_n2n) {
-            this.googleController.SendVerifyConnection()      
-        }
+        this.googleController.SendVerifyConnection()      
         
         return true
     }
 
     Stop() {
-        this.is_ending = true;
-
-        if(!this.isInteractionOngoing && this.googleController) {
-            this.googleController.SendEndSignal();
+        if(!this.isInteractionOngoing) {
+            EventBus.GetSingleton().emit('END')
         }   
-    }
-
-    static SetCharacters(actors) {
-        DialogueManager.currentCellActors = actors
     }
 
     StopImmediately() {
@@ -131,24 +119,21 @@ export default class DialogueManager {
         this.profile = null;
         this.voiceType = null;
         this.googleController = null
-        this.hardreset = true
+        this.conversationOngoing = false
     }
 
     async Finalize() {
         let events = await this.googleController.SummarizeEvents(this.eventBuffer)
-        await this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile)
+        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile)
+        this.conversationOngoing = false;
+        this.profile = null;
+        this.id = null;
+        this.formId = null;
     }
 
    Say(message : string) {
-        let messageToSend
-        if(!this.is_n2n) {
-            messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, this.eventBuffer, message) 
-       } else {
-        messageToSend = this.promptManager.PrepareN2NDialogueMessage(this.character, this.eventBuffer)
-       }
-
-       this.eventBuffer += " == CURRENT EVENT ==> " + this.listener + " says to you: \"" + message + "\""
-       
+        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, this.eventBuffer, message) 
+        this.eventBuffer += " == CURRENT EVENT ==> " + this.listener + " says to you: \"" + message + "\""   
         this.googleController.Send(messageToSend)
     }
 
@@ -156,17 +141,17 @@ export default class DialogueManager {
         this.eventBuffer += " " + message + " ";
     }
 
-    SendEndSignal(type?) {
+    SendEndSignal() {
         if(this.googleController) {
-            this.googleController.SendEndSignal(type)
+            this.googleController.SendEndSignal()
         }
     }
 
-    Id() {
+    GetId() {
         return this.id
     }
 
-    FormId() {
+    GetFormId() {
         return this.formId
     }
 
@@ -178,11 +163,4 @@ export default class DialogueManager {
         this.isInteractionOngoing = val;
     }
 
-    IsReset() {
-        return this.hardreset;
-    }
-
-    IsEnding() {
-        return this.is_ending;
-    }
 }

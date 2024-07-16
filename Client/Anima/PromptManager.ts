@@ -9,7 +9,6 @@ export default class PromptManager {
             + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY. "
             + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. "
             + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE "
-            + "**PLEASE KEEP YOUR ANSWERS SHORT** "
             + "**DO NOT KEEP SAYING THE SAME LINE** "
             + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING "
             + "When you're asked by someone to follow them like \"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, answer \"Of course, I'll join you.'\" if you wish to join them. Reject in a manner you see appropriate otherwise. "
