@@ -64,10 +64,6 @@ export default class DialogueManager {
             this.id = null;
             this.formId = null;
         });
-
-        EventBus.GetSingleton().on("N2N_END", () => {
-            this.SendEndSignal(1)
-        })
     }
 
     async InitNormal(initString) {
@@ -153,11 +149,6 @@ export default class DialogueManager {
 
        this.eventBuffer += " == CURRENT EVENT ==> " + this.listener + " says to you: \"" + message + "\""
        
-        this.googleController.Send(messageToSend)
-    }
-
-    StartN2N(location, listener) {
-        let messageToSend = this.promptManager.PrepareN2NStartMessage(this.character, listener, location)
         this.googleController.Send(messageToSend)
     }
 

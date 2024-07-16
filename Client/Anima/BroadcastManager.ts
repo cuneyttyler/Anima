@@ -4,7 +4,7 @@ import PromptManager from './PromptManager.js';
 import FileManager from './FileManager.js';
 import {GoogleGenAIController} from './GenAIController.js';
 import EventBus from './EventBus.js';
-import { DEBUG, N2N_SPEAKER, N2N_LISTENER  } from '../Anima.js';
+import { DEBUG } from '../Anima.js';
 
 export default class BroadcastManager {
     private characterManager : CharacterManager;
@@ -19,6 +19,9 @@ export default class BroadcastManager {
     private speaker;
     private listener;
     private stop;
+    private N2N_SPEAKER;
+    private N2N_LISTENER;
+    private googleControllers = [];
     private characters = [];
     private prompts = [];
     private eventBuffers = [];
@@ -31,7 +34,7 @@ export default class BroadcastManager {
         this.profile = playerName;
 
         EventBus.GetSingleton().removeAllListeners('BROADCAST_RESPONSE')
-        EventBus.GetSingleton().on('BROADCAST_RESPONSE', (i, listener, message) => {
+        EventBus.GetSingleton().on('BROADCAST_RESPONSE', async (i, listener, message) => {
             if(DEBUG) {
                 for(let j in this.characters) {
                     this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " " + (message ? (i == j 
@@ -39,10 +42,12 @@ export default class BroadcastManager {
                 }
             }
             if(process.env.BROADCAST_RECURSIVE && process.env.BROADCAST_RECURSIVE.toLowerCase() == 'true' && message) {
-                this.Say(message, BroadcastManager.names[i], listener)
+                await this.Say(message, BroadcastManager.names[i], listener)
             }
-            if(!message && ((N2N_SPEAKER && this.characters[i].name.toLowerCase() == N2N_SPEAKER.toLowerCase()) || (N2N_LISTENER && this.characters[i] == N2N_LISTENER.toLowerCase()))) {
-                EventBus.GetSingleton().emit("N2N_END")
+            if(!message && ((this.N2N_SPEAKER && this.characters[i].name.toLowerCase() ==this.N2N_SPEAKER.toLowerCase()) || (this.N2N_LISTENER && this.characters[i] == this.N2N_LISTENER.toLowerCase()))) {
+                this.SendEndSignal()
+                this.N2N_SPEAKER = null
+                this.N2N_LISTENER = null
             }
         })
     }
@@ -76,19 +81,40 @@ export default class BroadcastManager {
             this.characters.push(character)
             this.prompts.push(this.promptManager.PrepareCharacterPrompt(character))
             this.eventBuffers.push("HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(BroadcastManager.names[i], BroadcastManager.formIds[i], this.profile)) + "\n========================\n"
+            let googleController = new GoogleGenAIController(4, 2, this.characters[i], null, this.characters[i].voiceType,  parseInt(i), this.socket);
+            this.googleControllers.push(googleController)
         }
     }
 
+    async StartN2N(name : string, formId: string, voiceType: string, listenerName: string, listenerFormId, location: string, currentDateTime: string) {
+        let speaker = this.characters.find(c => c.name.toLowerCase() == name.toLowerCase() && c.formId == formId)
+        let listener = this.characters.find(c => c.name.toLowerCase() == listenerName.toLowerCase() && c.formId == listenerFormId)
+        if(!speaker || !listener) {
+            return false
+        }
+        let speakerIndex = this.characters.findIndex(c => c.name.toLowerCase() == name.toLowerCase() && c.formId == formId)
+
+        const initMessage = "You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible."
+        this.fileManager.SaveEventLog(speaker.id, speaker.formId, initMessage, this.profile)
+
+        let messageToSend = this.promptManager.PrepareN2NStartMessage(speaker, listener, location)
+        this.googleControllers[speakerIndex].Send(messageToSend, 1)
+
+        this.N2N_SPEAKER = name
+        this.N2N_LISTENER = listenerName
+
+        return true
+    }
+
     // Socket version of connection
-    async Say(message: string, speakerName : string, listenerName: string, ) {
+    async Say(message: string, speakerName : string, listenerName: string) {
         if(this.stop) return
-        await this.ConnectToCharacters()
         this.speaker = speakerName;
         this.listener = listenerName;
         
         if(this.characters.length == 0) return false;
 
-        console.log("Broadcasting \"" + message + "\"")
+        console.log("Broadcasting ==> " + speakerName + "\"" + message + "\"")
         for(let i in this.characters) {
             if(this.speaker && this.characters[i].name.toLowerCase() == this.speaker.toLowerCase()) continue
             this.Send(i, message)
@@ -98,14 +124,24 @@ export default class BroadcastManager {
     }  
 
    Send(i, message : string) {
-    let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, this.speaker, this.listener, this.characters[i], message, this.eventBuffers[i])
-    let googleController = new GoogleGenAIController(4, 2, this.characters[i], null, this.characters[i].voiceType,  parseInt(i), this.socket);
-        googleController.Send(messageToSend)
+        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, this.speaker, this.listener, this.characters[i], message, this.eventBuffers[i])
+        this.googleControllers[i].Send(messageToSend)
         if(DEBUG)
             this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, this.promptManager.BroadcastEventMessage(this.speaker, this.listener, message), this.profile)
     }
 
-    Stop() {
+    async Stop() {
         this.stop = true
+        console.log("** FINALIZING CONVERSATION **.")
+        for(let i in this.characters) {
+            const _events = await this.googleControllers[i].SummarizeEvents(this.fileManager.GetEvents(this.characters[i].id, this.characters[i].formId, this.profile))
+            this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, _events, this.profile)
+        }
+    }
+
+    SendEndSignal() {
+        if(this.googleControllers.length > 0) {
+            this.googleControllers[0].SendEndSignal(1)
+        }
     }
 }

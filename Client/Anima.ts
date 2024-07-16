@@ -2,7 +2,6 @@ import * as dotenv from 'dotenv'
 import websocketPlugin, {SocketStream} from "@fastify/websocket"
 import Fastify, {FastifyRequest} from 'fastify'
 import DialogueManager from "./Anima/DialogueManager.js";
-import N2N_DialogueManager from './Anima/N2N_DialogueManager.js'
 import BroadcastManager from './Anima/BroadcastManager.js'
 import FileManager from './Anima/FileManager.js';
 import EventBus from './Anima/EventBus.js';
@@ -41,12 +40,6 @@ const ClientManager_N2N = new DialogueManager(true)
 let broadcastManager : BroadcastManager
 
 export let BROADCAST_QUEUE = new BroadcastQueue(null)
-export let N2N_SPEAKER
-export let N2N_LISTENER
-EventBus.GetSingleton().on("N2N_END", () => {
-    N2N_SPEAKER = null
-    N2N_LISTENER = null
-})
 
 RunInformation();
 
@@ -79,18 +72,13 @@ fastify.register(async function (fastify) {
                 if(message.stop) {
                     ClientManager.Stop();
                 }
-                ClientManager.Say(message.message);
+                await ClientManager.Say(message.message);
             } else if (message.type == "stop" && !message.is_n2n) {
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
-                let result = await ClientManager_N2N.ConnectToCharacter(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.playerName, connection.socket);
-                if(result) {
-                    N2N_SPEAKER = message.source
-                    N2N_LISTENER = message.target
-                    ClientManager_N2N.SendNarratedAction("You are at " + message.location + ". It's " + message.currentDateTime + ". Please keep your answers short if possible.")
-                    ClientManager_N2N.StartN2N(message.location, message.target)
-                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
-                }
+                broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                await broadcastManager.ConnectToCharacters()
+                await broadcastManager.StartN2N(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.targetFormId, message.location, message.currentDateTime)
             } else if (message.type == "start" && message.is_n2n) {
                 
             } else if (message.type == "stop" && message.is_n2n) {
@@ -100,7 +88,7 @@ fastify.register(async function (fastify) {
             } else if (message.type == "cellactors-set") {
                 BroadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
-                if(broadcastManager) broadcastManager.Say(message.message, message.playerName, null)
+                if(broadcastManager) await broadcastManager.Say(message.message, message.playerName, null)
             } else if (message.type == "log_event") {
                 fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 

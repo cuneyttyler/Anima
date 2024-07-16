@@ -23,7 +23,7 @@ export class GoogleGenAIController {
         this.senderQueue = new SenderQueue(id, type, socket);
     }
 
-    async Send(message) {
+    async Send(message, messageType?) {
         // console.log("PROMPT SENT: " + message.prompt + message.message)
         let response
         if(process.env.LLM_PROVIDER == "OPENROUTER") {
@@ -35,18 +35,19 @@ export class GoogleGenAIController {
             return
         }
         if(response.status == 1) {
-            this.ProcessMessage(response.text)
+            this.ProcessMessage(response.text, messageType)
             // console.log("RESPONSE RECEIVED: " + response.text)
         } else {
-            this.ProcessMessage("Let's talk about this later.")
+            this.ProcessMessage("Let's talk about this later.", messageType)
         } 
     }
+    
     async SummarizeEvents(events) {
         let response
         if(process.env.LLM_PROVIDER == "OPENROUTER") {
-            response = await OpenRouter.SendMessage("Please summarize this events with max. length of 2048 tokens : \n\n" + events)
+            response = await OpenRouter.SendMessage({message: "Please summarize this events with max. length of 2048 tokens : \n\n" + events})
         } else if(process.env.LLM_PROVIDER == "GOOGLE") {
-            response = await GoogleGenAI.SendMessage("Please summarize this events with max. length of 2048 tokens : \n\n" + events)
+            response = await GoogleGenAI.SendMessage({message: "Please summarize this events with max. length of 2048 tokens : \n\n" + events})
         } else {
             console.error("LLM_PROVIDER is missing in your .env file")
             return
@@ -57,7 +58,7 @@ export class GoogleGenAIController {
         return response.text;
     }
 
-    async ProcessMessage(message : any) {
+    async ProcessMessage(message : any, messageType) {
         if(message.toLowerCase().includes("not_answering") || message.toLowerCase().includes("not answering") || message == "Let's talk about this later.") {
             console.log(`${this.character.name} NOT ANSWERING.`)
 
@@ -75,7 +76,7 @@ export class GoogleGenAIController {
             }
         }
 
-        if(this.type == 1) {
+        if(messageType == 1) {
             this.SendVerifyConnection()
         }
         
@@ -88,23 +89,23 @@ export class GoogleGenAIController {
             topic_filename = "AnimaDialo_AnimaTargetBran_00133A1A_1"
         } else if(this.type == 1 || this.type == 2) {
             if(this.speaker == 0) {
-                temp_file_suffix = "2"
+                temp_file_suffix = "1"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2B_1"
             }
             if(this.speaker == 1) {
-                temp_file_suffix = "3"
+                temp_file_suffix = "2"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2C_1"
             }
             if(this.speaker == 2) {
-                temp_file_suffix = "4"
+                temp_file_suffix = "3"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2D_1"
             }
             if(this.speaker == 3) {
-                temp_file_suffix = "5"
+                temp_file_suffix = "4"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2E_1"
             }
             if(this.speaker == 4) {
-                temp_file_suffix = "6"
+                temp_file_suffix = "5"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2F_1"
             }
         }
@@ -141,7 +142,7 @@ export class GoogleGenAIController {
     }
 
     SendVerifyConnection() {
-        let verifyConnection = GetPayload("connection established", "established", 0, this.type, 0);
+        let verifyConnection = GetPayload("connection established", "established", 0, 1, 0);
 
         console.log("Connection to " + this.character.name + " is succesfull" + JSON.stringify(verifyConnection));
         (console as any).logToLog(`Connection to ${this.character.name} is succesfull.`)            

@@ -165,8 +165,8 @@ export class AudioProcessor extends EventEmitter {
 
         let duration: number = 0;
         try {
-            let audioFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.wav';
-            let lipFile = './Audio/Temp/' + voiceFileName + '_' + stepCount + '.lip';
+            let audioFile = './Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount + '.wav';
+            let lipFile = './Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount + '.lip';
             this.convertAudio(tempFileName, audioFile, pitch, async () => {
                 this.generateLipFile(audioFile, lipFile, msg);
                 duration = await this.getAudioDuration(audioFile);

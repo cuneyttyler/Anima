@@ -102,9 +102,9 @@ export default  class Api {
         BroadcastManager.SetCharacters(ids, formIds, voiceTypes)
         await new BroadcastManager('Adventurer', null)
 
-        const ClientManager_N2N = new DialogueManager(true)
-        await ClientManager_N2N.ConnectToCharacter(ids[0], "0", "MaleNord", ids[1], "Adventurer", null);
-        ClientManager_N2N.StartN2N("Riverwood", ids[1])
+        // const ClientManager_N2N = new DialogueManager(true)
+        // await ClientManager_N2N.ConnectToCharacter(ids[0], "0", "MaleNord", ids[1], "Adventurer", null);
+        // ClientManager_N2N.StartN2N("Riverwood", ids[1])
 
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
         EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
