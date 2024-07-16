@@ -38,10 +38,15 @@ fastify.register(websocketPlugin);
 const fileManager = new FileManager()
 const ClientManager = new DialogueManager(false);
 const ClientManager_N2N = new DialogueManager(true)
+let broadcastManager : BroadcastManager
 
 export let BROADCAST_QUEUE = new BroadcastQueue(null)
 export let N2N_SPEAKER
 export let N2N_LISTENER
+EventBus.GetSingleton().on("N2N_END", () => {
+    N2N_SPEAKER = null
+    N2N_LISTENER = null
+})
 
 RunInformation();
 
@@ -62,7 +67,7 @@ fastify.register(async function (fastify) {
         connection.socket.on('message', async (msg) => {
 
             let message = JSON.parse(msg.toString());
-            if(message.type != 'log_event' && message.type != 'broadcast-set') {
+            if(message.type != 'log_event' && message.type != 'broadcast-set' && message.type != 'cellactors-set') {
                 console.log("Message received", msg.toString());
             }
             if (message.type == "connect" && !message.is_n2n) {
@@ -78,18 +83,24 @@ fastify.register(async function (fastify) {
             } else if (message.type == "stop" && !message.is_n2n) {
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
-                await ClientManager_N2N.ConnectToCharacter(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.playerName, connection.socket);
+                let result = await ClientManager_N2N.ConnectToCharacter(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.playerName, connection.socket);
+                if(result) {
+                    N2N_SPEAKER = message.source
+                    N2N_LISTENER = message.target
+                    ClientManager_N2N.SendNarratedAction("You are at " + message.location + ". It's " + message.currentDateTime + ". Please keep your answers short if possible.")
+                    ClientManager_N2N.StartN2N(message.location, message.target)
+                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                }
             } else if (message.type == "start" && message.is_n2n) {
-                ClientManager_N2N.SendNarratedAction("You are at " + message.location + ". It's " + message.currentDateTime + ". Please keep your answers short if possible.")
-                ClientManager_N2N.StartN2N(message.location, message.target)
+                
             } else if (message.type == "stop" && message.is_n2n) {
-                new BroadcastManager(message.playerName, connection.socket).Say("STOP TALKING", "DungeonMaster", null)
-            } else if (message.type == "set-current-cell") {
-                DialogueManager.SetCharacters(message.ids)
-            }  else if (message.type == "broadcast-set") {
+                if(broadcastManager) broadcastManager.Stop()
+            } else if (message.type == "broadcast-set") {
                 BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes)
+            } else if (message.type == "cellactors-set") {
+                BroadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
-                new BroadcastManager(message.playerName,connection.socket).Say(message.message, message.playerName, null)
+                if(broadcastManager) broadcastManager.Say(message.message, message.playerName, null)
             } else if (message.type == "log_event") {
                 fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 
@@ -100,7 +111,7 @@ fastify.register(async function (fastify) {
                 if(ClientManager.IsConversationOngoing()) {
                     ClientManager.StopImmediately();
                 }
-                new BroadcastManager(message.playerName, connection.socket).Say("STOP TALKING", "DungeonMaster", null)
+                if(broadcastManager) broadcastManager.Stop()
             }
         })
     })

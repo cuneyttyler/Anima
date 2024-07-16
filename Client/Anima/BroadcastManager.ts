@@ -14,9 +14,11 @@ export default class BroadcastManager {
     public static names;
     private static formIds;
     private static voiceTypes;
+    public static cellNames;
     private profile;
     private speaker;
     private listener;
+    private stop;
     private characters = [];
     private prompts = [];
     private eventBuffers = [];
@@ -51,11 +53,16 @@ export default class BroadcastManager {
         BroadcastManager.voiceTypes = voiceTypes
     }
 
+    static SetCellCharacters(names) {
+        BroadcastManager.cellNames = names
+    }
+
     async ConnectToCharacters() {
         if(!BroadcastManager.names) return
         console.log(`Trying to connect to ${BroadcastManager.names.join(', ')}`);
         this.characters = []
         for(let i in BroadcastManager.names) {
+            if(BroadcastManager.names[i].toLowerCase() == this.profile) continue
             if(BroadcastManager.names[i].toLowerCase() == this.profile.toLowerCase()) continue
             (console as any).logToLog(`Trying to connect to ${BroadcastManager.names[i]}`)
             let character = this.characterManager.GetCharacter(BroadcastManager.names[i]);
@@ -74,6 +81,7 @@ export default class BroadcastManager {
 
     // Socket version of connection
     async Say(message: string, speakerName : string, listenerName: string, ) {
+        if(this.stop) return
         await this.ConnectToCharacters()
         this.speaker = speakerName;
         this.listener = listenerName;
@@ -82,7 +90,7 @@ export default class BroadcastManager {
 
         console.log("Broadcasting \"" + message + "\"")
         for(let i in this.characters) {
-            if(this.characters[i].name.toLowerCase() == this.speaker.toLowerCase()) continue
+            if(this.speaker && this.characters[i].name.toLowerCase() == this.speaker.toLowerCase()) continue
             this.Send(i, message)
         }
 
@@ -95,5 +103,9 @@ export default class BroadcastManager {
         googleController.Send(messageToSend)
         if(DEBUG)
             this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, this.promptManager.BroadcastEventMessage(this.speaker, this.listener, message), this.profile)
+    }
+
+    Stop() {
+        this.stop = true
     }
 }

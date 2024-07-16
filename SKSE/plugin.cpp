@@ -165,13 +165,34 @@ public:
 
         return subtitleInfo;
     }
+
+    static bool CheckNewSubtitle(RE::SubtitleInfo* subtitleInfo) { 
+        int index = 0;
+        int equalIndex = -1;
+        for (RE::SubtitleInfo info : RE::SubtitleManager::GetSingleton()->subtitles) {
+            if (string(info.subtitle) == string(subtitleInfo->subtitle)) {
+                equalIndex = index;
+            }
+            index++;
+        }
+
+        if (index > equalIndex) {
+            Util::WriteLog("NEW_SUBTITLE_FOUND");
+        }
+
+        return index > equalIndex;
+    }
+
     static void ShowSubtitle(RE::Actor* actor, string subtitle, float duration) {
         try {
+            Util::WriteLog("SHOW_SUBTITLE");
             RE::SubtitleInfo* subtitleInfo = GetSubtitle(actor, subtitle);
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*subtitleInfo);
-            this_thread::sleep_for(5s);
-            RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
-            RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
+            if (!CheckNewSubtitle(subtitleInfo)) {
+                this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000)));
+                RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
+                RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
+            }
         } catch (const exception& e) {
             Util::WriteLog("Exception during ==ShowSubtitle==: " + string(e.what()), 1);
         } catch (...) {
@@ -205,6 +226,7 @@ public:
     inline static RE::Actor* N2N_SourceActor;
     inline static RE::Actor* N2N_TargetActor;
     inline static map<RE::Actor*, string> broadcastActors;
+    inline static set<RE::Actor*> cellActors;
 
     static std::string DisplayMessage(std::string str, int fontSize, int width) {
         std::stringstream ss(str);
@@ -589,10 +611,15 @@ public:
         return true;
     }
 
-    static bool ClearActors(RE::StaticFunctionTag*) {
+    static bool ClearActors(RE::StaticFunctionTag*, bool empty) {
         EventWatcher::m.lock();
         EventWatcher::actors.clear();
         EventWatcher::voiceMap.clear();
+        AnimaCaller::broadcastActors.clear();
+        if (empty) {
+            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors);
+            SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
+        }
         EventWatcher::m.unlock();
 
         return true;
@@ -603,10 +630,14 @@ public:
         EventWatcher::actors.insert(actor);
         EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
         AnimaCaller::broadcastActors.clear();
+        AnimaCaller::cellActors.clear();
         for (RE::Actor* actor : EventWatcher::actors) {
             AnimaCaller::broadcastActors.insert(std::pair(actor, EventWatcher::voiceMap.at(actor->GetName())));
+            AnimaCaller::cellActors.insert(actor);
         }
         SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors);
+        AnimaCaller::cellActors.insert(RE::PlayerCharacter::GetSingleton());
+        SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         EventWatcher::m.unlock();
 
         return true;

@@ -74,6 +74,10 @@ export class GoogleGenAIController {
                 return
             }
         }
+
+        if(this.type == 1) {
+            this.SendVerifyConnection()
+        }
         
         message = message.replaceAll("\n","").replaceAll("**","")
 
@@ -82,33 +86,30 @@ export class GoogleGenAIController {
         if (this.type == 0){
             temp_file_suffix = "0"
             topic_filename = "AnimaDialo_AnimaTargetBran_00133A1A_1"
-        } else if(this.type == 1) {
-            temp_file_suffix = "1"
-            topic_filename = "AnimaDialo_AnimaN2NSourceB_00133A1D_1"
-        }else if(this.type == 2) {
+        } else if(this.type == 1 || this.type == 2) {
             if(this.speaker == 0) {
-                temp_file_suffix = "3"
+                temp_file_suffix = "2"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2B_1"
             }
             if(this.speaker == 1) {
-                temp_file_suffix = "4"
+                temp_file_suffix = "3"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2C_1"
             }
             if(this.speaker == 2) {
-                temp_file_suffix = "5"
+                temp_file_suffix = "4"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2D_1"
             }
             if(this.speaker == 3) {
-                temp_file_suffix = "6"
+                temp_file_suffix = "5"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2E_1"
             }
             if(this.speaker == 4) {
-                temp_file_suffix = "7"
+                temp_file_suffix = "6"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2F_1"
             }
         }
 
-        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
+        this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, ++this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
             if(this.type == 0) {
                 this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, null));
                 EventBus.GetSingleton().emit('WEB_TARGET_RESPONSE', message);
@@ -139,10 +140,20 @@ export class GoogleGenAIController {
         }
     }
 
-    SendEndSignal() {
+    SendVerifyConnection() {
+        let verifyConnection = GetPayload("connection established", "established", 0, this.type, 0);
+
+        console.log("Connection to " + this.character.name + " is succesfull" + JSON.stringify(verifyConnection));
+        (console as any).logToLog(`Connection to ${this.character.name} is succesfull.`)            
+        if(!DEBUG)
+            this.socket.send(JSON.stringify(verifyConnection));
+    }
+
+    SendEndSignal(type?) {
+        console.log("*** SEND_END_SIGNAL ***")
         this.stepCount = 0;
         if(!DEBUG) {
-            this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.type, 0)));
+            this.socket.send(JSON.stringify(GetPayload("", "end", 0, type ? type : this.type, 0)));
         }
         if(this.type == 0) {
             EventBus.GetSingleton().emit("END");

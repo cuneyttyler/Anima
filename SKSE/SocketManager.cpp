@@ -375,6 +375,22 @@ public:
         soc->send_message_broadcast(messageObj);
     }
 
+    void SendCellActors(set<RE::Actor*> actors) {
+        if (actors.size() == 0) return;
+
+        vector<string> names;
+        vector<string> formIds;
+        vector<string> voiceTypes;
+
+        for (auto actor : actors) {
+            names.push_back(actor->GetName());
+        }
+
+        BroadcastMessage* messageObj =
+            new BroadcastMessage("cellactors-set", "", names, formIds, voiceTypes, "", "", "", "");
+        soc->send_message_broadcast(messageObj);
+    }
+
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
         vector<string> names;
         vector<string> formIds;

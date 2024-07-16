@@ -5,6 +5,7 @@ import FileManager from './FileManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
+import BroadcastManager from './BroadcastManager.js';
 
 export default class DialogueManager {
     private managerId: number;
@@ -65,7 +66,7 @@ export default class DialogueManager {
         });
 
         EventBus.GetSingleton().on("N2N_END", () => {
-            this.SendEndSignal()
+            this.SendEndSignal(1)
         })
     }
 
@@ -88,7 +89,7 @@ export default class DialogueManager {
         (console as any).logToLog(`Trying to connect to ${characterId}`)
         if (!character) {
             console.log(`${characterId} is not included in DATABASE`);
-            let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, !this.is_n2n ? 0 : 1, this.listener);
+            let returnDoesNotExist = GetPayload("NPC is not in database.", "doesntexist", 0, !this.is_n2n ? 0 : 1, 0);
             if(!DEBUG)
                 socket.send(JSON.stringify(returnDoesNotExist));
             return false
@@ -101,19 +102,15 @@ export default class DialogueManager {
         this.profile = playerName;
         this.voiceType = voiceType;
         this.is_ending = false;
-        this.googleController = new GoogleGenAIController(this.managerId, !this.is_n2n ? 0 : 1, this.character, this.listener, this.voiceType, 0, socket);
+        this.googleController = new GoogleGenAIController(this.managerId, !this.is_n2n ? 0 : 1, this.character, this.listener, this.voiceType, 
+            BroadcastManager.names && this.is_n2n ? BroadcastManager.names.findIndex(n => n.toLowerCase() == this.character.name.toLowerCase()) : 0, socket);
 
         this.conversationOngoing = true;
         this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(characterId, formId, playerName)
 
-        let verifyConnection = GetPayload("connection established", "established", 0, !this.is_n2n ? 0 : 1, 0);
-
-        console.log("Connection to " + character.name + " is succesfull" + JSON.stringify(verifyConnection));
-        (console as any).logToLog(`Connection to ${character.name} is succesfull.`)
-        console.log("Sending verify connection, listener: " + this.listener)
-
-        if(!DEBUG)
-            socket.send(JSON.stringify(verifyConnection));
+        if(!this.is_n2n) {
+            this.googleController.SendVerifyConnection()      
+        }
         
         return true
     }
@@ -168,9 +165,9 @@ export default class DialogueManager {
         this.eventBuffer += " " + message + " ";
     }
 
-    SendEndSignal() {
+    SendEndSignal(type?) {
         if(this.googleController) {
-            this.googleController.SendEndSignal()
+            this.googleController.SendEndSignal(type)
         }
     }
 

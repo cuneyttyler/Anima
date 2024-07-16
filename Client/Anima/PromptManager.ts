@@ -52,7 +52,7 @@ export default class PromptManager {
     }
 
     CellActorsPrompt() {
-        return BroadcastManager.names ? "These actors are in current CELL: [" + BroadcastManager.names.join(',') + "]\n========================\n" : ""
+        return BroadcastManager.cellNames ? "These actors are in current CELL: [" + BroadcastManager.cellNames.join(',') + "]\n========================\n" : ""
     }
 
     EventPrompt(events) {

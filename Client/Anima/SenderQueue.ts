@@ -84,7 +84,6 @@ export class SenderQueue extends EventEmitter{
             return;
         }
 
-        this.processing = true;
         const data = this.queue.dequeue();
         if (data) {
             try {
@@ -98,7 +97,13 @@ export class SenderQueue extends EventEmitter{
     private async processData(data: SenderData): Promise<void> {
         return new Promise(async (resolve) => {
             try {
-                await this.copyFiles(data)
+                this.processing = true;
+                try {
+                    await this.copyFiles(data)
+                } catch {
+                    this.processing = false;
+                    console.error("ERROR during copying files.")
+                }
                 setTimeout(() => {
                     let result = GetPayload(data.text, "chat", data.duration, this.type, data.speaker);
                     if(!DEBUG)
