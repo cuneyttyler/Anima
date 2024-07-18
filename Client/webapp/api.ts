@@ -93,13 +93,15 @@ export default  class Api {
 
         let formIds = []
         let voiceTypes = []
+        let distances = []
 
         for(let i in ids) {
             formIds.push(0)
             voiceTypes.push("MaleNord")
+            distances.push(parseInt(i) + 1)
         }
 
-        BroadcastManager.SetCharacters(ids, formIds, voiceTypes)
+        BroadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
         await new BroadcastManager('Adventurer', null)
 
         // const ClientManager_N2N = new DialogueManager(true)
@@ -119,14 +121,18 @@ export default  class Api {
 
         let formIds = []
         let voiceTypes = []
+        let distances = []
 
         for(let i in ids) {
             formIds.push(0)
             voiceTypes.push("MaleNord")
+            distances.push(parseInt(i) + 1)
         }
 
-        BroadcastManager.SetCharacters(ids, formIds, voiceTypes)
-        await new BroadcastManager(speaker, null).Say(text, speaker, null)
+        let broadcastManager = new BroadcastManager(speaker, null)
+        BroadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
+        await broadcastManager.ConnectToCharacters()
+        await broadcastManager.Say(text, speaker, null)
 
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
         EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {

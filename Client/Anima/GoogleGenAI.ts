@@ -3,9 +3,9 @@ import {VertexAI} from '@google-cloud/vertexai'
 import { GOOGLE_PROJECT_ID, KEY_FILE_PATH, GOOGLE_API_KEY } from '../Anima.js';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-
-
 export default class GoogleGenAI {
+  private static TRY_COUNT = 0;
+  private static MAX_TRY_COUNT = 2;
 
   public static async SendMessage(message) {
     const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
@@ -16,8 +16,14 @@ export default class GoogleGenAI {
       const response = await result.response;
       const text = response.text()
 
+      GoogleGenAI.TRY_COUNT = 0
       return {status: 1, text: text}
     } catch(e) {
+      if(e.toString() == "[GoogleGenerativeAI Error]: Candidate was blocked due to SAFETY" && GoogleGenAI.TRY_COUNT++ < this.MAX_TRY_COUNT) {
+        console.log("RETRYING")
+        return GoogleGenAI.SendMessage(message)
+      }
+
       console.error(e)
       return {status: 2}
     }

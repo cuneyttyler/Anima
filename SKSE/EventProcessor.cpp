@@ -1,14 +1,18 @@
-class AnimaEventSink : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
-                         public RE::BSTEventSink<RE::InputEvent*> {
-    AnimaEventSink() = default;
-    AnimaEventSink(const AnimaEventSink&) = delete;
-    AnimaEventSink(AnimaEventSink&&) = delete;
-    AnimaEventSink& operator=(const AnimaEventSink&) = delete;
-    AnimaEventSink& operator=(AnimaEventSink&&) = delete;
+class EventProcessor : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
+                       public RE::BSTEventSink<RE::InputEvent*>,
+                       public RE::BSTEventSink<RE::TESActivateEvent>, 
+                       public RE::BSTEventSink<RE::TESMagicEffectApplyEvent>,
+                       public RE::BSTEventSink<RE::TESSpellCastEvent> {
+
+    EventProcessor() = default;
+    EventProcessor(const EventProcessor&) = delete;
+    EventProcessor(EventProcessor&&) = delete;
+    EventProcessor& operator=(const EventProcessor&) = delete;
+    EventProcessor& operator=(EventProcessor&&) = delete;
 
     class OpenTextboxCallback : public RE::BSScript::IStackCallbackFunctor {
         virtual inline void operator()(RE::BSScript::Variable a_result) override {
-            AnimaEventSink::GetSingleton()->trigger_result_menu("UITextEntryMenu");
+            EventProcessor::GetSingleton()->trigger_result_menu("UITextEntryMenu");
         }
         virtual inline void SetObject(const RE::BSTSmartPointer<RE::BSScript::Object>& a_object){};
 
@@ -30,29 +34,29 @@ class AnimaEventSink : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
                 auto playerMessage = std::string(a_result.GetString());
 
                 if (Util::trim(playerMessage).length() == 0) {
-                    AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                    EventProcessor::GetSingleton()->sendingBroadcast = false;
                     return;
                 }
 
                 Util::WriteLog("Received input == " + playerMessage + " ==.", 4);
 
                 if (Util::toLower(playerMessage).find(std::string("goodbye")) != std::string::npos) {
-                    AnimaEventSink::GetSingleton()->conversationPair = nullptr;
+                    EventProcessor::GetSingleton()->conversationPair = nullptr;
                     AnimaCaller::stopSignal = true;
                 }
 
-                if (AnimaEventSink::GetSingleton()->sendingBroadcast) {
+                if (EventProcessor::GetSingleton()->sendingBroadcast) {
                     std::thread([](std::string msg) { 
                             SocketManager::getInstance().SendBroadcast(
                                 msg, RE::PlayerCharacter::GetSingleton()->GetName(), "");
-                            AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                            EventProcessor::GetSingleton()->sendingBroadcast = false;
                         }, playerMessage)
                         .detach();
                 } else {
                     std::thread(
                         [](RE::Actor* actor, std::string msg) {
                             SocketManager::getInstance().sendMessage(msg, actor, AnimaCaller::stopSignal);
-                            AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                            EventProcessor::GetSingleton()->sendingBroadcast = false;
                         },
                         conversationActor, playerMessage)
                         .detach();
@@ -79,8 +83,8 @@ public:
     bool sendingBroadcast = true;
     bool isMenuInitialized = false;
 
-    static AnimaEventSink* GetSingleton() {
-        static AnimaEventSink singleton;
+    static EventProcessor* GetSingleton() {
+        static EventProcessor singleton;
         return &singleton;
     }
 
@@ -108,7 +112,7 @@ public:
         return RE::BSEventNotifyControl::kContinue;
     }
 
-    void ReleaseListener() { AnimaEventSink::GetSingleton()->isLocked = false; }
+    void ReleaseListener() { EventProcessor::GetSingleton()->isLocked = false; }
 
     void OnKeyReleased() {
         if (pressingKey && conversationPair != nullptr) {
@@ -152,7 +156,7 @@ public:
         auto vm = skyrimVM ? skyrimVM->impl : nullptr;
         if (vm) {
             RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback(new TextboxResultCallback(
-                []() { AnimaEventSink::GetSingleton()->ReleaseListener(); }, conversationPair));
+                []() { EventProcessor::GetSingleton()->ReleaseListener(); }, conversationPair));
             auto args = RE::MakeFunctionArguments(std::move(menuID));
             vm->DispatchStaticCall("UIExtensions", "GetMenuResultString", args, callback);
             isOpenedWindow = false;
@@ -188,7 +192,7 @@ public:
                         !AnimaCaller::conversationOngoing && !AnimaCaller::connecting) {
                         AnimaCaller::Start(conversationPair);
                     } else if (buttonEvent->IsDown() && AnimaCaller::conversationOngoing && !AnimaCaller::stopSignal) {
-                        AnimaEventSink::GetSingleton()->sendingBroadcast = false;
+                        EventProcessor::GetSingleton()->sendingBroadcast = false;
                         if (!isOpenedWindow) OnPlayerRequestInput("UITextEntryMenu");
                     }
                     // ] key
@@ -212,5 +216,47 @@ public:
         }
 
         return RE::BSEventNotifyControl::kContinue;
+    }
+
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESActivateEvent* event,
+                                          RE::BSTEventSource<RE::TESActivateEvent>*) override {
+
+        try {
+            RE::Actor* actor = event->actionRef->As<RE::Actor>();
+            SocketManager::getInstance().SendLogEvent(actor, string(actor->GetName()) + " activated " + string(event->objectActivated.get()->GetBaseObject()->GetName()));
+            return RE::BSEventNotifyControl::kContinue;
+        } catch (...) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
+    }
+
+    RE::BSEventNotifyControl
+    ProcessEvent(const RE::TESMagicEffectApplyEvent* event,
+                                          RE::BSTEventSource<RE::TESMagicEffectApplyEvent>*) override {
+
+        try {
+            RE::Actor* actor = event->caster->As<RE::Actor>();
+            auto effect = RE::TESForm::LookupByID<RE::TESNPC>(event->magicEffect);
+            SocketManager::getInstance().SendLogEvent(
+                actor, string(actor->GetName()) + " is under effect " +
+                           string(effect->GetName()));
+            return RE::BSEventNotifyControl::kContinue;
+        } catch (...) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
+    }
+
+    RE::BSEventNotifyControl ProcessEvent(const RE::TESSpellCastEvent* event,
+                                          RE::BSTEventSource<RE::TESSpellCastEvent>*) override {
+        try {
+
+            RE::Actor* actor = event->object->As<RE::Actor>();
+            auto effect = RE::TESForm::LookupByID<RE::TESNPC>(event->spell);
+            SocketManager::getInstance().SendLogEvent(
+                actor, string(actor->GetName()) + " cast spell " + string(effect->GetName()));
+            return RE::BSEventNotifyControl::kContinue;
+        } catch (...) {
+            return RE::BSEventNotifyControl::kContinue;
+        }
     }
 };

@@ -106,14 +106,14 @@ private:
 class BroadcastMessage {
 public:
     BroadcastMessage(const string& type, const string& message, const vector<string> ids, const vector<string> formIds,
-                     const vector<string> voiceTypes, const string& speaker, const string& listener,
-                     const string& playerName = "", const string& location = "",
-            const string& currentDateTime = "")
+                     const vector<string> voiceTypes, const vector<float> distances, const string& speaker, const string& listener,
+                     const string& playerName, const string& location, const string& currentDateTime)
         : type(type),
           message(message),
           ids(ids),
           formIds(formIds),
           voiceTypes(voiceTypes),
+          distances(distances),
           playerName(playerName),
           location(location),
           currentDateTime(currentDateTime),
@@ -121,8 +121,8 @@ public:
           listener(listener){}
 
     json toJson() const {
-        return {{"type", type},       {"message", message},       {"ids", ids},
-                {"formIds", formIds}, {"voiceTypes", voiceTypes}, {"playerName", playerName},
+        return {{"type", type},       {"message", message},       {"ids", ids}, 
+            {"formIds", formIds}, {"voiceTypes", voiceTypes}, {"distances", distances}, {"playerName", playerName},
                 {"is_n2n", false},    {"location", location},     {"currentDateTime", currentDateTime},
                 {"speaker", speaker}, {"listener", listener}};
     }
@@ -133,6 +133,7 @@ private:
     vector<string> ids;
     vector<string> formIds;
     vector<string> voiceTypes;
+    vector<float> distances;
     string playerName;
     string location;
     string currentDateTime;
@@ -300,12 +301,14 @@ public:
                 AnimaCaller::conversationActor = nullptr;
                 AnimaCaller::connecting = false;
             } else if (type == "doesntexist" && dial_type == 1) {
-                Util::WriteLog(
-                    "NPC doesn't exist in database == " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + ", " +
-                    Util::GetActorName(AnimaCaller::N2N_TargetActor) + " ==.", 4);
+                Util::WriteLog("NPC doesn't exist in database == " + Util::GetActorName(AnimaCaller::N2N_SourceActor) +
+                                   ", " + Util::GetActorName(AnimaCaller::N2N_TargetActor) + " ==.",
+                               4);
                 AnimaCaller::ShowReplyMessage(message);
                 AnimaCaller::N2N_SourceActor = nullptr;
                 AnimaCaller::N2N_TargetActor = nullptr;
+            } else if (type == "notification") {
+                AnimaCaller::ShowReplyMessage(message);
             }
         } 
         catch (const exception& e) {
@@ -356,50 +359,91 @@ public:
         soc->send_message(messageObj);
     }
 
-    void SendBroadcastActors(map<RE::Actor*, string> actors) {
+    void SendBroadcastActors(map<RE::Actor*, ActorData*> actors, string currentDateTime, string currentLocation) {
         if (actors.size() == 0) return;
+
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
 
         vector<string> names;
         vector<string> formIds;
         vector<string> voiceTypes;
+        vector<float> distances;
 
-        map<RE::Actor*, string>::iterator iter;
+        map<RE::Actor*, ActorData*>::iterator iter;
         for (iter = actors.begin(); iter != actors.end(); iter++) {
             names.push_back(iter->first->GetName());
             formIds.push_back(to_string(iter->first->GetFormID()));
-            voiceTypes.push_back(iter->second);
+            voiceTypes.push_back(iter->second->voice);
+            distances.push_back(iter->second->distance);
         }
 
+        BroadcastMessage* messageObj = new BroadcastMessage("broadcast-set", "", names, formIds, voiceTypes, distances,
+                                                            "", "", playerName, currentLocation, currentDateTime);
+        soc->send_message_broadcast(messageObj);
+    }
+
+    void ClearFollowers() {
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+
+        Util::WriteLog("PLAYER NAME " + string(playerName));
+
+        vector<string> names;
+        vector<string> formIds;
+        vector<string> voiceTypes;
+        vector<float> distances;
+
+        BroadcastMessage* messageObj = new BroadcastMessage("followers-clear", "", names, formIds, voiceTypes,
+                                                            distances, "", "", playerName, "", "");
+        soc->send_message_broadcast(messageObj);
+    }
+
+    void SendFollower(Follower* follower) {
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+
+        vector<string> names;
+        vector<string> formIds;
+        vector<string> voiceTypes;
+        vector<float> distances;
+
+        names.push_back(follower->actor->GetName());
+        formIds.push_back(to_string(follower->actor->GetFormID()));
+        voiceTypes.push_back(follower->voiceType);
+        distances.push_back(follower->distance);
+
         BroadcastMessage* messageObj =
-            new BroadcastMessage("broadcast-set", "", names, formIds, voiceTypes, "", "", "", "");
+            new BroadcastMessage("followers-set", "", names, formIds, voiceTypes, distances, "", "", playerName, "", "");
         soc->send_message_broadcast(messageObj);
     }
 
     void SendCellActors(set<RE::Actor*> actors) {
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+
         if (actors.size() == 0) return;
 
         vector<string> names;
         vector<string> formIds;
         vector<string> voiceTypes;
+        vector<float> distances;
 
         for (auto actor : actors) {
             names.push_back(actor->GetName());
         }
 
-        BroadcastMessage* messageObj =
-            new BroadcastMessage("cellactors-set", "", names, formIds, voiceTypes, "", "", "", "");
+        BroadcastMessage* messageObj = new BroadcastMessage("cellactors-set", "", names, formIds, voiceTypes, distances,
+                                                            "", "",  playerName, "", "");
         soc->send_message_broadcast(messageObj);
     }
 
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+
         vector<string> names;
         vector<string> formIds;
         vector<string> voiceTypes;
+        vector<float> distances;
 
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-
-        BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes, speaker,
-                                                            listener, playerName, "", "");
+        BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes,
+                                                            distances, speaker, listener, playerName, "", "");
         soc->send_message_broadcast(messageObj);
     }
 

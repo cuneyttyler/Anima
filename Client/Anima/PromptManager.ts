@@ -10,8 +10,10 @@ export default class PromptManager {
             + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. "
             + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE "
             + "**DO NOT KEEP SAYING THE SAME LINE** "
+            + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS "
+            + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == "
             + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING "
-            + "When you're asked by someone to follow them like \"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, answer \"Of course, I'll join you.'\" if you wish to join them. Reject in a manner you see appropriate otherwise. "
+            + "WHEN YOU'RE ASKED BY SOMEONE TO JOIN THEM WITH PHRASES LIKE  \"Follow me\' or\"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, == ANSWER \"Of course, I'll join you.'\" IF YOU WISH TO JOIN THEM. == Reject in a manner you see appropriate otherwise. "
             + "\n========================\n"
 
     GetUserProfilePrompt(profile) {
@@ -35,45 +37,75 @@ export default class PromptManager {
             + "These are your hobbies " + character.hobbyOrInterests + " "
             + "These are some additional facts about you: " + character.facts + " "
             + "These values describe your mood(ranged between -100 and 100): {" + " "
-            + "Joy: " + character.mood.joy + ", "
-            + "Fear: " + character.mood.fear + ", "
-            + "Trust: " + character.mood.trust + ", "
-            + "Surprise: " + character.mood.surprise + " "
+            + "Joy: " + (character.mood ? character.mood.joy : 0) + ", "
+            + "Fear: " + (character.mood ? character.mood.fear : 0) + ", "
+            + "Trust: " + (character.mood ? character.mood.trust : 0) + ", "
+            + "Surprise: " + (character.mood ? character.mood.surprise : 0) + " "
             + "}. "
             + "These values describe your personality(ranged between -100 and 100): {"  + " "
-            + "Positive: " + character.personality.positive + ", "
-            + "Peaceful: " + character.personality.peaceful + ", "
-            + "Open: " + character.personality.open + ", "
-            + "Extravert: " + character.personality.extravert + " "
+            + "Positive: " + (character.personality ? character.personality.positive : 0) + ", "
+            + "Peaceful: " + (character.personality ? character.personality.peaceful : 0) + ", "
+            + "Open: " + (character.personality ? character.personality.open : 0) + ", "
+            + "Extravert: " + (character.personality ? character.personality.extravert : 0) + " "
             + "}"
 
         return prompt + "\n========================\n";
     }
 
-    CellActorsPrompt() {
-        return BroadcastManager.cellNames ? "These actors are in current CELL: [" + BroadcastManager.cellNames.join(',') + "]\n========================\n" : ""
+    ClosestPrompt(closest) {
+        return closest ? "YOU ARE CLOSEST TO PLAYER. ANSWER THEM ALWAYS. ASSUME THAT THEY ARE TALKING TO YOU IF THEY ARE NOT DIRECTLY ADDRESSING TO SOME ELSE." : "" 
     }
 
-    EventPrompt(events) {
-        return events && events.length > 0 ? events +  "\n========================\n" : ""
+    DistancesPrompt(characters, character) {
+        let prompts = []
+        for(let i in characters.sort(c => c.distance)) {
+            prompts.push(characters[i].name + " is " + characters[i].distance + " meters from player")
+        }
+
+        return "THESE ARE DISTANCES OF CHARACTERS IN CELL: [" + prompts.join(',') + "] "
+                + " PLEASE TAKE INTO ACCOUNT THESE DISTANCES TO DECIDE IF YOU RESPOND OR NOT. CLOSER ACTORS ARE MORE LIKELY TO RESPOND."
+                + " \n========================\n"
+    }
+
+    CellActorsPrompt(location) {
+        let locationPrompt = "You are in " + location + "."
+        return BroadcastManager.cellNames ? locationPrompt + " These actors are in current CELL: [" + BroadcastManager.cellNames.join(',') + "]\n========================\n" : locationPrompt
     }
 
     CurrentEventPrompt(speaker, message) {
         return "== CURRENT EVENT ==> " + speaker + " says " + message
     }
 
-    BroadcastEventMessage(speaker, listener, message) {
-        return speaker + " says to " + (!listener ? "the crowd" : listener) + ": " + message + "\""
+    PastEventsPrompt(events) {
+        return events && events.length > 0 ? "HERE IS WHAT HAPPENED PREVIOUSLY (REGARD THESE AS PREVIOUS CONVERSATIONS YOU HELD): " + events +  "\n========================\n" : ""
     }
 
-    BroadcastPrompt(speaker, listener, message) {
-        return "THIS IS A BROADCAST MESSAGE(NOT SPECIFICALLY SPOKEN TO YOU, ONLY ABSTAIN FROM ANSWERING IF YOU REALLY FEEL LIKE NOT TALKING). " 
-            + "IF THEY ARE ADDRESSING DIRECTLY TO YOU, ANSWER. "
-            + "IF THEY ARE ADDRESSING A DIFFERENT PERSON. DO NOT ANSWER. "
-            + "IF YOU THINK THERE IS ENOUGH TALK ALREADY. DO NOT ANSWER. "
-            + "DO NOT REPEAT YOURSELF YOU KEEP SAYING THE SAME LINES"
+    BroadcastEventMessage(speaker, listener, message) {
+        return speaker + " says: " + message + "\""
+    }
+
+    BroadcastPrompt(speaker, listener, message, currentDateTime, closest) {
+        return "THIS IS A BROADCAST MESSAGE (NOT SPECIFICALLY SPOKEN TO YOU). " 
+            + "ANSWER THEM ALWAYS IF THEY ARE DIRECTLY ADDRESSING TO YOU OR YOU THINK IT IS RELATED TO YOU. "
+            + "ANSWER EXACTLY \"**NOT_RELATED**\" IF YOU THINK THEY ARE NOT SPEAKING TO YOU. "
+            + "ANSWER ALWAYS IF YOU ARE THE ONLY ACTOR IN THE CELL WITH THE PLAYER. (EVEN IF THEY ARE ADDRESSING TO SOMEONE ELSE) " 
+            + " - LIKE, IF THEY ARE ADDRESSING TO SOMEONE WHO ISN'T AVAILABLE ASKS QUESTIONS LIKE \"Who is that?\", \"Who are you talking to?\" etc."
+            + this.ClosestPrompt(closest) + " "
+            + "The date is \"" + currentDateTime + ".\" "
             + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER == CURRENT EVENT ==> " 
             + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"
+    }
+
+    ThoughtsPrompt(thoughtBuffer) {
+        return " THIS IS WHAT'S ON YOUR MIND RECENTLY: " + thoughtBuffer + "\n========================\n"
+    }
+
+    FollowerThoughPrompt() {
+        return " == PROMPT ==> THINK ABOUT THE CONVERSATIONS YOU HAD AND EVENTS THAT HAPPENED. SUMMARIZE IN MAX. 4000 CHARACTERS HOW YOU FEEL AND WHAT YOU THINK ABOUT THESE. INCLUDE SUMMARIZE OF YOUR OLD THOUGHTS IN YOUR MESSAGE. "
+    }
+
+    FollowerPeriodicPrompt(playerName) {
+        return " == PROMPT ==> REGARDING PAST EVENTS AND YOUR THOUGHTS, IF YOU HAVE SOMETHING TO TELL TO " + playerName + ", SPEAK(NOTE THAT NO ONE ASKED YOU TO SPEAK OR TOLD YOU SOMETHING AT THE PRESENT MOMENT, THIS IS ONLY A PROMPT FOR YOU TO DETERMINE IF YOU WISH TO SAY SOMETHING PERIODICALLY). KEEP THAT IN MIND THAT YOU DON'T NEED TO SPEAK. PLEASE KEEP YOUR SPEECHES NOT SO LONG. IF YOU DO NOT WISH TO TALK RIGHT NOW RESPOND EXACTLY \"**NOT_ANSWERING**\""
     }
 
     N2NStartPrompt(location, target) {
@@ -81,17 +113,27 @@ export default class PromptManager {
             + "IF YOU DO NOT WANT TO INITIATE A CONVERSATION, RESPOND **NOT_ANSWERING**"
     }
 
-    PrepareBroadcastMessage(profile, speaker, listener, character, message, eventBuffer) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt() + this.EventPrompt(eventBuffer) + this.BroadcastPrompt(speaker, listener, message)}    }
-
-    PrepareDialogueMessage(profile, speaker, listener, events, message) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(listener) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt() + this.EventPrompt(events) + this.CurrentEventPrompt(speaker, message)}    }
-
-    PrepareN2NStartMessage(character, listener, location) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt() + this.N2NStartPrompt(location, listener)}
+    PrepareBroadcastMessage(profile, speaker, listener, characters, character, currentDateTime, message, location, events, thoughts) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.DistancesPrompt(characters, character) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.BroadcastPrompt(speaker, listener, message, currentDateTime, characters.length > 0 && characters.sort(c => c.distance)[0] == character)}    
     }
 
-    PrepareN2NDialogueMessage(character, eventBuffer) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt() + this.EventPrompt(eventBuffer)}
+    PrepareFollowerThoughtMessage(profile, character, location, events, thoughts) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.FollowerThoughPrompt()}    
+    }
+
+    PrepareFollowerPeriodicMessage(profile, character, location, events, thoughts) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.FollowerPeriodicPrompt(profile)}  
+    }
+    
+    PrepareDialogueMessage(profile, speaker, listener, events, thoughts, message, location) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(listener) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.CurrentEventPrompt(speaker, message)}    
+    }
+
+    PrepareN2NStartMessage(character, listener, location, events, thoughts) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.N2NStartPrompt(location, listener)}
+    }
+
+    PrepareN2NDialogueMessage(character, eventBuffer, location) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(eventBuffer)}
     }
 }

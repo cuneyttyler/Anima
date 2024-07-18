@@ -147,6 +147,16 @@ public:
     static std::string trim(std::string str) { return std::regex_replace(str, std::regex{R"(^\s+|\s+$)"}, ""); }
 };
 
+class Follower {
+public:
+    Follower(RE::Actor* actor, const string& voiceType, const float& distance)
+        : actor(actor), voiceType(voiceType), distance(distance) {}
+
+    RE::Actor* actor;
+    string voiceType;
+    float distance;
+};
+
 using namespace RE::BSScript;
 using namespace std;
 
@@ -217,6 +227,14 @@ public:
     }
 };
 
+class ActorData {
+public:
+    ActorData(const string voice, const float distance) : voice(voice), distance(distance) {}
+
+    string voice;
+    float distance;
+
+};
 static class AnimaCaller {
 public:
     inline static RE::Actor* conversationActor;
@@ -225,8 +243,12 @@ public:
     inline static bool connecting = false;
     inline static RE::Actor* N2N_SourceActor;
     inline static RE::Actor* N2N_TargetActor;
-    inline static map<RE::Actor*, string> broadcastActors;
+    inline static map<RE::Actor*, ActorData*> broadcastActors;
+    inline static map<RE::Actor*, float> distances;
     inline static set<RE::Actor*> cellActors;
+    inline static vector<Follower*> followers;
+    inline static string currentDateTime;
+    inline static int MAX_BROADCAST_SPEAKER_COUNT = 5;
 
     static std::string DisplayMessage(std::string str, int fontSize, int width) {
         std::stringstream ss(str);
@@ -362,17 +384,30 @@ public:
     }
 
     static void SpeakBroadcast(std::string message, int speaker, float duration) {
-        if (AnimaCaller::broadcastActors.size() == 0) return;
-        RE::Actor* actor = Util::GetKeyAtIndex<RE::Actor*, string>(AnimaCaller::broadcastActors, speaker);
-        if (actor != nullptr) {
-            Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()), 4);
-            SKSE::ModCallbackEvent modEvent{
-                "BLC_Speak_Broadcast","",speaker, actor
-            };
-            SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-            SubtitleManager::ShowSubtitle(actor, message, duration);
-        } else {
-            Util::WriteLog("SpeakBroadcast: ACTOR NULL");
+        try {
+            if (AnimaCaller::broadcastActors.size() == 0) return;
+            RE::Actor* actor = nullptr;
+            if (speaker < AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT) {
+                actor = Util::GetKeyAtIndex<RE::Actor*, ActorData*>(AnimaCaller::broadcastActors, speaker);
+            } else if (speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT > 0 && speaker -
+                           AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT <
+                       AnimaCaller::followers.size()) {
+                actor = AnimaCaller::followers[speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT]->actor;
+            }
+
+            if (actor != nullptr) {
+                Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()), 4);
+                SKSE::ModCallbackEvent modEvent{"BLC_Speak_Broadcast", "", speaker, actor};
+                SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+                SubtitleManager::ShowSubtitle(actor, message, duration);
+            } else {
+                Util::WriteLog("SpeakBroadcast: ACTOR NULL");
+            }
+        } catch (const exception& e) {
+            Util::WriteLog("EXCEPTION during SpeakBroadcast: " + string(e.what()));
+        } catch (...) {
+            Util::WriteLog("UNKNOWN Exception during SpeakBroadcast.", 1);
+            return;
         }
     }
 
@@ -536,7 +571,7 @@ public:
     }
 };
 
-#include "AnimaEventSink.cpp"
+#include "EventProcessor.cpp"
 
 class ModPort {
 public:
@@ -562,7 +597,7 @@ public:
             AnimaCaller::conversationActor = nullptr;
         }
 
-        AnimaEventSink::GetSingleton()->conversationPair = nullptr;
+        EventProcessor::GetSingleton()->conversationPair = nullptr;
 
 
         return true;
@@ -617,7 +652,7 @@ public:
         EventWatcher::voiceMap.clear();
         AnimaCaller::broadcastActors.clear();
         if (empty) {
-            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors);
+            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, "", "");
             SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         }
         EventWatcher::m.unlock();
@@ -625,20 +660,73 @@ public:
         return true;
     }
 
-    static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice) {
+    
+    static bool ClearFollowers(RE::StaticFunctionTag*){
+        try{
+            AnimaCaller::followers.clear();
+            SocketManager::getInstance().ClearFollowers();
+
+            return true;
+        } catch (const exception& e) {
+            Util::WriteLog("EXCEPTION during SpeakBroadcast: " + string(e.what()));
+            return false;
+        } catch (...) {
+            Util::WriteLog("UNKNOWN Exception during SpeakBroadcast.", 1);
+            return false;
+        }
+    }
+
+    static bool SendFollower(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
+        try{
+            Util::WriteLog("Sending follower: " + string(actor->GetName()));
+            Follower* follower = new Follower(actor, voice, distance);
+            AnimaCaller::followers.push_back(follower);
+            SocketManager::getInstance().SendFollower(follower);
+            return true;
+        } catch (const exception& e) {
+            Util::WriteLog("EXCEPTION during SpeakBroadcast: " + string(e.what()));
+            return false;
+        }
+        catch (...) {
+            Util::WriteLog("UNKNOWN Exception during SpeakBroadcast.", 1);
+            return false;
+        }
+    }
+
+
+    static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance, string currentDateTime) {
+        try {
+        
+        
         EventWatcher::m.lock();
-        EventWatcher::actors.insert(actor);
-        EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
+        if (actor != RE::PlayerCharacter::GetSingleton()->As<RE::Actor>()) {
+            EventWatcher::actors.insert(actor);
+            EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
+        }       
         AnimaCaller::broadcastActors.clear();
         AnimaCaller::cellActors.clear();
         for (RE::Actor* actor : EventWatcher::actors) {
-            AnimaCaller::broadcastActors.insert(std::pair(actor, EventWatcher::voiceMap.at(actor->GetName())));
+            ActorData* actorData = new ActorData(EventWatcher::voiceMap.at(actor->GetName()), distance);
+            AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
             AnimaCaller::cellActors.insert(actor);
         }
-        SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors);
-        AnimaCaller::cellActors.insert(RE::PlayerCharacter::GetSingleton());
+
+        string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
+                                     ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
+                                     : "";
+        
+        SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, currentDateTime, currentLocation);
         SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         EventWatcher::m.unlock();
+        } catch (const exception& e) {
+            Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        } catch (...) {
+            Util::WriteLog("Unkown exception during send_message", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        }
 
         return true;
     }
@@ -653,7 +741,7 @@ public:
 void OnMessage(SKSE::MessagingInterface::Message* message) {
     if (message->type == SKSE::MessagingInterface::kInputLoaded) {
         SocketManager::getInstance().initSocket();
-        RE::BSInputDeviceManager::GetSingleton()->AddEventSink(AnimaEventSink::GetSingleton());
+        RE::BSInputDeviceManager::GetSingleton()->AddEventSink(EventProcessor::GetSingleton());
     }
 }
 
@@ -668,6 +756,8 @@ bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("ClearActors", "AnimaSKSE", &ModPort::ClearActors);
     vm->RegisterFunction("SendActor", "AnimaSKSE", &ModPort::SendActor);
     vm->RegisterFunction("SendResponseLog", "AnimaSKSE", &ModPort::SendResponseLog);
+    vm->RegisterFunction("ClearFollowers", "AnimaSKSE", &ModPort::ClearFollowers);
+    vm->RegisterFunction("SendFollower", "AnimaSKSE", &ModPort::SendFollower);
 
     return true;
 }
@@ -728,7 +818,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 
     StartClient();
 
-    auto* eventSink = AnimaEventSink::GetSingleton();
+    auto* eventSink = EventProcessor::GetSingleton();
 
     // ScriptSource
     auto* eventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton();

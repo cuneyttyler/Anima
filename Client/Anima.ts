@@ -10,6 +10,7 @@ import RunWebApp from './webapp/app.js'
 import path from "path";
 import waitSync from 'wait-sync';
 import { BroadcastQueue } from './Anima/BroadcastQueue.js';
+import FollowerManager from './Anima/FollowerManager.js';
 
 const resolved = path.resolve(".env");
 logToLog("Reading .env from location: " + resolved);
@@ -38,6 +39,7 @@ const fileManager = new FileManager()
 const ClientManager = new DialogueManager();
 const ClientManager_N2N = new DialogueManager()
 let broadcastManager : BroadcastManager
+let followerManager : FollowerManager
 
 export let BROADCAST_QUEUE = new BroadcastQueue(null)
 
@@ -85,14 +87,30 @@ fastify.register(async function (fastify) {
                 
             } else if (message.type == "stop" && message.is_n2n) {
                 if(broadcastManager) broadcastManager.Stop()
+            } else if (message.type == "followers-clear") {
+                if(!followerManager) {
+                    followerManager = new FollowerManager(message.playerName, connection.socket)
+                }
+                followerManager.Clear()
+            } else if (message.type == "followers-set") {
+                if(!followerManager) {
+                    followerManager = new FollowerManager(message.playerName, connection.socket)
+                    followerManager.Run()
+                }
+                if(!broadcastManager)
+                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                followerManager.ConnectToCharacter(message.ids[0], message.formIds[0], message.voiceTypes[0], message.distances[0])
+                if(!followerManager.IsRunning()) {
+                    followerManager.Run()
+                }
             } else if (message.type == "broadcast-set") {
-                BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes)
+                BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "cellactors-set") {
                 BroadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
                 if(!broadcastManager) broadcastManager = new BroadcastManager(message.playerName, connection.socket) 
                 await broadcastManager.ConnectToCharacters()
-                await broadcastManager.Say(message.message, message.playerName, null)
+                await broadcastManager.Say(message.message, message.location, message.playerName)
             } else if (message.type == "log_event") {
                 fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
                 

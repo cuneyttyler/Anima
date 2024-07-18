@@ -2,9 +2,11 @@
 import CharacterManager from './CharacterManager.js';
 import PromptManager from './PromptManager.js';
 import FileManager from './FileManager.js';
+import BroadcastManager from './BroadcastManager.js';
 import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
+import SKSEController from './SKSEController.js';
 
 export default class DialogueManager {
     private managerId: number;
@@ -19,6 +21,7 @@ export default class DialogueManager {
     private listener;
     private voiceType;
     private eventBuffer = "";
+    private thoughtBuffer = "";
     private conversationOngoing;
     private isInteractionOngoing;
     private isEnding = false;
@@ -95,10 +98,11 @@ export default class DialogueManager {
         this.profile = playerName;
         this.voiceType = voiceType;
         this.isEnding = false;
-        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.listener, this.voiceType, 0, socket);
+        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.listener, this.voiceType, 0, this.profile, new SKSEController(socket));
 
         this.conversationOngoing = true;
-        this.eventBuffer = "HERE IS WHAT HAPPENED PREVIOUSLY: "  + await this.fileManager.GetEvents(characterId, formId, playerName)
+        this.eventBuffer = this.promptManager.PastEventsPrompt(await this.fileManager.GetEvents(characterId, formId, playerName))
+        this.thoughtBuffer = this.promptManager.PastEventsPrompt(await this.fileManager.GetThoughts(characterId, formId, playerName))
 
         this.googleController.SendVerifyConnection()      
         
@@ -124,7 +128,7 @@ export default class DialogueManager {
 
     async Finalize() {
         let events = await this.googleController.SummarizeEvents(this.eventBuffer)
-        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile)
+        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, false)
         this.conversationOngoing = false;
         this.profile = null;
         this.id = null;
@@ -132,7 +136,7 @@ export default class DialogueManager {
     }
 
    Say(message : string) {
-        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, this.eventBuffer, message) 
+        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, this.eventBuffer, this.thoughtBuffer, message, BroadcastManager.currentLocation) 
         this.eventBuffer += " == CURRENT EVENT ==> " + this.listener + " says to you: \"" + message + "\""   
         this.googleController.Send(messageToSend)
     }

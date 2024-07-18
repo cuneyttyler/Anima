@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import EventBus from './EventBus.js';
 import { BROADCAST_QUEUE } from '../Anima.js';
 import { SenderQueue, SenderData } from './SenderQueue.js';
+import SKSEController from './SKSEController.js';
 
 class Queue<T> {
     private items: T[] = [];
@@ -46,12 +47,16 @@ export class BroadcastQueue extends EventEmitter{
         super()
         this.eventName = 'processNext_broadcast';
         this.queue = new Queue<BroadcastData>();
-        this.senderQueue = new SenderQueue(3, 2, socket)
+        this.senderQueue = new SenderQueue(3, 2, new SKSEController(socket))
         this.senderQueue.processing = false;
         this.on(this.eventName, this.processNext);
         EventBus.GetSingleton().on(this.eventName, () => {
             this.emit(this.eventName)
         });
+    }
+
+    doesHaveSpeechForCharacter(name) {
+        return this.senderQueue.doesHaveSpeechForCharacter(name)
     }
 
     addData(data: BroadcastData): void {

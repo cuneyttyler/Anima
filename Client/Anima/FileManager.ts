@@ -2,7 +2,7 @@ import fs from 'fs'
 
 export default class FileManager {
     
-    GetEventFile(id, formId, profile) {
+    private GetFile(type, id, formId, profile) {
         try {
             id = id.toLowerCase();
             let profileFolder = './Profiles/' + profile;
@@ -10,10 +10,10 @@ export default class FileManager {
                 fs.mkdirSync(profileFolder);
                 fs.writeFileSync(profileFolder + "/profile.txt", "", "utf8")
             }
-            if(!fs.existsSync(profileFolder + '/Events')) {
-                fs.mkdirSync(profileFolder + '/Events');
+            if(!fs.existsSync(profileFolder + '/' + type)) {
+                fs.mkdirSync(profileFolder + '/' + type);
             }
-            let fileName = profileFolder + '/Events/' + id + "_" + formId + '.txt'
+            let fileName = profileFolder + '/' + type + '/' + id + "_" + formId + '.txt'
             if(!fs.existsSync(fileName)) {
                 fs.writeFileSync(fileName, "", "utf8");
             }
@@ -23,24 +23,45 @@ export default class FileManager {
         }
     }
 
-    GetEvents(id, formId, profile) {
-        let eventFile = this.GetEventFile(id, formId, profile);
-        return fs.readFileSync(eventFile, 'utf8')
-    }
-
-    SaveEventLog(id, formId, log, profile) {
+    private SaveFile(type, id, formId, log, profile, append) {
         try {
             id = id.toLowerCase();
-            let eventFile = this.GetEventFile(id, formId, profile);
+            let file = this.GetFile(type, id, formId, profile);
 
-            if(!fs.existsSync(eventFile)) {
-                console.error("Event file not exists: " + eventFile);
+            if(!fs.existsSync(file)) {
+                console.error("File not exists(" + type + "): " + file);
                 return;
             }
-            fs.appendFileSync(eventFile, log, 'utf8')
+            if(append)
+                fs.appendFileSync(file, log, 'utf8')
+            else
+                fs.writeFileSync(file, log, 'utf8')
+            return true
         } catch (err) {
         console.error('Error writing the file:', err);
         return false;
         }
+    }
+
+    GetEvents(id, formId, profile) {
+        let eventFile = this.GetFile('Events', id, formId, profile)
+        return fs.readFileSync(eventFile, 'utf8')
+    }
+
+    SaveEventLog(id, formId, log, profile, append=true) {
+        this.SaveFile('Events', id, formId, log, profile, append)
+    }
+
+    GetThoughts(id, formId, profile) {
+        let eventFile = this.GetFile('Thoughts', id, formId, profile);
+        return fs.readFileSync(eventFile, 'utf8')
+    }
+
+    SaveThoughts(id, formId, log, profile, append=true) {
+        this.SaveFile('Thoughts', id, formId, log, profile, append)
+    }
+
+    SaveThoughts_WholeMemory(id, formId, log, profile) {
+        this.SaveFile('Thoughts_WholeMemory', id, formId, log, profile, true)
     }
 }

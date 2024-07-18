@@ -1,6 +1,7 @@
 import OpenRouter from './OpenRouter.js'
 import GoogleGenAI from './GoogleGenAI.js'
 import {AudioData, AudioProcessor} from './AudioProcessor.js'
+import SKSEController from './SKSEController.js'
 import EventBus from './EventBus.js'
 import { SenderData, SenderQueue } from './SenderQueue.js';
 import { BROADCAST_QUEUE } from '../Anima.js';
@@ -18,9 +19,27 @@ export class GoogleGenAIController {
     private senderQueue: SenderQueue;
     private stepCount = 0;
 
-    constructor(private id: number, private type: number, private character, private listener, private voiceType: string, private speaker: number, private socket : WebSocket) {
+    constructor(private id: number, private type: number, private character, private listener, private voiceType: string, private speaker: number, private playerName: String, private skseController: SKSEController) {
         this.audioProcessor = new AudioProcessor(id);
-        this.senderQueue = new SenderQueue(id, type, socket);
+        this.senderQueue = new SenderQueue(id, type, skseController);
+    }
+
+    async SendThought(message) {
+        // console.log("PROMPT SENT: " + message.prompt + message.message)
+        let response
+        if(process.env.LLM_PROVIDER == "OPENROUTER") {
+            response = await OpenRouter.SendMessage(message)
+        } else if(process.env.LLM_PROVIDER == "GOOGLE") {
+            response = await GoogleGenAI.SendMessage(message)
+        } else {
+            console.error("LLM_PROVIDER is missing in your .env file")
+            return
+        }
+        if(response.status == 1) {
+            return response.text
+        } else {
+            return ""
+        } 
     }
 
     async Send(message, messageType?) {
@@ -71,10 +90,19 @@ export class GoogleGenAIController {
                     EventBus.GetSingleton().emit('N2N_END')
                 }
                 return
+            } else if (this.type == 2) {
+                return
             } else {
                 console.error("UNKNOWN TYPE: " + this.type)
                 return
             }
+        }
+
+        if(message.toLowerCase().includes("not_related")) {
+            let payload = GetPayload(this.character.name + " thinks you're not talking to them.", "notification", 0, 1, this.speaker, "", "")
+            if(!DEBUG && this.character.name.toLowerCase() == this.playerName.toLowerCase())
+                this.skseController.Send(payload)
+            return
         }
 
         if(messageType == 1) {
@@ -88,7 +116,7 @@ export class GoogleGenAIController {
         if (this.type == 0){
             temp_file_suffix = "0"
             topic_filename = "AnimaDialo_AnimaTargetBran_00133A1A_1"
-        } else if(this.type == 1 || this.type == 2) {
+        } else if(this.type == 1) {
             if(this.speaker == 0) {
                 temp_file_suffix = "1"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00142D2B_1"
@@ -109,20 +137,41 @@ export class GoogleGenAIController {
                 temp_file_suffix = "5"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_00147E2F_1"
             }
+        } else if(this.type == 2) {
+            if(this.speaker == 5) {
+                temp_file_suffix = "1"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0016B533_1"
+            }
+            if(this.speaker == 6) {
+                temp_file_suffix = "1"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_00175742_1"
+            }
+            if(this.speaker == 7) {
+                temp_file_suffix = "1"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063D_1"
+            }
+            if(this.speaker == 8) {
+                temp_file_suffix = "1"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063E_1"
+            }
+            if(this.speaker == 9) {
+                temp_file_suffix = "1"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063F_1"
+            }
         }
 
         this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, ++this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
             if(this.type == 0) {
-                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, null));
+                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character.name, null));
                 EventBus.GetSingleton().emit('WEB_TARGET_RESPONSE', message);
                 setTimeout(() => {
                     this.SendEvent(message, this.speaker)
                 }, duration * 1000 + 500)
-            } else if(this.type == 1) {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.listener), duration));
+            } else if(this.type == 1 || this.type == 2) {
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character.name,  this.listener), duration));
                 // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, message);
             } else {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, null), duration));
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character.name,  null), duration));
             }
         }))
     }
@@ -137,7 +186,7 @@ export class GoogleGenAIController {
             if(message.includes(this.FollowAcceptResponse)) {
                 let payload = GetPayload("", "follow_request_accepted", 0, 0, speaker);
                 if(!DEBUG)
-                    this.socket.send(JSON.stringify(payload))
+                    this.skseController.Send(payload)
             }
         }
     }
@@ -148,14 +197,14 @@ export class GoogleGenAIController {
         console.log("Connection to " + this.character.name + " is succesfull" + JSON.stringify(verifyConnection));
         (console as any).logToLog(`Connection to ${this.character.name} is succesfull.`)            
         if(!DEBUG)
-            this.socket.send(JSON.stringify(verifyConnection));
+            this.skseController.Send(verifyConnection);
     }
 
     SendEndSignal() {
         console.log("*** SEND_END_SIGNAL ***")
         this.stepCount = 0;
         if(!DEBUG) {
-            this.socket.send(JSON.stringify(GetPayload("", "end", 0, this.type, 0)));
+            this.skseController.Send(GetPayload("", "end", 0, this.type, 0));
         }
         if(this.type == 0) {
             EventBus.GetSingleton().emit("END");

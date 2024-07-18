@@ -30,7 +30,7 @@ export default class DatasetProcessing {
             if(!character_1 || !character_2)
                 return
 
-            let prompt = new PromptManager().PrepareDialogueMessage("Uriel", character_1, character_2, "", text_1)
+            let prompt = new PromptManager().PrepareDialogueMessage("Uriel", character_1, character_2, "", "", text_1, BroadcastManager.currentLocation)
             
             let messages = []
             messages.push({role: 'user', content: prompt.prompt + prompt.message}, {role: 'model', content: text_2})
@@ -94,141 +94,163 @@ export default class DatasetProcessing {
     // Broadcast different target prompts
     // Broadcast crowd-directed prompts
     PostProcessDataset_v2() {
-        const raw_dataset = JSON.parse(fs.readFileSync(path.resolve("./other/skyrim_dataset_raw_v2_cleaned_v2.json"), 'utf-8'));
-        let broadcast_dialogues_raw = fs.readFileSync(path.resolve("./other/broadcast_dialogues_v2.txt"), 'utf-8')
-        let broadcast_dialogues = broadcast_dialogues_raw.split("==========").map((d) => d.split("\n"))
+        const raw_dataset = JSON.parse(fs.readFileSync(path.resolve("./other/skyrim_dataset_v3.json"), 'utf-8'));
+        let broadcast_dialogues_raw = fs.readFileSync(path.resolve("./other/broadcast_dialogues.txt"), 'utf-8')
+        let broadcast_dialogues = broadcast_dialogues_raw.split("=========").map((d) => d.split("\n"))
 
+        let j = 0
         let count = 0
+        let final_data = []
         raw_dataset.forEach((d) => { 
-            let final_data = []
-            const character_1 = d[0].character
-            const character_2 = this.characterManager.GetCharacter(d[1].character.toLowerCase())
-            const text_1 = d[0].text
-            const text_2 = d[1].text
+            if(j++ > 2000) return
 
-            if(!character_2) {
-                return
-            }
+            // const character_1 = this.characterManager.GetCharacter(d[0].character.toLowerCase())
+            // const character_2 = this.characterManager.GetCharacter(d[1].character.toLowerCase())
+            // const text_1 = d[0].text
+            // const text_2 = d[1].text
 
-            let promptManager = new PromptManager()
+            // if(!character_2) {
+            //     return
+            // }
 
-            let prompt = promptManager.PrepareDialogueMessage("Uriel", character_1, character_2, "", text_1)
+            // let promptManager = new PromptManager()
+
+            // let prompt = promptManager.PrepareDialogueMessage("Uriel", character_1, character_2, "", text_1, BroadcastManager.currentLocation)
             
-            let messages = []
-            messages.push({role: 'user', content: prompt.prompt + prompt.message}, {role: 'model', content: text_2})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // let messages = []
+            // messages.push({role: 'user', content: prompt.prompt + prompt.message}, {role: 'model', content: text_2})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            BroadcastManager.SetCharacters([character_2.id], ["0"], ["MaleNord"])
+            // BroadcastManager.SetCharacters([character_2.id], ["0"], ["MaleNord"], [1], null, "Riverwood")
+            // new BroadcastManager("Adventurer", null).ConnectToCharacters()
             
-            // 1 //
-            let broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, character_2.name + ", " + text_1, "")
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: text_2})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // // 1 //
+            // messages = []
+            // let broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", character_2.name + ", " + text_1, "", BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: text_2})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            // 2 //
-            let index = Math.floor(Math.random() * raw_dataset.length)
-            let differentTarget = raw_dataset[index]
-            while(differentTarget.name == character_2.name) {
-                Math.floor(Math.random() * raw_dataset.length)
-                differentTarget = raw_dataset[index]
-            }
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, differentTarget.name + ", " + text_1, "")
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT_ANSWERING**"})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // // 2 //
+            // messages = []
+            // let index = Math.floor(Math.random() * raw_dataset.length)
+            // let differentTarget = raw_dataset[index]
+            // while(differentTarget.name == character_2.name) {
+            //     Math.floor(Math.random() * raw_dataset.length)
+            //     differentTarget = raw_dataset[index]
+            // }
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", differentTarget.name + ", " + text_1, "", BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT_ANSWERING**"})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            // 3 //
-            index = Math.floor(Math.random() * broadcast_dialogues.length)
-            let d_2 = broadcast_dialogues[index]
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, d[0], "")
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: d[1]})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // // 3 //
+            // messages = []
+            // index = Math.floor(Math.random() * broadcast_dialogues.length)
+            // let d_2 = broadcast_dialogues[index]
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", d[0], "", BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: text_2})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            index = Math.floor(Math.random() * broadcast_dialogues.length)
-            d_2 = broadcast_dialogues[index]
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, d[0], "")
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT ANSWERING**"})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // messages = []
+            // index = Math.floor(Math.random() * broadcast_dialogues.length)
+            // d_2 = broadcast_dialogues[index]
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", d[0], "", BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT ANSWERING**"})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            // 4 //
-            let eventHistory = ""
-            for(let i = 0; i < 5; i++) {
-                index = Math.floor(Math.random() * raw_dataset.length)
+            // // 4 //
+            // messages = []
+            // let eventHistory = ""
+            // for(let i = 0; i < 5; i++) {
+            //     index = Math.floor(Math.random() * raw_dataset.length)
 
-                const character_1 = this.characterManager.GetCharacter(d[0].character.toLowerCase())
-                const character_2 = this.characterManager.GetCharacter(d[1].character.toLowerCase())
-                const text_1 = d[0].text
-                const text_2 = d[1].text
+            //     let dd = raw_dataset[index]
+            //     const character_1 = this.characterManager.GetCharacter(dd[0].character.toLowerCase())
+            //     const character_2 = this.characterManager.GetCharacter(dd[1].character.toLowerCase())
+            //     const text_1 = dd[0].text
+            //     const text_2 = dd[1].text
 
-                eventHistory += character_1 + " said: " + text_1 + " "
-                eventHistory += character_2 + " said: " + text_2
-            }
+            //     if(character_1)
+            //         eventHistory += character_1.name + " said: " + text_1 + " "
+            //     if(character_2)
+            //         eventHistory += character_2.name + " said: " + text_2
+            // }
             
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, character_2.name + ", " + text_1, eventHistory)
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: text_2})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", character_2.name + ", " + text_1, eventHistory, BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: text_2})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            // 5 //
-            eventHistory = ""
-            for(let i = 0; i < 5; i++) {
-                index = Math.floor(Math.random() * raw_dataset.length)
+            // // 5 //
+            // messages = []
+            // eventHistory = ""
+            // for(let i = 0; i < 5; i++) {
+            //     index = Math.floor(Math.random() * raw_dataset.length)
 
-                const character_1 = this.characterManager.GetCharacter(d[0].character.toLowerCase())
-                const character_2 = this.characterManager.GetCharacter(d[1].character.toLowerCase())
-                const text_1 = d[0].text
-                const text_2 = d[1].text
+            //     let dd = raw_dataset[index]
+            //     const character_1 = this.characterManager.GetCharacter(dd[0].character.toLowerCase())
+            //     const character_2 = this.characterManager.GetCharacter(dd[1].character.toLowerCase())
+            //     const text_1 = dd[0].text
+            //     const text_2 = dd[1].text
 
-                eventHistory += character_1 + " said: " + text_1 + " "
-                eventHistory += character_2 + " said: " + text_2
-            }
+            //     if(character_1)
+            //         eventHistory += character_1.name + " said: " + text_1 + " "
+            //     if(character_2)
+            //         eventHistory += character_2.name + " said: " + text_2
+            // }
 
-            index = Math.floor(Math.random() * raw_dataset.length)
-            differentTarget = raw_dataset[index]
-            while(differentTarget.name == character_2.name) {
-                Math.floor(Math.random() * raw_dataset.length)
-                differentTarget = raw_dataset[index]
-            }
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, differentTarget.name + ", " + text_1, eventHistory)
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT_ANSWERING**"})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // index = Math.floor(Math.random() * raw_dataset.length)
+            // differentTarget = raw_dataset[index]
+            // while(differentTarget.name == character_2.name) {
+            //     Math.floor(Math.random() * raw_dataset.length)
+            //     differentTarget = raw_dataset[index]
+            // }
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", differentTarget.name + ", " + text_1, eventHistory, BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT_ANSWERING**"})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
             
-            // 6 //
-            eventHistory = ""
-            for(let i = 0; i < 5; i++) {
-                index = Math.floor(Math.random() * raw_dataset.length)
+            // // 6 //
+            // messages = []
+            // eventHistory = ""
+            // for(let i = 0; i < 5; i++) {
+            //     index = Math.floor(Math.random() * raw_dataset.length)
 
-                const character_1 = this.characterManager.GetCharacter(d[0].character.toLowerCase())
-                const character_2 = this.characterManager.GetCharacter(d[1].character.toLowerCase())
-                const text_1 = d[0].text
-                const text_2 = d[1].text
+            //     let dd = raw_dataset[index]
+            //     const character_1 = this.characterManager.GetCharacter(dd[0].character.toLowerCase())
+            //     const character_2 = this.characterManager.GetCharacter(dd[1].character.toLowerCase())
+            //     const text_1 = dd[0].text
+            //     const text_2 = dd[1].text
 
-                eventHistory += character_1 + " said: " + text_1 + " "
-                eventHistory += character_2 + " said: " + text_2
-            }
+            //     if(character_1)
+            //         eventHistory += character_1.name + " said: " + text_1 + " "
+            //     if(character_2)
+            //         eventHistory += character_2.name + " said: " + text_2
+            // }
 
-            index = Math.floor(Math.random() * broadcast_dialogues.length)
-            d_2 = broadcast_dialogues[index]
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, d[0], eventHistory)
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: d[1]})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // index = Math.floor(Math.random() * broadcast_dialogues.length)
+            // d_2 = broadcast_dialogues[index]
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", d[0], eventHistory, BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: text_2})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
 
-            index = Math.floor(Math.random() * broadcast_dialogues.length)
-            d_2 = broadcast_dialogues[index]
-            broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", character_1.name, null, character_2, d[0], eventHistory)
-            messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT ANSWERING**"})
-            final_data.push(JSON.stringify({messages: messages}))
-            count++
+            // messages = []
+            // index = Math.floor(Math.random() * broadcast_dialogues.length)
+            // d_2 = broadcast_dialogues[index]
+            // broadcastPrompt = promptManager.PrepareBroadcastMessage("Adventurer", d[0].character, null, [character_2], character_2, "", d[0], eventHistory, BroadcastManager.currentLocation)
+            // messages.push({role: 'user', content: broadcastPrompt.prompt + broadcastPrompt.message}, {role: 'model', content: "**NOT ANSWERING**"})
+            // final_data.push(JSON.stringify({messages: messages}))
+            // count++
             
-            fs.appendFileSync('./other/skyrim_dataset_v3.jsonl', final_data.join('\n'), 'utf8')
         })
+
+        fs.writeFileSync('./other/skyrim_dataset_v3.jsonl', final_data.join('\n'), 'utf8')
         
         console.log("Written " + count + " lines.")
         console.log("DONE")
