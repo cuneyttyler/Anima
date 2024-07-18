@@ -84,7 +84,7 @@ export class GoogleGenAIController {
             if(this.type == 0) {
                 return
             } else if(this.type == 1) {
-                EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.speaker, null)
+                EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
                 EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
                 if(messageType == 1) {
                     EventBus.GetSingleton().emit('N2N_END')
@@ -98,7 +98,7 @@ export class GoogleGenAIController {
             }
         }
 
-        if(message.toLowerCase().includes("not_related")) {
+        if(message.toLowerCase().includes("not_related") || message.toLowerCase().includes('not related')) {
             let payload = GetPayload(this.character.name + " thinks you're not talking to them.", "notification", 0, 1, this.speaker, "", "")
             if(!DEBUG && this.character.name.toLowerCase() == this.playerName.toLowerCase())
                 this.skseController.Send(payload)
@@ -162,16 +162,16 @@ export class GoogleGenAIController {
 
         this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, ++this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
             if(this.type == 0) {
-                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character.name, null));
+                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, null));
                 EventBus.GetSingleton().emit('WEB_TARGET_RESPONSE', message);
                 setTimeout(() => {
                     this.SendEvent(message, this.speaker)
                 }, duration * 1000 + 500)
             } else if(this.type == 1 || this.type == 2) {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character.name,  this.listener), duration));
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character,  this.listener), duration));
                 // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, message);
             } else {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character.name,  null), duration));
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character,  null), duration));
             }
         }))
     }

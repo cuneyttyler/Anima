@@ -101,8 +101,9 @@ export default  class Api {
             distances.push(parseInt(i) + 1)
         }
 
-        BroadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
-        await new BroadcastManager('Adventurer', null)
+        let broadcastManager = await new BroadcastManager('Adventurer', null)
+        broadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
+        
 
         // const ClientManager_N2N = new DialogueManager(true)
         // await ClientManager_N2N.ConnectToCharacter(ids[0], "0", "MaleNord", ids[1], "Adventurer", null);
@@ -130,7 +131,7 @@ export default  class Api {
         }
 
         let broadcastManager = new BroadcastManager(speaker, null)
-        BroadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
+        broadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
         await broadcastManager.ConnectToCharacters()
         await broadcastManager.Say(text, speaker, null)
 

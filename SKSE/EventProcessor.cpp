@@ -223,9 +223,11 @@ public:
 
         try {
             RE::Actor* actor = event->actionRef->As<RE::Actor>();
-            SocketManager::getInstance().SendLogEvent(actor, string(actor->GetName()) + " activated " + string(event->objectActivated.get()->GetBaseObject()->GetName()));
+            EventWatcher::SendLogEvent(string(actor->GetName()) + " activated " +
+                                       string(event->objectActivated.get()->GetBaseObject()->GetName()));
             return RE::BSEventNotifyControl::kContinue;
-        } catch (...) {
+        } catch (const exception& e) {
+            Util::WriteLog("Exception Occured during ActivateEvent::ProcessEvent: " + string(e.what()));
             return RE::BSEventNotifyControl::kContinue;
         }
     }
@@ -237,11 +239,11 @@ public:
         try {
             RE::Actor* actor = event->caster->As<RE::Actor>();
             auto effect = RE::TESForm::LookupByID<RE::TESNPC>(event->magicEffect);
-            SocketManager::getInstance().SendLogEvent(
-                actor, string(actor->GetName()) + " is under effect " +
+            EventWatcher::SendLogEvent(string(actor->GetName()) + " is under effect " +
                            string(effect->GetName()));
             return RE::BSEventNotifyControl::kContinue;
-        } catch (...) {
+        } catch (const exception& e) {
+            Util::WriteLog("Exception Occured during TESMagicEffectApplyEvent::ProcessEvent: " + string(e.what()));
             return RE::BSEventNotifyControl::kContinue;
         }
     }
@@ -249,13 +251,12 @@ public:
     RE::BSEventNotifyControl ProcessEvent(const RE::TESSpellCastEvent* event,
                                           RE::BSTEventSource<RE::TESSpellCastEvent>*) override {
         try {
-
             RE::Actor* actor = event->object->As<RE::Actor>();
-            auto effect = RE::TESForm::LookupByID<RE::TESNPC>(event->spell);
-            SocketManager::getInstance().SendLogEvent(
-                actor, string(actor->GetName()) + " cast spell " + string(effect->GetName()));
+            auto effect = RE::TESForm::LookupByID(event->spell);
+            EventWatcher::SendLogEvent(string(actor->GetName()) + " cast spell " + string(effect->GetName()) + ".");
             return RE::BSEventNotifyControl::kContinue;
-        } catch (...) {
+        } catch (const exception& e) {
+            Util::WriteLog("Exception Occured during TESSpellCastEvent::ProcessEvent: " + string(e.what()));
             return RE::BSEventNotifyControl::kContinue;
         }
     }

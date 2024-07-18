@@ -52,7 +52,7 @@ export default class FollowerManager {
         console.log("SENDING THOUGHT PROMPTS")
         this.characters.forEach(async (c) => {
             console.log("SENDING for " + c.name)
-            let thoughtPrompt = this.promptManager.PrepareFollowerThoughtMessage(this.profile,c,BroadcastManager.currentLocation, this.fileManager.GetEvents(c.id, c.formId, this.profile), this.fileManager.GetThoughts(c.id, c.formId, this.profile))
+            let thoughtPrompt = this.promptManager.PrepareFollowerThoughtMessage(this.profile,c, BroadcastManager.currentLocation, this.fileManager.GetEvents(c.id, c.formId, this.profile), this.fileManager.GetThoughts(c.id, c.formId, this.profile))
             let thoughts = await c.googleController.SendThought(thoughtPrompt)
             console.log("SAVING THOUGHTS " + thoughts)
             this.fileManager.SaveThoughts(c.id, c.formId, thoughts, this.profile, false)

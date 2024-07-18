@@ -9,7 +9,7 @@ export default class PromptManager {
             + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY. "
             + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. "
             + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE "
-            + "**DO NOT KEEP SAYING THE SAME LINE** "
+            + "**DO NOT KEEP SAYING THE SAME LINE** REGARD WHAT YOU HAVE SAID BEFORE (THAT IS PROVIDED ALONG WITH THIS PROMPT) AND DO NOT REPEAT IT. "
             + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS "
             + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == "
             + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING "
@@ -73,24 +73,25 @@ export default class PromptManager {
     }
 
     CurrentEventPrompt(speaker, message) {
-        return "== CURRENT EVENT ==> " + speaker + " says " + message
+        return "== CURRENT EVENT ==> " + (message.length > 2 && message.substring(0,2) == "**" ? message : (speaker + " says " + message))
     }
 
     PastEventsPrompt(events) {
-        return events && events.length > 0 ? "HERE IS WHAT HAPPENED PREVIOUSLY (REGARD THESE AS PREVIOUS CONVERSATIONS YOU HELD): " + events +  "\n========================\n" : ""
+        return events && events.length > 0 ? "HERE IS WHAT HAPPENED PREVIOUSLY (REGARD THESE AS PREVIOUS CONVERSATIONS YOU HELD AND NEVER REPEAT THESE LINES): " + events +  "\n========================\n" : ""
     }
 
     BroadcastEventMessage(speaker, listener, message) {
-        return speaker + " says: " + message + "\""
+        return message.length > 2 && message.substring(0,2) == "**" ? message : speaker + " says: " + message + "\""
     }
 
     BroadcastPrompt(speaker, listener, message, currentDateTime, closest) {
         return "THIS IS A BROADCAST MESSAGE (NOT SPECIFICALLY SPOKEN TO YOU). " 
             + "ANSWER THEM ALWAYS IF THEY ARE DIRECTLY ADDRESSING TO YOU OR YOU THINK IT IS RELATED TO YOU. "
             + "ANSWER EXACTLY \"**NOT_RELATED**\" IF YOU THINK THEY ARE NOT SPEAKING TO YOU. "
-            + "ANSWER ALWAYS IF YOU ARE THE ONLY ACTOR IN THE CELL WITH THE PLAYER. (EVEN IF THEY ARE ADDRESSING TO SOMEONE ELSE) " 
+            + "ANSWER ALWAYS IF YOU ARE THE ONLY ACTOR IN THE CELL WITH THE PLAYER. (EVEN IF THEY ARE ADDRESSING TO SOMEONE ELSE). " 
+            + "DO NOT ANSWER IF IT SEEMS THAT THIS IS A CONVERSATION BETWEEN ANOTHER PEOPLE. "
             + " - LIKE, IF THEY ARE ADDRESSING TO SOMEONE WHO ISN'T AVAILABLE ASKS QUESTIONS LIKE \"Who is that?\", \"Who are you talking to?\" etc."
-            + this.ClosestPrompt(closest) + " "
+            // + this.ClosestPrompt(closest) + " "
             + "The date is \"" + currentDateTime + ".\" "
             + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER == CURRENT EVENT ==> " 
             + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"

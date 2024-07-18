@@ -556,7 +556,7 @@ public:
                 RE::Actor* speaker = static_cast<RE::Actor*>(subtitle.speaker.get().get());
 
                 if (speaker != nullptr && !contains(subtitle.subtitle.c_str()) &&
-                    string(subtitle.subtitle.c_str()).find("==EMPTY_SUBTITLE==") == string::npos) {
+                    string(subtitle.subtitle.c_str()).find("==EMPTY_SUBTITLE==") == string::npos && !speaker->IsGhost()) {
                     lines.insert(subtitle.subtitle.c_str());
                     SendSubtitle(speaker, subtitle.subtitle.c_str());
                 } else if (speaker == nullptr) {
@@ -567,6 +567,12 @@ public:
             Util::WriteLog("Exception during ==WatchSubtitles==: " + string(e.what()));
         } catch (...) {
             Util::WriteLog("Unknown exception during ==WatchSubtitles==.", 1);
+        }
+    }
+
+    static void SendLogEvent(string log) {
+        for (RE::Actor* actor : actors) {
+            SocketManager::getInstance().SendLogEvent(actor, log);
         }
     }
 };
@@ -645,21 +651,6 @@ public:
 
         return true;
     }
-
-    static bool ClearActors(RE::StaticFunctionTag*, bool empty) {
-        EventWatcher::m.lock();
-        EventWatcher::actors.clear();
-        EventWatcher::voiceMap.clear();
-        AnimaCaller::broadcastActors.clear();
-        if (empty) {
-            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, "", "");
-            SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
-        }
-        EventWatcher::m.unlock();
-
-        return true;
-    }
-
     
     static bool ClearFollowers(RE::StaticFunctionTag*){
         try{
@@ -693,31 +684,66 @@ public:
         }
     }
 
-
-    static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance, string currentDateTime) {
-        try {
-        
-        
+    static bool ClearActors(RE::StaticFunctionTag*, bool empty) {
         EventWatcher::m.lock();
-        if (actor != RE::PlayerCharacter::GetSingleton()->As<RE::Actor>()) {
-            EventWatcher::actors.insert(actor);
-            EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
-        }       
+        EventWatcher::actors.clear();
+        EventWatcher::voiceMap.clear();
         AnimaCaller::broadcastActors.clear();
-        AnimaCaller::cellActors.clear();
-        for (RE::Actor* actor : EventWatcher::actors) {
-            ActorData* actorData = new ActorData(EventWatcher::voiceMap.at(actor->GetName()), distance);
-            AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
-            AnimaCaller::cellActors.insert(actor);
+        if (empty) {
+            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, "", "");
+            SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         }
-
-        string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
-                                     ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
-                                     : "";
-        
-        SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, currentDateTime, currentLocation);
-        SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         EventWatcher::m.unlock();
+
+        return true;
+    }
+
+    static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
+                          string currentDateTime) {
+        try {
+            EventWatcher::m.lock();
+            if (actor != RE::PlayerCharacter::GetSingleton()->As<RE::Actor>()) {
+                EventWatcher::actors.insert(actor);
+                EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
+            }
+            AnimaCaller::broadcastActors.clear();
+            AnimaCaller::cellActors.clear();
+            for (RE::Actor* actor : EventWatcher::actors) {
+                ActorData* actorData = new ActorData(EventWatcher::voiceMap.at(actor->GetName()), distance);
+                AnimaCaller::cellActors.insert(actor);
+            }
+
+            string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
+                                         ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
+                                         : "";
+
+            SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
+        } catch (const exception& e) {
+            Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        } catch (...) {
+            Util::WriteLog("Unkown exception during send_message", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        }
+        EventWatcher::m.unlock();
+
+        return true;
+    }
+
+
+    static bool SendBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
+                          string currentDateTime) {
+        try {
+            ActorData* actorData = new ActorData(voice, distance);
+            AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
+            string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
+                                         ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
+                                         : "";
+
+            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, currentDateTime,
+                                                             currentLocation);
         } catch (const exception& e) {
             Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
@@ -755,6 +781,7 @@ bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("WatchSubtitles", "AnimaSKSE", &ModPort::WatchSubtitles);
     vm->RegisterFunction("ClearActors", "AnimaSKSE", &ModPort::ClearActors);
     vm->RegisterFunction("SendActor", "AnimaSKSE", &ModPort::SendActor);
+    vm->RegisterFunction("SendBroadcastActor", "AnimaSKSE", &ModPort::SendBroadcastActor);
     vm->RegisterFunction("SendResponseLog", "AnimaSKSE", &ModPort::SendResponseLog);
     vm->RegisterFunction("ClearFollowers", "AnimaSKSE", &ModPort::ClearFollowers);
     vm->RegisterFunction("SendFollower", "AnimaSKSE", &ModPort::SendFollower);
@@ -822,7 +849,10 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
 
     // ScriptSource
     auto* eventSourceHolder = RE::ScriptEventSourceHolder::GetSingleton();
-    
+    //eventSourceHolder->AddEventSink<RE::TESActivateEvent>(eventSink);
+    //eventSourceHolder->AddEventSink<RE::TESMagicEffectApplyEvent>(eventSink);
+    eventSourceHolder->AddEventSink<RE::TESSpellCastEvent>(eventSink);
+
     // SKSE
     SKSE::GetCrosshairRefEventSource()->AddEventSink(eventSink);
     

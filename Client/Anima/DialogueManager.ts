@@ -128,7 +128,7 @@ export default class DialogueManager {
 
     async Finalize() {
         let events = await this.googleController.SummarizeEvents(this.eventBuffer)
-        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, false)
+        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, true)
         this.conversationOngoing = false;
         this.profile = null;
         this.id = null;

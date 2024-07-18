@@ -5,7 +5,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default class GoogleGenAI {
   private static TRY_COUNT = 0;
-  private static MAX_TRY_COUNT = 2;
+  private static MAX_TRY_COUNT = 3;
 
   public static async SendMessage(message) {
     const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
@@ -19,7 +19,7 @@ export default class GoogleGenAI {
       GoogleGenAI.TRY_COUNT = 0
       return {status: 1, text: text}
     } catch(e) {
-      if(e.toString() == "[GoogleGenerativeAI Error]: Candidate was blocked due to SAFETY" && GoogleGenAI.TRY_COUNT++ < this.MAX_TRY_COUNT) {
+      if(e.toString().includes("Candidate was blocked due to SAFETY") && GoogleGenAI.TRY_COUNT++ < this.MAX_TRY_COUNT) {
         console.log("RETRYING")
         return GoogleGenAI.SendMessage(message)
       }

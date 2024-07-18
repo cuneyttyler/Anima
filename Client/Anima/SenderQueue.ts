@@ -44,10 +44,10 @@ export class SenderData extends EventEmitter {
     public voiceType: string;
     public voiceFileName: string;
     public speaker: number;
-    public speakerName: string;
+    public character;
     public listener: string;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, speakerName, listener) {
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, listener) {
         super();
         this.text = text;
         this.duration = duration;
@@ -56,7 +56,7 @@ export class SenderData extends EventEmitter {
         this.voiceType = voiceType;
         this.voiceFileName = voiceFileName;
         this.speaker = speaker;
-        this.speakerName = speakerName;
+        this.character = character;
         this.listener = listener;
     }
 }
@@ -80,9 +80,9 @@ export class SenderQueue extends EventEmitter{
         this.on(this.eventName, this.processNext);
     }
 
-    doesHaveSpeechForCharacter(name) {
+    doesHaveSpeechForCharacter(character) {
         for(let i = 0; i < this.queue.size(); i++) {
-            if(this.queue.get(i).speakerName.toLowerCase() == name.toLowerCase()) return true
+            if(this.queue.get(i).character.name.toLowerCase() == character.name.toLowerCase()) return true
         }
         return false
     }
@@ -121,7 +121,7 @@ export class SenderQueue extends EventEmitter{
                     console.error("ERROR during copying files.")
                 }
 
-                while(this.type == 0 && BROADCAST_QUEUE.doesHaveSpeechForCharacter(data.speakerName)) {
+                while(this.type == 0 && BROADCAST_QUEUE.doesHaveSpeechForCharacter(data.character)) {
                     waitSync(0.5)
                 }
                 
@@ -136,7 +136,7 @@ export class SenderQueue extends EventEmitter{
                     this.emit(this.eventName);
                     setTimeout(() => {
                         this.processing = false;
-                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.speaker, data.listener, data.text)
+                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.listener, data.text)
                         EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
                         EventBus.GetSingleton().emit('processNext_broadcast')
                     }, 1000)

@@ -104,9 +104,13 @@ fastify.register(async function (fastify) {
                     followerManager.Run()
                 }
             } else if (message.type == "broadcast-set") {
-                BroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
+                if(!broadcastManager)
+                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "cellactors-set") {
-                BroadcastManager.SetCellCharacters(message.ids)
+                if(!broadcastManager)
+                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                broadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
                 if(!broadcastManager) broadcastManager = new BroadcastManager(message.playerName, connection.socket) 
                 await broadcastManager.ConnectToCharacters()

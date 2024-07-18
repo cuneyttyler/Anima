@@ -13,12 +13,12 @@ export default class BroadcastManager {
     private fileManager: FileManager;
     private skseController: SKSEController;
     public static MAX_SPEAKER_COUNT = 5;
-    public static names;
-    private static formIds;
-    private static voiceTypes;
-    private static distances;
+    public names;
+    private formIds;
+    private voiceTypes;
+    private distances;
     public static currentLocation;
-    private static currentDateTime;
+    private currentDateTime;
     public static cellNames;
     private profile;
     private speaker;
@@ -40,17 +40,17 @@ export default class BroadcastManager {
         this.skseController = new SKSEController(socket);
 
         EventBus.GetSingleton().removeAllListeners('BROADCAST_RESPONSE')
-        EventBus.GetSingleton().on('BROADCAST_RESPONSE', async (i, listener, message) => {
+        EventBus.GetSingleton().on('BROADCAST_RESPONSE', async (character, listener, message) => {
             if(DEBUG) {
                 for(let j in this.characters) {
-                    this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " " + (message ? (i == j 
-                        ? "You" : this.characters[i].name) + " said : " + message : (i == j ? "You" : this.characters[i].name) + " didn't answered."), this.profile)
+                    this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " " + (message ? (character.name == this.characters[j].name 
+                        ? "You" : character.name) + " said : " + message : (character.name == this.characters[j].name ? "You" : character.name) + " didn't answered."), this.profile)
                 }
             }
             if(process.env.BROADCAST_RECURSIVE && process.env.BROADCAST_RECURSIVE.toLowerCase() == 'true' && message) {
-                await this.Say(message, BroadcastManager.names[i], listener)
+                await this.Say(message, character.name, listener)
             }
-            if(!message && ((this.N2N_SPEAKER && this.characters[i].name.toLowerCase() ==this.N2N_SPEAKER.toLowerCase()) || (this.N2N_LISTENER && this.characters[i] == this.N2N_LISTENER.toLowerCase()))) {
+            if(!message && ((this.N2N_SPEAKER && character.name.toLowerCase() ==this.N2N_SPEAKER.toLowerCase()) || (this.N2N_LISTENER && character == this.N2N_LISTENER.toLowerCase()))) {
                 this.SendEndSignal()
                 this.N2N_SPEAKER = null
                 this.N2N_LISTENER = null
@@ -58,41 +58,41 @@ export default class BroadcastManager {
         })
     }
 
-    static SetCharacters(names, formIds, voiceTypes, distances, currentDateTime, currentLocation) {
-        BroadcastManager.names = names
-        BroadcastManager.formIds = formIds
-        BroadcastManager.voiceTypes = voiceTypes
-        BroadcastManager.distances = distances
-        BroadcastManager.currentDateTime = currentDateTime
+    SetCharacters(names, formIds, voiceTypes, distances, currentDateTime, currentLocation) {
+        this.names = names
+        this.formIds = formIds
+        this.voiceTypes = voiceTypes
+        this.distances = distances
+        this.currentDateTime = currentDateTime
         BroadcastManager.currentLocation = currentLocation
     }
 
-    static SetCellCharacters(names) {
+    SetCellCharacters(names) {
         BroadcastManager.cellNames = names
     }
 
     async ConnectToCharacters() {
-        if(!BroadcastManager.names) return
+        if(!this.names) return
         this.stop = false
-        console.log(`Trying to connect to ${BroadcastManager.names.join(', ')}`);
+        console.log(`Trying to connect to ${this.names.join(', ')}`);
         this.characters = []
-        for(let i in BroadcastManager.names) {
-            if(BroadcastManager.names[i].toLowerCase() == this.profile) continue
-            if(BroadcastManager.names[i].toLowerCase() == this.profile.toLowerCase()) continue
-            (console as any).logToLog(`Trying to connect to ${BroadcastManager.names[i]}`)
-            let character = this.characterManager.GetCharacter(BroadcastManager.names[i]);
+        for(let i in this.names) {
+            if(this.names[i].toLowerCase() == this.profile) continue
+            if(this.names[i].toLowerCase() == this.profile.toLowerCase()) continue
+            (console as any).logToLog(`Trying to connect to ${this.names[i]}`)
+            let character = this.characterManager.GetCharacter(this.names[i]);
             if (!character) {
-                console.log(`${BroadcastManager.names[i]} is not included in DATABASE`);
+                console.log(`${this.names[i]} is not included in DATABASE`);
                 continue
             }
-            character.formId = BroadcastManager.formIds[i]
-            character.voiceType = BroadcastManager.voiceTypes[i]
-            character.distance = BroadcastManager.distances[i]
+            character.formId = this.formIds[i]
+            character.voiceType = this.voiceTypes[i]
+            character.distance = this.distances[i]
             character.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0
             this.characters.push(character)
             this.prompts.push(this.promptManager.PrepareCharacterPrompt(character))
-            this.eventBuffers.push(this.promptManager.PastEventsPrompt(await this.fileManager.GetEvents(BroadcastManager.names[i], BroadcastManager.formIds[i], this.profile)))
-            this.thoughtBuffers.push(this.promptManager.ThoughtsPrompt(await this.fileManager.GetThoughts(BroadcastManager.names[i], BroadcastManager.formIds[i], this.profile)))
+            this.eventBuffers.push(this.promptManager.PastEventsPrompt(await this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile)))
+            this.thoughtBuffers.push(this.promptManager.ThoughtsPrompt(await this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile)))
             let googleController = new GoogleGenAIController(4, 1, character, null, character.voiceType,  parseInt(i), this.profile, this.skseController);
             this.googleControllers.push(googleController)
         }
@@ -142,14 +142,14 @@ export default class BroadcastManager {
     }
 
    Send(i, message : string) {
-        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, this.speaker, this.listener, this.characters, this.characters[i], BroadcastManager.currentDateTime, message, BroadcastManager.currentLocation, this.eventBuffers[i], this.thoughtBuffers[i])
+        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, this.speaker, this.listener, this.characters, this.characters[i], this.currentDateTime, message, BroadcastManager.currentLocation, this.eventBuffers[i], this.thoughtBuffers[i])
         this.googleControllers[i].Send(messageToSend)
         if(DEBUG)
             this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, this.promptManager.BroadcastEventMessage(this.speaker, this.listener, message), this.profile)
     }
 
     CheckCharacterStillInScene(i, character) {
-        let index = BroadcastManager.formIds.findIndex(id => id == character.formId)
+        let index = this.formIds.findIndex(id => id == character.formId)
         if(index == -1) {
             this.characters.splice(i, 1)
             return false
