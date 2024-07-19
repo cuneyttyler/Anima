@@ -688,6 +688,7 @@ public:
         EventWatcher::m.lock();
         EventWatcher::actors.clear();
         EventWatcher::voiceMap.clear();
+        AnimaCaller::cellActors.clear();
         AnimaCaller::broadcastActors.clear();
         if (empty) {
             SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, "", "");
@@ -701,15 +702,12 @@ public:
     static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
                           string currentDateTime) {
         try {
+            Util::WriteLog("SendActor: " + string(actor->GetName()) + ", " + voice + ", " + to_string(distance));
             EventWatcher::m.lock();
-            if (actor != RE::PlayerCharacter::GetSingleton()->As<RE::Actor>()) {
-                EventWatcher::actors.insert(actor);
-                EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
-            }
-            AnimaCaller::broadcastActors.clear();
+            EventWatcher::actors.insert(actor);
+            EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
             AnimaCaller::cellActors.clear();
             for (RE::Actor* actor : EventWatcher::actors) {
-                ActorData* actorData = new ActorData(EventWatcher::voiceMap.at(actor->GetName()), distance);
                 AnimaCaller::cellActors.insert(actor);
             }
 

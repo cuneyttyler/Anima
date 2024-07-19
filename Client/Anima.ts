@@ -20,11 +20,14 @@ try {
     logToErrorLog("Something is not right with your env config!" + e)
 }
 
+
 export const KEY_FILE_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
 export const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID
 export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
+export const GOOGLE_LLM_MODEL = process.env.GOOGLE_LLM_MODEL
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 export const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
+export const OPENROUTER_LLM_MODEL = process.env.OPENROUTER_LLM_MODEL
 
 export let DEBUG = false;
 export function SET_DEBUG(debug) {
@@ -113,10 +116,10 @@ fastify.register(async function (fastify) {
                 broadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
                 if(!broadcastManager) broadcastManager = new BroadcastManager(message.playerName, connection.socket) 
-                await broadcastManager.ConnectToCharacters()
-                await broadcastManager.Say(message.message, message.location, message.playerName)
+                broadcastManager.ConnectToCharacters()
+                broadcastManager.Say(message.message, message.location, message.playerName)
             } else if (message.type == "log_event") {
-                fileManager.SaveEventLog(message.id, message.formId, message.message + " ", message.playerName);
+                fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, message.message + " ", message.playerName);
                 
                 if(ClientManager.IsConversationOngoing() && message.id == ClientManager.GetId() && message.formId == ClientManager.GetFormId()) {
                     ClientManager.SendNarratedAction(message.message + " ");

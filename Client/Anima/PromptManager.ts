@@ -13,7 +13,7 @@ export default class PromptManager {
             + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS "
             + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == "
             + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING "
-            + "WHEN YOU'RE ASKED BY SOMEONE TO JOIN THEM WITH PHRASES LIKE  \"Follow me\' or\"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, == ANSWER \"Of course, I'll join you.'\" IF YOU WISH TO JOIN THEM. == Reject in a manner you see appropriate otherwise. "
+            + " **IMPORTANT** => WHEN YOU'RE ASKED BY SOMEONE TO JOIN THEM WITH PHRASES LIKE  \"Follow me\' or\"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, == ANSWER \"Of course, I'll join you.'\" IF YOU WISH TO JOIN THEM. == Reject in a manner you see appropriate otherwise. "
             + "\n========================\n"
 
     GetUserProfilePrompt(profile) {
@@ -73,35 +73,49 @@ export default class PromptManager {
     }
 
     CurrentEventPrompt(speaker, message) {
-        return "== CURRENT EVENT ==> " + (message.length > 2 && message.substring(0,2) == "**" ? message : (speaker + " says " + message))
+        return "== CURRENT EVENT (GENERATE YOUR RESPONSES BASED ON THIS AND DO NOT REPEAT PREVIOUS LINES YOU SAID EARLIER) ==> " + message
     }
 
+    PastEventHelperText() {
+        return "(** VERY IMPORTANT** REGARD THESE AS ONLY PREVIOUS CONVERSATIONS YOU HELD AND **NEVER** REPEAT THESE LINES WHEN GENERATING RESPONSE)"
+    }
+    PastEventHelper() {
+        let arr = []
+        for(let i = 0; i < 5; i++) {
+            arr.push(this.PastEventHelperText())
+        }
+
+        return arr.join('\n')
+    }
     PastEventsPrompt(events) {
-        return events && events.length > 0 ? "HERE IS WHAT HAPPENED PREVIOUSLY (REGARD THESE AS PREVIOUS CONVERSATIONS YOU HELD AND NEVER REPEAT THESE LINES): " + events +  "\n========================\n" : ""
+        return events && events.length > 0 ? this.PastEventHelper() + " \n HERE IS WHAT HAPPENED PREVIOUSLY " + this.PastEventHelperText + ": " + events +  "\n========================\n" : ""
     }
 
     BroadcastEventMessage(speaker, listener, message) {
-        return message.length > 2 && message.substring(0,2) == "**" ? message : speaker + " says: " + message + "\""
+        return " == CURRENT EVENT (GENERATE YOUR RESPONSES BASED ON THIS AND DO NOT REPEAT PREVIOUS LINES YOU SAID EARLIER) ==> " + ((message.length > 2 && message.substring(0,2) == "**") ? message : speaker + " says: " + message + "\"")
     }
 
     BroadcastPrompt(speaker, listener, message, currentDateTime, closest) {
-        return "THIS IS A BROADCAST MESSAGE (NOT SPECIFICALLY SPOKEN TO YOU). " 
-            + "ANSWER THEM ALWAYS IF THEY ARE DIRECTLY ADDRESSING TO YOU OR YOU THINK IT IS RELATED TO YOU. "
-            + "ANSWER EXACTLY \"**NOT_RELATED**\" IF YOU THINK THEY ARE NOT SPEAKING TO YOU. "
-            + "ANSWER ALWAYS IF YOU ARE THE ONLY ACTOR IN THE CELL WITH THE PLAYER. (EVEN IF THEY ARE ADDRESSING TO SOMEONE ELSE). " 
-            + "DO NOT ANSWER IF IT SEEMS THAT THIS IS A CONVERSATION BETWEEN ANOTHER PEOPLE. "
-            + " - LIKE, IF THEY ARE ADDRESSING TO SOMEONE WHO ISN'T AVAILABLE ASKS QUESTIONS LIKE \"Who is that?\", \"Who are you talking to?\" etc."
-            // + this.ClosestPrompt(closest) + " "
-            + "The date is \"" + currentDateTime + ".\" "
-            + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER == CURRENT EVENT ==> " 
+        return "THIS IS A BROADCAST MESSAGE (NOT SPECIFICALLY SPOKEN TO YOU). \n" 
+            + "ANSWER THEM ALWAYS IF THEY ARE DIRECTLY ADDRESSING TO YOU OR YOU THINK IT IS RELATED TO YOU. \n"
+            + "ANSWER EXACTLY \"**NOT_RELATED**\" IF YOU THINK THEY ARE NOT SPEAKING TO YOU. \n"
+            + "ANSWER ALWAYS IF YOU ARE THE ONLY ACTOR IN THE CELL WITH THE PLAYER. (EVEN IF THEY ARE ADDRESSING TO SOMEONE ELSE). \n" 
+            + "DO NOT ANSWER IF IT SEEMS THAT THIS IS A CONVERSATION BETWEEN ANOTHER PEOPLE. \n"
+            + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
+            + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
+            + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
+            + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
+            + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
+            + "The date is \"" + currentDateTime + ".\" \n"
+            + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER \n" 
             + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"
     }
 
     ThoughtsPrompt(thoughtBuffer) {
-        return " THIS IS WHAT'S ON YOUR MIND RECENTLY: " + thoughtBuffer + "\n========================\n"
+        return thoughtBuffer ? " THIS IS WHAT'S ON YOUR MIND RECENTLY: " + thoughtBuffer + "\n========================\n" : ""
     }
 
-    FollowerThoughPrompt() {
+    FollowerThoughtPrompt() {
         return " == PROMPT ==> THINK ABOUT THE CONVERSATIONS YOU HAD AND EVENTS THAT HAPPENED. SUMMARIZE IN MAX. 4000 CHARACTERS HOW YOU FEEL AND WHAT YOU THINK ABOUT THESE. INCLUDE SUMMARIZE OF YOUR OLD THOUGHTS IN YOUR MESSAGE. "
     }
 
@@ -119,7 +133,7 @@ export default class PromptManager {
     }
 
     PrepareFollowerThoughtMessage(profile, character, location, events, thoughts) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.FollowerThoughPrompt()}    
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.FollowerThoughtPrompt()}    
     }
 
     PrepareFollowerPeriodicMessage(profile, character, location, events, thoughts) {

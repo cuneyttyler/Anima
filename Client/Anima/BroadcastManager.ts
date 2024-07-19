@@ -29,8 +29,6 @@ export default class BroadcastManager {
     private googleControllers = [];
     private characters = [];
     private prompts = [];
-    private eventBuffers = [];
-    private thoughtBuffers = [];
 
     constructor(playerName: string, socket: WebSocket) {
         this.characterManager = new CharacterManager();
@@ -41,20 +39,26 @@ export default class BroadcastManager {
 
         EventBus.GetSingleton().removeAllListeners('BROADCAST_RESPONSE')
         EventBus.GetSingleton().on('BROADCAST_RESPONSE', async (character, listener, message) => {
-            if(DEBUG) {
+            if(DEBUG && message) {
                 for(let j in this.characters) {
-                    this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " " + (message ? (character.name == this.characters[j].name 
-                        ? "You" : character.name) + " said : " + message : (character.name == this.characters[j].name ? "You" : character.name) + " didn't answered."), this.profile)
+                    this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " " + (character.name == this.characters[j].name 
+                        ? "You" : character.name) + " said : \"" + message + "\"", this.profile)
                 }
             }
             if(process.env.BROADCAST_RECURSIVE && process.env.BROADCAST_RECURSIVE.toLowerCase() == 'true' && message) {
                 await this.Say(message, character.name, listener)
             }
-            if(!message && ((this.N2N_SPEAKER && character.name.toLowerCase() ==this.N2N_SPEAKER.toLowerCase()) || (this.N2N_LISTENER && character == this.N2N_LISTENER.toLowerCase()))) {
+            if(!message && ((this.N2N_SPEAKER && character.name.toLowerCase() == this.N2N_SPEAKER.toLowerCase()) || (this.N2N_LISTENER && character == this.N2N_LISTENER.toLowerCase()))) {
                 this.SendEndSignal()
                 this.N2N_SPEAKER = null
                 this.N2N_LISTENER = null
             }
+        })
+
+        EventBus.GetSingleton().removeAllListeners('BROADCAST_STOP')
+        EventBus.GetSingleton().on('BROADCAST_STOP', async (character) => {
+            let i = this.characters.findIndex((c) => c.name.toLowerCase() == character.name.toLowerCase())
+            if(i > 0 &&  this.characters[i]) this.characters[i].stop = true;
         })
     }
 
@@ -71,7 +75,7 @@ export default class BroadcastManager {
         BroadcastManager.cellNames = names
     }
 
-    async ConnectToCharacters() {
+    ConnectToCharacters() {
         if(!this.names) return
         this.stop = false
         console.log(`Trying to connect to ${this.names.join(', ')}`);
@@ -85,16 +89,16 @@ export default class BroadcastManager {
                 console.log(`${this.names[i]} is not included in DATABASE`);
                 continue
             }
+            character.stop = false;
             character.formId = this.formIds[i]
             character.voiceType = this.voiceTypes[i]
             character.distance = this.distances[i]
             character.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0
             this.characters.push(character)
             this.prompts.push(this.promptManager.PrepareCharacterPrompt(character))
-            this.eventBuffers.push(this.promptManager.PastEventsPrompt(await this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile)))
-            this.thoughtBuffers.push(this.promptManager.ThoughtsPrompt(await this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile)))
-            let googleController = new GoogleGenAIController(4, 1, character, null, character.voiceType,  parseInt(i), this.profile, this.skseController);
-            this.googleControllers.push(googleController)
+            character.eventBuffer = this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile)
+            character.thoughtBuffer = this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile)
+            character.googleController = new GoogleGenAIController(4, 1, character, null, character.voiceType,  parseInt(i), this.profile, this.skseController);
         }
     }
 
@@ -109,9 +113,10 @@ export default class BroadcastManager {
         console.log("Broadcasting ==> " + speakerName + ": \"" + message + "\"")
         let sent = false
         for(let i in this.characters) {
-            if(this.speaker && this.characters[i].name.toLowerCase() == this.speaker.toLowerCase() && this.CheckCharacterStillInScene(i, this.characters[i])) continue
+            if((this.speaker && this.characters[i].name.toLowerCase() == this.speaker.toLowerCase()) || !this.CheckCharacterStillInScene(i, this.characters[i])) continue
             sent = true
-            this.Send(i, message)
+            console.log("SENDING to " + this.characters[i].name + ", " + this.characters[i].voiceType)
+            await this.Send(this.characters[i], message)
         }
 
         if(!sent && speakerName == this.profile) {
@@ -141,11 +146,9 @@ export default class BroadcastManager {
         return true
     }
 
-   Send(i, message : string) {
-        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, this.speaker, this.listener, this.characters, this.characters[i], this.currentDateTime, message, BroadcastManager.currentLocation, this.eventBuffers[i], this.thoughtBuffers[i])
-        this.googleControllers[i].Send(messageToSend)
-        if(DEBUG)
-            this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, this.promptManager.BroadcastEventMessage(this.speaker, this.listener, message), this.profile)
+   async Send(character, message : string) {
+        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, this.speaker, this.listener, this.characters, character, this.currentDateTime, message, BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, this.profile), this.fileManager.GetThoughts(character.name, character.formId, this.profile))
+        character.googleController.Send(messageToSend)
     }
 
     CheckCharacterStillInScene(i, character) {
@@ -154,7 +157,7 @@ export default class BroadcastManager {
             this.characters.splice(i, 1)
             return false
         }
-        return true
+        return !character.stop
     }
 
     async Stop() {

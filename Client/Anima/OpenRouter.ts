@@ -1,5 +1,5 @@
 import OpenAI from "openai"
-import {OPENROUTER_API_KEY, OPENROUTER_BASE_URL} from '../Anima.js'
+import {OPENROUTER_API_KEY, OPENROUTER_BASE_URL, OPENROUTER_LLM_MODEL} from '../Anima.js'
 
 export default class OpenRouter {
 
@@ -16,7 +16,7 @@ export default class OpenRouter {
     try {
       const completion = await openai.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
-        model: process.env.OPENROUTER_LLM_MODEL,
+        model: OPENROUTER_LLM_MODEL,
       })
     
       if(!completion || !completion.choices || completion.choices.length == 0 || !completion.choices[0].message || !completion.choices[0].message.content) {

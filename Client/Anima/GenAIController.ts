@@ -102,6 +102,20 @@ export class GoogleGenAIController {
             let payload = GetPayload(this.character.name + " thinks you're not talking to them.", "notification", 0, 1, this.speaker, "", "")
             if(!DEBUG && this.character.name.toLowerCase() == this.playerName.toLowerCase())
                 this.skseController.Send(payload)
+            if(this.type == 1) {
+                EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
+                EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
+                if(messageType == 1) {
+                    EventBus.GetSingleton().emit('N2N_END')
+                }
+                return
+            } 
+            return
+        }
+
+        if(this.type == 1 && message.toLowerCase().includes("stop_signal") || message.toLowerCase().includes('stop signal')) {
+            EventBus.GetSingleton().emit("BROADCAST_STOP", this.character)
+            EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, " **STOPPING DIALOGUE**")
             return
         }
 

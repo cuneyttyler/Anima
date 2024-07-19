@@ -131,7 +131,7 @@ export default  class Api {
         }
 
         let broadcastManager = new BroadcastManager(speaker, null)
-        broadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
+        broadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Saarthal")
         await broadcastManager.ConnectToCharacters()
         await broadcastManager.Say(text, speaker, null)
 
