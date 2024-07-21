@@ -46,8 +46,9 @@ export class SenderData extends EventEmitter {
     public speaker: number;
     public character;
     public listener: string;
+    public _continue: boolean;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, listener) {
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, listener, _continue) {
         super();
         this.text = text;
         this.duration = duration;
@@ -58,6 +59,7 @@ export class SenderData extends EventEmitter {
         this.speaker = speaker;
         this.character = character;
         this.listener = listener;
+        this._continue = _continue;
     }
 }
 
@@ -126,9 +128,14 @@ export class SenderQueue extends EventEmitter{
                 }
                 
                 setTimeout(() => {
-                    let result = GetPayload(data.text, "chat", data.duration, this.type, data.speaker);
+                    let result
+                    result = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, data.character.name);
                     if(!DEBUG)
                         this.skseController.Send(result);
+
+                    if(data._continue) {
+                        EventBus.GetSingleton().emit("CONTINUE", this.type, data.character, data.text)
+                    }
                 }, 250)
 
                 setTimeout(() => {
@@ -136,10 +143,11 @@ export class SenderQueue extends EventEmitter{
                     this.emit(this.eventName);
                     setTimeout(() => {
                         this.processing = false;
-                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.listener, data.text)
+                        console.log("EMITTING ==BROADCAST_RESPONSE== EVENT: " + data.character.name + ", " + data.text)
+                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.listener, data.text, data._continue)
                         EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
                         EventBus.GetSingleton().emit('processNext_broadcast')
-                    }, 1000)
+                    }, 1500)
                 }, data.duration * 1000)
             } catch(e) {
                 console.error("ERROR: " + e);

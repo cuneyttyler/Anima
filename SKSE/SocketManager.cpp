@@ -270,10 +270,11 @@ public:
             std::string type = j["type"];
             int dial_type = j["dial_type"];
             int speaker = j["speaker"];
+            string speakerName = j["speakerName"] != nullptr ? j["speakerName"] : "";
             float duration = j["duration"];
 
             Util::WriteLog("ON_MESSAGE ==" + type + "==" + to_string(dial_type) + "==" + to_string(speaker) +
-                                  "==" + to_string(duration) + "==" + message + "==");
+                           "==" + speakerName + "==" + to_string(duration) + "==" + message + "==");
 
             if (type == "established" && dial_type == 0) {
                 AnimaCaller::ConnectionSuccessful();
@@ -284,9 +285,9 @@ public:
             } else if (type == "chat" && dial_type == 1) {
                 AnimaCaller::SpeakN2N(message, speaker, duration);
             } else if (type == "chat" && dial_type == 2) {
-                AnimaCaller::SpeakBroadcast(message, speaker, duration);
+                AnimaCaller::SpeakBroadcast(message, speaker, speakerName, duration);
             } else if (type == "broadcast" && dial_type == 2) {
-                AnimaCaller::SpeakBroadcast(message, speaker, duration);
+                //AnimaCaller::SpeakBroadcast(message, speaker, duration);
             } else if (type == "end_interaction") {
             } else if (type == "end" && dial_type == 0) {
                 AnimaCaller::Stop();
@@ -359,6 +360,18 @@ public:
         soc->send_message(messageObj);
     }
 
+    void SendPause() {
+        Util::WriteLog("SENDING PAUSE", 4);
+        Message* messageObj = new Message("pause", "", "", "", "", "", "", "", false);
+        soc->send_message(messageObj);
+    }
+
+    void SendContinue() {
+        Util::WriteLog("SENDING CONTINUE", 4);
+        Message* messageObj = new Message("continue", "", "", "", "", "", "", "", false);
+        soc->send_message(messageObj);
+    }
+
     void SendBroadcastActors(map<RE::Actor*, ActorData*> actors, string currentDateTime, string currentLocation) {
         if (actors.size() == 0) return;
 
@@ -384,8 +397,6 @@ public:
 
     void ClearFollowers() {
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-
-        Util::WriteLog("PLAYER NAME " + string(playerName));
 
         vector<string> names;
         vector<string> formIds;
@@ -544,7 +555,7 @@ public:
         soc->send_message(message);
     }
 
-    void connectTo_N2N(RE::Actor* sourceActor, RE::Actor* targetActor, string source_voice_type, string target_voice_type) {
+    void connectTo_N2N(RE::Actor* sourceActor, RE::Actor* targetActor, string source_voice_type, string target_voice_type, string currentDateTime) {
         if (sourceActor == nullptr || targetActor == nullptr) return;
         ValidateSocket();
         auto source_id = sourceActor->GetName();
@@ -556,7 +567,11 @@ public:
         AnimaCaller::N2N_SourceActor = sourceActor;
         AnimaCaller::N2N_TargetActor = targetActor;
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        N2NMessage* message = new N2NMessage("connect", "connect", source_id, target_id, to_string(source_form_id), to_string(target_form_id), source_voice_type, target_voice_type, playerName, 0,"");
+        const string location =
+            sourceActor->GetCurrentLocation() != nullptr ? sourceActor->GetCurrentLocation()->GetName() : "";
+        N2NMessage* message = new N2NMessage("connect", "connect", source_id, target_id, to_string(source_form_id),
+                                             to_string(target_form_id), source_voice_type, target_voice_type,
+                                             playerName, 0, location, currentDateTime);
         soc->send_message_n2n(message);
     }
 };

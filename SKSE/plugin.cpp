@@ -383,26 +383,39 @@ public:
         }
     }
 
-    static void SpeakBroadcast(std::string message, int speaker, float duration) {
+    static void SpeakBroadcast(std::string message, int speaker, string speakerName, float duration) {
         try {
-            if (AnimaCaller::broadcastActors.size() == 0) return;
+            if (AnimaCaller::broadcastActors.size() == 0) {
+                Util::WriteLog("NO BROADCAST ACTORS FOUND. RETURNING.", 4);
+                return;
+            }
+            
             RE::Actor* actor = nullptr;
+            int index = 0;
             if (speaker < AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT) {
-                actor = Util::GetKeyAtIndex<RE::Actor*, ActorData*>(AnimaCaller::broadcastActors, speaker);
-            } else if (speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT > 0 && speaker -
-                           AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT <
-                       AnimaCaller::followers.size()) {
+                map<RE::Actor*, ActorData*>::iterator iter;
+                for (iter = AnimaCaller::broadcastActors.begin(); iter != AnimaCaller::broadcastActors.end(); iter++) {
+                    if (speakerName == iter->first->GetName()) {
+                        actor = iter->first;
+                        break;
+                    }
+                    index++;
+                }
+            } else if (speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT > 0 &&
+                       speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT < AnimaCaller::followers.size()) {
                 actor = AnimaCaller::followers[speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT]->actor;
+                index = speaker;
             }
 
-            if (actor != nullptr) {
-                Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()), 4);
-                SKSE::ModCallbackEvent modEvent{"BLC_Speak_Broadcast", "", speaker, actor};
-                SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-                SubtitleManager::ShowSubtitle(actor, message, duration);
-            } else {
-                Util::WriteLog("SpeakBroadcast: ACTOR NULL");
+            if (actor == nullptr) {
+                Util::WriteLog("SpeakBroadcast: ACTOR NOT FOUND. RETURNING.");
+                return;
             }
+
+            Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()), 4);
+            SKSE::ModCallbackEvent modEvent{"BLC_Speak_Broadcast", "", index, actor};
+            SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+            SubtitleManager::ShowSubtitle(actor, message, duration);
         } catch (const exception& e) {
             Util::WriteLog("EXCEPTION during SpeakBroadcast: " + string(e.what()));
         } catch (...) {
@@ -609,12 +622,12 @@ public:
         return true;
     }
 
-    static bool N2N_Initiate(RE::StaticFunctionTag*, RE::Actor* source, RE::Actor* target, string sourceVoiceType, string targetVoiceType) {
+    static bool N2N_Initiate(RE::StaticFunctionTag*, RE::Actor* source, RE::Actor* target, string sourceVoiceType, string targetVoiceType, string currentDateTime) {
         if (source == nullptr || target == nullptr) {
             return false;
         }
 
-        SocketManager::getInstance().connectTo_N2N(source, target, sourceVoiceType, targetVoiceType);
+        SocketManager::getInstance().connectTo_N2N(source, target, sourceVoiceType, targetVoiceType, currentDateTime);
 
         return true;
     }
@@ -689,9 +702,7 @@ public:
         EventWatcher::actors.clear();
         EventWatcher::voiceMap.clear();
         AnimaCaller::cellActors.clear();
-        AnimaCaller::broadcastActors.clear();
         if (empty) {
-            SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, "", "");
             SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         }
         EventWatcher::m.unlock();
@@ -702,7 +713,6 @@ public:
     static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
                           string currentDateTime) {
         try {
-            Util::WriteLog("SendActor: " + string(actor->GetName()) + ", " + voice + ", " + to_string(distance));
             EventWatcher::m.lock();
             EventWatcher::actors.insert(actor);
             EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
@@ -717,11 +727,11 @@ public:
 
             SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         } catch (const exception& e) {
-            Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
+            Util::WriteLog("Exception during SendActor: " + string(e.what()), 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
             AnimaCaller::Reset();
         } catch (...) {
-            Util::WriteLog("Unkown exception during send_message", 1);
+            Util::WriteLog("Unkown exception during SendActor", 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
             AnimaCaller::Reset();
         }
@@ -730,12 +740,59 @@ public:
         return true;
     }
 
+    static bool RemoveBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor) {
+        AnimaCaller::broadcastActors.erase(actor);
+        
+        return true;
+    }
 
-    static bool SendBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
-                          string currentDateTime) {
+
+    static bool SetBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
         try {
-            ActorData* actorData = new ActorData(voice, distance);
-            AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
+            bool found = false;
+            map<RE::Actor*, ActorData*>::iterator iter;
+            for (iter = AnimaCaller::broadcastActors.begin(); iter != AnimaCaller::broadcastActors.end(); iter++) {
+                if (actor->GetName() == iter->first->GetName()) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                ActorData* actorData = new ActorData(voice, distance);
+                AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
+                string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
+                                             ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
+                                             : "";
+            }
+
+        } catch (const exception& e) {
+            Util::WriteLog("Exception during SetBroadcastActor: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        } catch (...) {
+            Util::WriteLog("Unkown exception during SetBroadcastActor", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        }
+
+        return true;
+    }
+
+    static bool SendBroadcastActors(RE::StaticFunctionTag*, string currentDateTime) {
+        try {
+            bool first = true;
+            string actors = "";
+            map<RE::Actor*, ActorData*>::iterator iter;
+            for (iter = AnimaCaller::broadcastActors.begin(); iter != AnimaCaller::broadcastActors.end(); iter++) {
+                if (!first) {
+                    actors += ", ";
+                }
+                actors += string(iter->first->GetName());
+                first = false;
+            }
+
+            Util::WriteLog("SENDING BROADCAST ACTOR => " + actors);
             string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
                                          ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
                                          : "";
@@ -743,11 +800,11 @@ public:
             SocketManager::getInstance().SendBroadcastActors(AnimaCaller::broadcastActors, currentDateTime,
                                                              currentLocation);
         } catch (const exception& e) {
-            Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
+            Util::WriteLog("Exception during SendBroadcastActors: " + string(e.what()), 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
             AnimaCaller::Reset();
         } catch (...) {
-            Util::WriteLog("Unkown exception during send_message", 1);
+            Util::WriteLog("Unkown exception during SendBroadcastActors", 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
             AnimaCaller::Reset();
         }
@@ -779,7 +836,9 @@ bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("WatchSubtitles", "AnimaSKSE", &ModPort::WatchSubtitles);
     vm->RegisterFunction("ClearActors", "AnimaSKSE", &ModPort::ClearActors);
     vm->RegisterFunction("SendActor", "AnimaSKSE", &ModPort::SendActor);
-    vm->RegisterFunction("SendBroadcastActor", "AnimaSKSE", &ModPort::SendBroadcastActor);
+    vm->RegisterFunction("SetBroadcastActor", "AnimaSKSE", &ModPort::SetBroadcastActor);
+    vm->RegisterFunction("SendBroadcastActors", "AnimaSKSE", &ModPort::SendBroadcastActors);
+    vm->RegisterFunction("RemoveBroadcastActor", "AnimaSKSE", &ModPort::RemoveBroadcastActor);
     vm->RegisterFunction("SendResponseLog", "AnimaSKSE", &ModPort::SendResponseLog);
     vm->RegisterFunction("ClearFollowers", "AnimaSKSE", &ModPort::ClearFollowers);
     vm->RegisterFunction("SendFollower", "AnimaSKSE", &ModPort::SendFollower);

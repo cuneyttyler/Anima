@@ -64,9 +64,9 @@ export class GoogleGenAIController {
     async SummarizeEvents(events) {
         let response
         if(process.env.LLM_PROVIDER == "OPENROUTER") {
-            response = await OpenRouter.SendMessage({message: "Please summarize this events with max. length of 2048 tokens : \n\n" + events})
+            response = await OpenRouter.SendMessage({message: "Please summarize these events with max. length of 2048 tokens : \n\n" + events})
         } else if(process.env.LLM_PROVIDER == "GOOGLE") {
-            response = await GoogleGenAI.SendMessage({message: "Please summarize this events with max. length of 2048 tokens : \n\n" + events})
+            response = await GoogleGenAI.SendMessage({message: "Please summarize these events with max. length of 2048 tokens : \n\n" + events})
         } else {
             console.error("LLM_PROVIDER is missing in your .env file")
             return
@@ -86,9 +86,6 @@ export class GoogleGenAIController {
             } else if(this.type == 1) {
                 EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
                 EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
-                if(messageType == 1) {
-                    EventBus.GetSingleton().emit('N2N_END')
-                }
                 return
             } else if (this.type == 2) {
                 return
@@ -122,6 +119,12 @@ export class GoogleGenAIController {
         if(messageType == 1) {
             this.SendVerifyConnection()
         }
+
+        let _continue = false
+        if(message.includes("**__CONTINUE__**") || message.includes("__CONTINUE__")) {
+            _continue = true
+        }
+        message = message.replaceAll("**__CONTINUE__**", "").replaceAll("__CONTINUE__", "")
         
         message = message.replaceAll("\n","").replaceAll("**","")
 
@@ -176,16 +179,16 @@ export class GoogleGenAIController {
 
         this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, ++this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
             if(this.type == 0) {
-                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, null));
+                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, null, _continue));
                 EventBus.GetSingleton().emit('WEB_TARGET_RESPONSE', message);
                 setTimeout(() => {
                     this.SendEvent(message, this.speaker)
                 }, duration * 1000 + 500)
             } else if(this.type == 1 || this.type == 2) {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character,  this.listener), duration));
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character,  this.listener, _continue), duration));
                 // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, message);
             } else {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character,  null), duration));
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character,  null, _continue), duration));
             }
         }))
     }

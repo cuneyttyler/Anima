@@ -29,6 +29,7 @@ class EventProcessor : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
         }
 
         virtual inline void operator()(RE::BSScript::Variable a_result) override {
+            SocketManager::getInstance().SendContinue();
             if (a_result.IsNoneObject()) {
             } else if (a_result.IsString()) {
                 auto playerMessage = std::string(a_result.GetString());
@@ -193,13 +194,15 @@ public:
                         AnimaCaller::Start(conversationPair);
                     } else if (buttonEvent->IsDown() && AnimaCaller::conversationOngoing && !AnimaCaller::stopSignal) {
                         EventProcessor::GetSingleton()->sendingBroadcast = false;
+                        SocketManager::getInstance().SendPause();
                         if (!isOpenedWindow) OnPlayerRequestInput("UITextEntryMenu");
                     }
-                    // ] key
+                    // U key
                 } else if (dxScanCode == 22) {
                     if (buttonEvent->IsDown()) {
                         if (!isOpenedWindow) {
                             sendingBroadcast = true;
+                            SocketManager::getInstance().SendPause();
                             OnPlayerRequestInput("UITextEntryMenu");
                         }
                     }

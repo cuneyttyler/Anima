@@ -11,6 +11,7 @@ export default class PromptManager {
             + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE "
             + "**DO NOT KEEP SAYING THE SAME LINE** REGARD WHAT YOU HAVE SAID BEFORE (THAT IS PROVIDED ALONG WITH THIS PROMPT) AND DO NOT REPEAT IT. "
             + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS "
+            + "IF TOKEN **__CONTINUE__** EXISTS IN THE END, IT MEANS THAT YOU ARE CONTINUING YOUR CONVERSATION FURTHER. "
             + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == "
             + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING "
             + " **IMPORTANT** => WHEN YOU'RE ASKED BY SOMEONE TO JOIN THEM WITH PHRASES LIKE  \"Follow me\' or\"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, == ANSWER \"Of course, I'll join you.'\" IF YOU WISH TO JOIN THEM. == Reject in a manner you see appropriate otherwise. "
@@ -101,6 +102,7 @@ export default class PromptManager {
             + "ANSWER EXACTLY \"**NOT_RELATED**\" IF YOU THINK THEY ARE NOT SPEAKING TO YOU. \n"
             + "ANSWER ALWAYS IF YOU ARE THE ONLY ACTOR IN THE CELL WITH THE PLAYER. (EVEN IF THEY ARE ADDRESSING TO SOMEONE ELSE). \n" 
             + "DO NOT ANSWER IF IT SEEMS THAT THIS IS A CONVERSATION BETWEEN ANOTHER PEOPLE. \n"
+            + "IF THERE ARE MORE THINGS TO SAY YOU'D LIKE TO SAY AND YOU WISH TO CONTINUE ADD **__CONTINUE__** TO THE END OF YOUR RESPONSE. \n"
             + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
             + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
             + "**IMPORANT **IF YOU THINK THERE'S ENOUGH TALK ALREADY RESPOND EXACTYLY **STOP_SIGNAL** \n"
@@ -124,7 +126,7 @@ export default class PromptManager {
     }
 
     N2NStartPrompt(location, target) {
-        return " == CURRENT EVENT ==> As you walk around in " + location + ", you see " + target + ". What do you to say to them? Please answer as if you are talking to him/her. " 
+        return " == CURRENT EVENT ==> As you walk around in " + location + ", you see " + target.name + ". What do you to say to them? Please answer as if you are talking to him/her. " 
             + "IF YOU DO NOT WANT TO INITIATE A CONVERSATION, RESPOND **NOT_ANSWERING**"
     }
 

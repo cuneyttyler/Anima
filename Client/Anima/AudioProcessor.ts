@@ -161,7 +161,7 @@ export class AudioProcessor extends EventEmitter {
         const tempFileName = `./Audio/Temp/${fileName}`;
 
         await GoogleVertexAPI.TTS(msg, tempFileName, voiceModel)
-        waitSync(0.1)
+        waitSync(0.2)
 
         let duration: number = 0;
         try {

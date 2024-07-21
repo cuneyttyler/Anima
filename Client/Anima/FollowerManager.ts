@@ -6,7 +6,6 @@ import CharacterManager from './CharacterManager.js';
 import PromptManager from './PromptManager.js';
 import BroadcastManager from './BroadcastManager.js';
 import FileManager from './FileManager.js';
-import waitSync from 'wait-sync'
 
 export default class FollowerManager {
     private characterManager: CharacterManager = new CharacterManager();
@@ -29,6 +28,8 @@ export default class FollowerManager {
     }
 
     ConnectToCharacter(name: string, formId: string, voiceType: string, distance: number) {
+        if(this.characters.find((c) => c.name.toLowerCase() == name.toLowerCase())) return
+        
         console.log(`Trying to connect to ${name}`);
         if(name.toLowerCase() == this.profile) return
         if(name.toLowerCase() == this.profile.toLowerCase()) return
@@ -63,7 +64,7 @@ export default class FollowerManager {
     SendPeriodic() {
         console.log("SENDING PERIODIC PROMPTS")
         this.characters.forEach((c) => {
-            if(c.distance < 5) {
+            if(c.distance < 10) {
                 console.log("SENDING FOR " + c.name)
                 let periodicPrompt = this.promptManager.PrepareFollowerPeriodicMessage(this.profile,c,BroadcastManager.currentLocation, this.fileManager.GetEvents(c.id, c.formId, this.profile), this.fileManager.GetThoughts(c.id, c.formId, this.profile))
                 c.googleController.Send(periodicPrompt, 2)
@@ -81,12 +82,16 @@ export default class FollowerManager {
             this.SendThought()
         }, 60000 * 5)
         
-        waitSync(10)
-
-        this.SendPeriodic()
-        setInterval(() => {
-            this.SendPeriodic()
-        }, 60000 * 2)
+        setTimeout(() => {
+            if(!BroadcastManager.GetInstance().IsPaused()) {
+                this.SendPeriodic()
+            }
+            setInterval(() => {
+                if(!BroadcastManager.GetInstance().IsPaused()) {
+                    this.SendPeriodic()
+                }
+            }, 60000 * 2)
+        }, 10000)
     }
 
     IsRunning() {

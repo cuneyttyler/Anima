@@ -82,14 +82,15 @@ fastify.register(async function (fastify) {
             } else if (message.type == "stop" && !message.is_n2n) {
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
-                if(ClientManager.IsConversationOngoing()) return
-                broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
                 await broadcastManager.ConnectToCharacters()
                 await broadcastManager.StartN2N(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.targetFormId, message.location, message.currentDateTime)
-            } else if (message.type == "start" && message.is_n2n) {
-                
             } else if (message.type == "stop" && message.is_n2n) {
                 if(broadcastManager) broadcastManager.Stop()
+            } else if (message.type == "pause") {
+                if(broadcastManager) broadcastManager.Pause()
+            } else if (message.type == "continue") {
+                if(broadcastManager) broadcastManager.Continue()
             } else if (message.type == "followers-clear") {
                 if(!followerManager) {
                     followerManager = new FollowerManager(message.playerName, connection.socket)
@@ -100,26 +101,24 @@ fastify.register(async function (fastify) {
                     followerManager = new FollowerManager(message.playerName, connection.socket)
                     followerManager.Run()
                 }
-                if(!broadcastManager)
-                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
                 followerManager.ConnectToCharacter(message.ids[0], message.formIds[0], message.voiceTypes[0], message.distances[0])
                 if(!followerManager.IsRunning()) {
                     followerManager.Run()
                 }
             } else if (message.type == "broadcast-set") {
-                if(!broadcastManager)
-                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
-                broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
+                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
+                await broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "cellactors-set") {
-                if(!broadcastManager)
-                    broadcastManager = new BroadcastManager(message.playerName,connection.socket)
+                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
                 broadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
-                if(!broadcastManager) broadcastManager = new BroadcastManager(message.playerName, connection.socket) 
-                broadcastManager.ConnectToCharacters()
+                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
+                await broadcastManager.ConnectToCharacters()
                 broadcastManager.Say(message.message, message.location, message.playerName)
             } else if (message.type == "log_event") {
-                fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, message.message + " ", message.playerName);
+                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
+                fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
                 
                 if(ClientManager.IsConversationOngoing() && message.id == ClientManager.GetId() && message.formId == ClientManager.GetFormId()) {
                     ClientManager.SendNarratedAction(message.message + " ");
