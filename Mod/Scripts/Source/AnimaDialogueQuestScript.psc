@@ -8,21 +8,46 @@ topic property broadcast_topic_2 auto
 topic property broadcast_topic_3 auto
 topic property broadcast_topic_4 auto
 topic property broadcast_topic_5 auto
+topic property broadcast_topic_6 auto
+topic property broadcast_topic_7 auto
+topic property broadcast_topic_8 auto
+topic property broadcast_topic_9 auto
+topic property broadcast_topic_10 auto
+topic property broadcast_topic_11 auto
+topic property broadcast_topic_12 auto
+topic property broadcast_topic_13 auto
+topic property broadcast_topic_14 auto
+topic property broadcast_topic_15 auto
+topic property follower_topic_1 auto
+topic property follower_topic_2 auto
+topic property follower_topic_3 auto
+topic property follower_topic_4 auto
+topic property follower_topic_5 auto
 referencealias property target auto
 referencealias property source_n2n auto
 referencealias property target_n2n auto
+referencealias property broadcast_speaker_1 auto
+referencealias property broadcast_speaker_2 auto
+referencealias property broadcast_speaker_3 auto
+referencealias property broadcast_speaker_4 auto
+referencealias property broadcast_speaker_5 auto
+referencealias property broadcast_speaker_6 auto
+referencealias property broadcast_speaker_7 auto
+referencealias property broadcast_speaker_8 auto
+referencealias property broadcast_speaker_9 auto
+referencealias property broadcast_speaker_10 auto
 package property AnimaTravelToNpcLocationPackage auto
 package property AnimaStandPackage auto
 package property AnimaN2NStandPackage auto
-formlist property _AnimaVoiceTypes auto
-formlist property _AnimaVoiceTypes_Exclude auto
+formlist property _AnimaRaceList auto
 GlobalVariable property ConversationOnGoing auto
 GlobalVariable property N2N_ConversationOnGoing auto
 GlobalVariable property N2N_LastSuccessfulStart auto
 faction property CurrentFollowerFaction auto
 faction property PotentialFollowerFaction auto
 quest property DialogueFollower auto
-quest property AnimaEventLoggerQuest auto
+
+Actor lookAtSource
 
 function OnInit()
     self.RegisterForModEvent("BLC_Start", "_Start")
@@ -35,6 +60,8 @@ function OnInit()
     self.RegisterForModEvent("BLC_Stop_N2N", "Stop_N2N")
     self.RegisterForModEvent("BLC_Speak_N2N", "Speak_N2N")
     self.RegisterForModEvent("BLC_Speak_Broadcast", "Speak_Broadcast")
+    self.RegisterForModEvent("BLC_Stop_Broadcast", "Stop_Broadcast")
+    self.RegisterForModEvent("BLC_Send_LookAt", "Send_LookAt")
     self.RegisterForModEvent("BLC_TravelToNPCLocation", "TravelToNPCLocation")
     self.RegisterForModEvent("BLC_SetHoldPosition", "SetHoldPosition")
     self.RegisterForModEvent("BLC_SendResponseLog", "SendResponseLog")
@@ -123,10 +150,11 @@ endFunction
 
 function Speak_Broadcast(String eventName, String strArg, Float numArg, Form sender) 
     If (sender as Actor) == None
-        debug.Trace("Anima: Broadcast Speak request == Actor NULL, returning.")
+        debug.Trace("Anima: Broadcast/Follower Speak request == Actor NULL, returning.")
         Return
     EndIf
-    debug.Trace("Anima: Broadcast Speak request for " + (sender as Actor).GetDisplayName())
+    debug.Trace("Anima: Broadcast/Follower Speak request for " + (sender as Actor).GetDisplayName() + " (" + numArg + ")")
+    ActorUtil.AddPackageOverride(sender as Actor, AnimaStandPackage)
     If numArg == 0
         (sender as Actor).Say(broadcast_topic_1)
     EndIf
@@ -142,7 +170,68 @@ function Speak_Broadcast(String eventName, String strArg, Float numArg, Form sen
     If numArg == 4
         (sender as Actor).Say(broadcast_topic_5)
     EndIf
+    If numArg == 5
+        (sender as Actor).Say(broadcast_topic_6)
+    EndIf
+    If numArg == 6
+        (sender as Actor).Say(broadcast_topic_7)
+    EndIf
+    If numArg == 7
+        (sender as Actor).Say(broadcast_topic_8)
+    EndIf
+    If numArg == 8
+        (sender as Actor).Say(broadcast_topic_9)
+    EndIf
+    If numArg == 9
+        (sender as Actor).Say(broadcast_topic_10)
+    EndIf
+    If numArg == 10
+        (sender as Actor).Say(broadcast_topic_11)
+    EndIf
+    If numArg == 11
+        (sender as Actor).Say(broadcast_topic_12)
+    EndIf
+    If numArg == 12
+        (sender as Actor).Say(broadcast_topic_13)
+    EndIf
+    If numArg == 13
+        (sender as Actor).Say(broadcast_topic_14)
+    EndIf
+    If numArg == 14
+        (sender as Actor).Say(broadcast_topic_15)
+    EndIf
+    If numArg == 15
+        (sender as Actor).Say(follower_topic_1)
+    EndIf
+    If numArg == 16
+        (sender as Actor).Say(follower_topic_2)
+    EndIf
+    If numArg == 17
+        (sender as Actor).Say(follower_topic_3)
+    EndIf
+    If numArg == 18
+        (sender as Actor).Say(follower_topic_4)
+    EndIf
+    If numArg == 19
+        (sender as Actor).Say(follower_topic_5)
+    EndIf
     debug.Trace("Anima: " + (sender as Actor).GetDisplayName() + "(" + numARg + ") speaked.")
+endFunction
+
+function Stop_Broadcast(String eventName, String strArg, Float numArg, Form sender) 
+    debug.Trace("Anima: Broadcast/Follower Stop request for " + " (" + numArg + ")")
+    ActorUtil.ClearPackageOverride(sender as Actor)
+endFunction
+
+function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
+    Debug.Trace("Send_LookAt " + (sender as Actor).GetDisplayName() + " (" + numArg + ")")
+    If numArg == 0
+        lookAtSource = sender as Actor
+    ElseIf numArg == 1
+        lookAtSource.SetLookAt(sender as Actor)
+    ElseIf numArg == 2
+        lookAtSource.SetLookat(None)
+    EndIf
 endFunction
 
 function Start_N2N(String eventName, String strArg, Float numArg, Form sender)
@@ -184,19 +273,36 @@ function Speak_N2N(String eventName, String strArg, Float numArg, Form sender)
 endFunction
 
 function Reset()
+    Utility.Wait(1)
     Reset_Normal()
     Reset_N2N()
 endFunction
 
 function Reset_Normal()
     Debug.Trace("Anima: Reset.")
+    target.Clear()
     ConversationOnGoing.SetValueInt(0)
     AnimaSKSE.Stop()
 endFunction
 
 function Reset_N2N()
     Debug.Trace("Anima: Reset_N2N.")
+    ; If source_n2n.GetActorRef() != None
+    ;     Debug.Trace("Toggling actor" + source_n2n.GetActorRef().GetDisplayName())
+    ;     source_n2n.GetActorRef().Disable()
+    ;     Utility.Wait(0.1)
+    ;     source_n2n.GetActorRef().Enable()
+    ; EndIf
+    ; If target_n2n.GetActorRef() != None
+    ;     Debug.Trace("Toggling actor" + target_n2n.GetActorRef().GetDisplayName())
+    ;     target_n2n.GetActorRef().Disable()
+    ;     Utility.Wait(0.1)
+    ;     target_n2n.GetActorRef().Enable()
+    ; EndIf
+    source_n2n.Clear()
+    target_n2n.Clear()
     N2N_ConversationOnGoing.SetValueInt(0)
+    N2N_LastSuccessfulStart.SetValueInt(0)
     AnimaSKSE.N2N_Stop()
 endFunction
 
@@ -240,10 +346,10 @@ function AddToFollowers(String eventName, String strArg, Float numArg, Form send
     Debug.Notification(_actor.GetDisplayName() + " is now following you.")
 endFunction
 
-bool function IsVoiceIncluded(Actor _actor) 
-    return _AnimaVoiceTypes != None && _AnimaVoiceTypes.GetAt(0) != None && _AnimaVoiceTypes.GetAt(1) != None &&  _actor.GetVoiceType() != None && ((_AnimaVoiceTypes.GetAt(0) as FormList).HasForm(_actor.GetVoiceType()) || (_AnimaVoiceTypes.GetAt(1) as FormList).HasForm(_actor.GetVoiceType())) &&  !_AnimaVoiceTypes_Exclude.HasForm(_actor.GetVoiceType())
+bool function IsRaceIncluded(Actor _actor) 
+    return _AnimaRaceList.HasForm(_actor.GetRace())
 endFunction
 
 bool function IsAvailableForDialogue(Actor _actor)
-    return IsVoiceIncluded(_actor) && _actor.GetCombatState() == 0 && _actor.IsEnabled()&& !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious()  && _actor.GetSleepState() == 0
+    return IsRaceIncluded(_actor) && _actor.GetCombatState() == 0 && _actor.IsEnabled()&& !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious()  && _actor.GetSleepState() == 0
 endFunction

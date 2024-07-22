@@ -1,7 +1,6 @@
 Scriptname AnimaDialogueQuestN2NScript extends Quest  
 
-formlist property _AnimaVoiceTypes auto
-formlist property _AnimaVoiceTypes_Exclude auto
+formlist property _AnimaRaceList auto
 globalvariable property N2N_ConversationOnGoing auto
 GlobalVariable property N2N_LastSuccessfulStart auto
 ReferenceAlias property normalTarget auto
@@ -36,9 +35,10 @@ function CheckN2NDialogue()
             If sourceActor != None && sourceActor != Game.GetPlayer() && IsAvailableForDialogue(sourceActor)
                 Debug.Trace("Anima: Source Actor = " + sourceActor.GetDisplayName())
                 Actor targetActor = game.FindRandomActorFromRef(sourceActor, 350)
-
+                
+                Debug.Trace("Anima: Target Actor = " + targetActor.GetDisplayName())    
                 If targetActor != None && targetActor != sourceActor && targetActor != Game.GetPlayer() && IsAvailableForDialogue(targetActor)
-		            Debug.Trace("Anima: Target Actor = " + targetActor.GetDisplayName())                    
+		                            
 
                     Debug.Trace("_time: " + _time)
                     Debug.Trace("N2N_LastSuccessfulStart: " + N2N_LastSuccessfulStart.GetValueInt())
@@ -56,12 +56,14 @@ function CheckN2NDialogue()
                         
                         Debug.Trace("Anima: Sending InitiateConversation Signal For " + sourceActor.GetDisplayName() + " and " + targetActor.GetDisplayName())
                         lastTryTime = _time
-                        AnimaSKSE.N2N_Initiate(sourceActor, targetActor, GetVoiceType(sourceActor), GetVoiceType(targetActor))
+                        AnimaSKSE.N2N_Initiate(sourceActor, targetActor, GetVoiceType(sourceActor), GetVoiceType(targetActor), Utility.GameTimeToString(Utility.GetCurrentGameTime()))
                         SetPreviousActors(sourceActor, targetActor)
+                        Utility.Wait(10)
                     EndIf
                 EndIf
             EndIf
         EndIf
+        Utility.Wait(1)
     EndWhile
 endFunction
 
@@ -74,10 +76,6 @@ bool function IsSameActors(Actor source, Actor target)
     return source != None && target != None && previousSource != None && previousTarget != None && (source == previousSource && target == previousTarget) || (source == previousTarget || target == previousSource)
 endFunction 
 
-bool function IsVoiceIncluded(Actor _actor) 
-    return _AnimaVoiceTypes != None && _AnimaVoiceTypes.GetAt(0) != None && _AnimaVoiceTypes.GetAt(1) != None &&  _actor.GetVoiceType() != None && ((_AnimaVoiceTypes.GetAt(0) as FormList).HasForm(_actor.GetVoiceType()) || (_AnimaVoiceTypes.GetAt(1) as FormList).HasForm(_actor.GetVoiceType())) &&  !_AnimaVoiceTypes_Exclude.HasForm(_actor.GetVoiceType())
-endFunction
-
 string function GetVoiceType(Actor _actor)
     string str = _actor.GetVoiceType() as string
     int startIndex = StringUtil.Find(str, "<", 0)
@@ -85,7 +83,11 @@ string function GetVoiceType(Actor _actor)
     return StringUtil.Substring(str, startIndex + 1, endIndex - startIndex - 1)
 endFunction
 
+bool function IsRaceIncluded(Actor _actor) 
+    return _AnimaRaceList.HasForm(_actor.GetRace())
+endFunction
+
 bool function IsAvailableForDialogue(Actor _actor)
-    return IsVoiceIncluded(_actor) && _actor.GetCombatState() == 0 && normalTarget.GetActorRef() != _actor && _actor.GetCurrentScene() == None && _actor.IsEnabled() && !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
+    return IsRaceIncluded(_actor) && _actor.GetCombatState() == 0 && normalTarget.GetActorRef() != _actor && _actor.GetCurrentScene() == None && _actor.IsEnabled() && !_actor.IsAlerted() && !_actor.IsAlarmed()  && !_actor.IsBleedingOut() && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
 endFunction
 

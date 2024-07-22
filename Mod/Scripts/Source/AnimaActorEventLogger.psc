@@ -90,9 +90,9 @@ Event OnHit(ObjectReference akAggressor, Form akSource, Projectile akProjectile,
 EndEvent
 
 Actor[] Function GetRefsAsActors()
-    Actor[] actors = new Actor[20]
+    Actor[] actors = new Actor[10]
     int i = 0
-    While i < 20
+    While i < 10
         If ActorRefs[i] != None
             actors[i] = ActorRefs[i].GetActorRef()
         EndIf
