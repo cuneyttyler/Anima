@@ -47,7 +47,7 @@ export class BroadcastQueue extends EventEmitter{
         super()
         this.eventName = 'processNext_broadcast';
         this.queue = new Queue<BroadcastData>();
-        this.senderQueue = new SenderQueue(3, 2, new SKSEController(socket))
+        this.senderQueue = new SenderQueue(3, 1, new SKSEController(socket))
         this.senderQueue.processing = false;
         this.on(this.eventName, this.processNext);
         EventBus.GetSingleton().on(this.eventName, () => {

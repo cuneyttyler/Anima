@@ -107,7 +107,7 @@ class BroadcastMessage {
 public:
     BroadcastMessage(const string& type, const string& message, const vector<string> ids, const vector<string> formIds,
                      const vector<string> voiceTypes, const vector<float> distances, const string& speaker, const string& listener,
-                     const string& playerName, const string& location, const string& currentDateTime)
+                     const string& playerName, const int playerFormId, const string& location, const string& currentDateTime)
         : type(type),
           message(message),
           ids(ids),
@@ -115,6 +115,7 @@ public:
           voiceTypes(voiceTypes),
           distances(distances),
           playerName(playerName),
+          playerFormId(playerFormId),
           location(location),
           currentDateTime(currentDateTime),
           speaker(speaker),
@@ -123,8 +124,8 @@ public:
     json toJson() const {
         return {{"type", type},       {"message", message},       {"ids", ids}, 
             {"formIds", formIds}, {"voiceTypes", voiceTypes}, {"distances", distances}, {"playerName", playerName},
-                {"is_n2n", false},    {"location", location},     {"currentDateTime", currentDateTime},
-                {"speaker", speaker}, {"listener", listener}};
+                {"playerFormId", playerFormId},
+                {"is_n2n", false},{"location", location},{"currentDateTime", currentDateTime}, {"speaker", speaker}, {"listener", listener}};
     }
 
 private:
@@ -135,11 +136,12 @@ private:
     vector<string> voiceTypes;
     vector<float> distances;
     string playerName;
+    int playerFormId;
     string location;
     string currentDateTime;
     string speaker;
     string listener;
-    };
+};
     
 class AnimaSocketController {
 
@@ -268,33 +270,31 @@ public:
 
             std::string message = j["message"];
             std::string type = j["type"];
-            int dial_type = j["dial_type"];
-            int speaker = j["speaker"];
-            string speakerName = j["speakerName"] != nullptr ? j["speakerName"] : "";
-            float duration = j["duration"];
+            int dial_type = !j["dial_type"].is_null() ? (int) j["dial_type"] : 0;
+            int speaker = !j["speaker"].is_null() ? (int) j["speaker"] : 0;
+            int formId = !j["formId"].is_null() ? (int) j["formId"] : 0;
+            int targetFormId = !j["targetFormId"].is_null() ? (int)j["targetFormId"] : 0;
+            float duration = !j["duration"].is_null() ? (float) j["duration"] : 0;
 
             Util::WriteLog("ON_MESSAGE ==" + type + "==" + to_string(dial_type) + "==" + to_string(speaker) +
-                           "==" + speakerName + "==" + to_string(duration) + "==" + message + "==");
+                           "==" + to_string(formId) + "==" + to_string(duration) + "==" + message + "==");
 
             if (type == "established" && dial_type == 0) {
                 AnimaCaller::ConnectionSuccessful();
-            } else if (type == "established" && dial_type == 1) {
-                AnimaCaller::N2N_Init();
             } else if (type == "chat" && dial_type == 0) {
                 AnimaCaller::Speak(message, duration);
             } else if (type == "chat" && dial_type == 1) {
-                AnimaCaller::SpeakN2N(message, speaker, duration);
-            } else if (type == "chat" && dial_type == 2) {
-                AnimaCaller::SpeakBroadcast(message, speaker, speakerName, duration);
-            } else if (type == "broadcast" && dial_type == 2) {
-                //AnimaCaller::SpeakBroadcast(message, speaker, duration);
-            } else if (type == "end_interaction") {
+                AnimaCaller::SpeakBroadcast(message, speaker, formId, duration);
             } else if (type == "end" && dial_type == 0) {
                 AnimaCaller::Stop();
             } else if (type == "follow_request_accepted" && dial_type == 0) {
                 AnimaCaller::SendFollowRequestAcceptedSignal();
             } else if (type == "end" && dial_type == 1) {
                 AnimaCaller::N2N_Stop();
+            } else if (type == "stop" && dial_type == 1) {
+                AnimaCaller::StopBroadcastForSpeaker(formId);
+            } else if (type == "look-at") {
+                AnimaCaller::SendLookAt(formId, targetFormId);
             } else if (type == "doesntexist" && dial_type == 0) {
                 Util::WriteLog("NPC doesn't exist in database == " +
                                 Util::GetActorName(AnimaCaller::conversationActor) + " ==.", 4);
@@ -391,7 +391,7 @@ public:
         }
 
         BroadcastMessage* messageObj = new BroadcastMessage("broadcast-set", "", names, formIds, voiceTypes, distances,
-                                                            "", "", playerName, currentLocation, currentDateTime);
+                                                            "", "", playerName, 0, currentLocation, currentDateTime);
         soc->send_message_broadcast(messageObj);
     }
 
@@ -404,7 +404,7 @@ public:
         vector<float> distances;
 
         BroadcastMessage* messageObj = new BroadcastMessage("followers-clear", "", names, formIds, voiceTypes,
-                                                            distances, "", "", playerName, "", "");
+                                                            distances, "", "", playerName, 0, "", "");
         soc->send_message_broadcast(messageObj);
     }
 
@@ -422,7 +422,7 @@ public:
         distances.push_back(follower->distance);
 
         BroadcastMessage* messageObj =
-            new BroadcastMessage("followers-set", "", names, formIds, voiceTypes, distances, "", "", playerName, "", "");
+            new BroadcastMessage("followers-set", "", names, formIds, voiceTypes, distances, "", "", playerName, 0, "", "");
         soc->send_message_broadcast(messageObj);
     }
 
@@ -441,12 +441,13 @@ public:
         }
 
         BroadcastMessage* messageObj = new BroadcastMessage("cellactors-set", "", names, formIds, voiceTypes, distances,
-                                                            "", "",  playerName, "", "");
+                                                            "", "",  playerName, 0, "", "");
         soc->send_message_broadcast(messageObj);
     }
 
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerFormId = RE::PlayerCharacter::GetSingleton()->GetFormID();
 
         vector<string> names;
         vector<string> formIds;
@@ -454,7 +455,7 @@ public:
         vector<float> distances;
 
         BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes,
-                                                            distances, speaker, listener, playerName, "", "");
+                                                            distances, speaker, listener, playerName, playerFormId, "", "");
         soc->send_message_broadcast(messageObj);
     }
 

@@ -176,11 +176,11 @@ public:
         return subtitleInfo;
     }
 
-    static bool CheckNewSubtitle(RE::SubtitleInfo* subtitleInfo) { 
+    static bool CheckNewSubtitle(RE::SubtitleInfo* subtitleInfo) {
         int index = 0;
         int equalIndex = -1;
         for (RE::SubtitleInfo info : RE::SubtitleManager::GetSingleton()->subtitles) {
-            if (string(info.subtitle) == string(subtitleInfo->subtitle)) {
+            if (string(info.subtitle) != "..." && string(info.subtitle) == string(subtitleInfo->subtitle)) {
                 equalIndex = index;
             }
             index++;
@@ -198,8 +198,8 @@ public:
             Util::WriteLog("SHOW_SUBTITLE " + subtitle);
             RE::SubtitleInfo* subtitleInfo = GetSubtitle(actor, subtitle);
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*subtitleInfo);
+            this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000)));
             if (!CheckNewSubtitle(subtitleInfo)) {
-                this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000)));
                 RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
                 RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
             }
@@ -248,7 +248,7 @@ public:
     inline static set<RE::Actor*> cellActors;
     inline static vector<Follower*> followers;
     inline static string currentDateTime;
-    inline static int MAX_BROADCAST_SPEAKER_COUNT = 5;
+    inline static int MAX_BROADCAST_SPEAKER_COUNT = 10;
 
     static std::string DisplayMessage(std::string str, int fontSize, int width) {
         std::stringstream ss(str);
@@ -318,6 +318,13 @@ public:
         AnimaCaller::conversationActor = nullptr;
     }
 
+    static void StopBroadcastForSpeaker(int formId) {
+        RE::Actor* actor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
+        Util::WriteLog("Stopping broadcast for " + string(actor->GetName()));
+        SKSE::ModCallbackEvent modEvent{"BLC_Stop_Broadcast", "", 0, actor};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+    }
+
     static void Reset() {
         AnimaCaller::conversationActor = nullptr;
         AnimaCaller::connecting = false;
@@ -383,37 +390,16 @@ public:
         }
     }
 
-    static void SpeakBroadcast(std::string message, int speaker, string speakerName, float duration) {
+    static void SpeakBroadcast(std::string message, int speaker, int formId, float duration) {
         try {
-            if (AnimaCaller::broadcastActors.size() == 0) {
-                Util::WriteLog("NO BROADCAST ACTORS FOUND. RETURNING.", 4);
-                return;
-            }
-            
-            RE::Actor* actor = nullptr;
-            int index = 0;
-            if (speaker < AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT) {
-                map<RE::Actor*, ActorData*>::iterator iter;
-                for (iter = AnimaCaller::broadcastActors.begin(); iter != AnimaCaller::broadcastActors.end(); iter++) {
-                    if (speakerName == iter->first->GetName()) {
-                        actor = iter->first;
-                        break;
-                    }
-                    index++;
-                }
-            } else if (speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT > 0 &&
-                       speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT < AnimaCaller::followers.size()) {
-                actor = AnimaCaller::followers[speaker - AnimaCaller::MAX_BROADCAST_SPEAKER_COUNT]->actor;
-                index = speaker;
-            }
-
+            RE::Actor* actor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
             if (actor == nullptr) {
                 Util::WriteLog("SpeakBroadcast: ACTOR NOT FOUND. RETURNING.");
                 return;
             }
 
-            Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()), 4);
-            SKSE::ModCallbackEvent modEvent{"BLC_Speak_Broadcast", "", index, actor};
+            Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()) + "(" + to_string(speaker) + ")", 4);
+            SKSE::ModCallbackEvent modEvent{"BLC_Speak_Broadcast", "", speaker, actor};
             SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
             SubtitleManager::ShowSubtitle(actor, message, duration);
         } catch (const exception& e) {
@@ -422,6 +408,18 @@ public:
             Util::WriteLog("UNKNOWN Exception during SpeakBroadcast.", 1);
             return;
         }
+    }
+
+    static void SendLookAt(int formId, int targetFormId) {
+        RE::Actor* sourceActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
+        RE::Actor* targetActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(targetFormId));
+
+        Util::WriteLog("SendLookAt: " + string(sourceActor->GetName()) + " => " + targetActor->GetName(), 4);
+        SKSE::ModCallbackEvent modEvent{"BLC_Send_LookAt", "", 0, sourceActor};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+        this_thread::sleep_for(250ms);
+        SKSE::ModCallbackEvent modEvent_2{"BLC_Send_LookAt", "", 1, targetActor};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent_2);
     }
 
     static void HardReset() {

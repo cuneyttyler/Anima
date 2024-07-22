@@ -81,7 +81,7 @@ export default class DialogueManager {
     async ConnectToCharacter(characterId : string, formId: string, voiceType: string, listener : string, playerName : string, socket : WebSocket) {
         console.log(`Trying to connect to ${characterId}`);
         this.listener = listener;
-        let character = this.characterManager.GetCharacter(characterId);
+        let character =  Object.assign({}, this.characterManager.GetCharacter(characterId));
         (console as any).logToLog(`Trying to connect to ${characterId}`)
         if (!character) {
             console.log(`${characterId} is not included in DATABASE`);
@@ -98,7 +98,7 @@ export default class DialogueManager {
         this.profile = playerName;
         this.voiceType = voiceType;
         this.isEnding = false;
-        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.listener, this.voiceType, 0, this.profile, new SKSEController(socket));
+        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.voiceType, 0, this.profile, new SKSEController(socket));
 
         this.conversationOngoing = true;
         this.eventBuffer = this.promptManager.PastEventsPrompt(await this.fileManager.GetEvents(characterId, formId, playerName))
@@ -127,7 +127,7 @@ export default class DialogueManager {
     }
 
     async Finalize() {
-        let events = await this.googleController.SummarizeEvents(this.eventBuffer)
+        let events = await this.googleController.SummarizeEvents(this.fileManager.GetEvents(this.id, this.formId, this.profile) + " " + this.eventBuffer)
         this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, true)
         this.conversationOngoing = false;
         this.profile = null;

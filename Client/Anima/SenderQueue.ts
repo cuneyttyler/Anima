@@ -45,10 +45,9 @@ export class SenderData extends EventEmitter {
     public voiceFileName: string;
     public speaker: number;
     public character;
-    public listener: string;
     public _continue: boolean;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, listener, _continue) {
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, _continue) {
         super();
         this.text = text;
         this.duration = duration;
@@ -58,7 +57,6 @@ export class SenderData extends EventEmitter {
         this.voiceFileName = voiceFileName;
         this.speaker = speaker;
         this.character = character;
-        this.listener = listener;
         this._continue = _continue;
     }
 }
@@ -128,10 +126,9 @@ export class SenderQueue extends EventEmitter{
                 }
                 
                 setTimeout(() => {
-                    let result
-                    result = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, data.character.name);
+                    let payload = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, parseInt(data.character.formId));
                     if(!DEBUG)
-                        this.skseController.Send(result);
+                        this.skseController.Send(payload);
 
                     if(data._continue) {
                         EventBus.GetSingleton().emit("CONTINUE", this.type, data.character, data.text)
@@ -144,7 +141,7 @@ export class SenderQueue extends EventEmitter{
                     setTimeout(() => {
                         this.processing = false;
                         console.log("EMITTING ==BROADCAST_RESPONSE== EVENT: " + data.character.name + ", " + data.text)
-                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.listener, data.text, data._continue)
+                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.text, data._continue)
                         EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
                         EventBus.GetSingleton().emit('processNext_broadcast')
                     }, 1500)
@@ -180,7 +177,9 @@ export class SenderQueue extends EventEmitter{
         fs.copyFileSync(data.audioFile, audioFile);
         fs.copyFileSync(data.lipFile, lipFile);
 
-        fs.unlinkSync(data.audioFile);
-        fs.unlinkSync(data.lipFile);
+        try {
+            fs.unlinkSync(data.audioFile);
+            fs.unlinkSync(data.lipFile);
+        } catch(e) {}
     }
 }

@@ -34,7 +34,7 @@ export default class FollowerManager {
         if(name.toLowerCase() == this.profile) return
         if(name.toLowerCase() == this.profile.toLowerCase()) return
         (console as any).logToLog(`Trying to connect to ${name}`)
-        let character = this.characterManager.GetCharacter(name);
+        let character =  Object.assign({}, this.characterManager.GetCharacter(name))
         if (!character) {
             console.log(`${name} is not included in DATABASE`);
             return
@@ -43,7 +43,7 @@ export default class FollowerManager {
         character.voiceType = voiceType
         character.distance = distance
         character.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0 
-        let googleController = new GoogleGenAIController(4, 2, character, null, character.voiceType, this.characterCount + BroadcastManager.MAX_SPEAKER_COUNT, this.profile, this.skseController);
+        let googleController = new GoogleGenAIController(4, 2, character, character.voiceType, this.characterCount + BroadcastManager.MAX_SPEAKER_COUNT, this.profile, this.skseController);
         character.googleController = googleController
         this.characters.push(character)
         this.characterCount++

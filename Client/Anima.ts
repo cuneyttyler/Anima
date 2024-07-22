@@ -65,7 +65,7 @@ fastify.register(async function (fastify) {
         connection.socket.on('message', async (msg) => {
 
             let message = JSON.parse(msg.toString());
-            if(message.type != 'log_event' && message.type != 'broadcast-set' && message.type != 'cellactors-set') {
+            if(message.type != 'log_event' && message.type != 'broadcast-set' && message.type != 'cellactors-set' && message.type != 'followers-clear') {
                 console.log("Message received", msg.toString());
             }
             if (message.type == "connect" && !message.is_n2n) {
@@ -83,8 +83,15 @@ fastify.register(async function (fastify) {
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
                 broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
-                await broadcastManager.ConnectToCharacters()
-                await broadcastManager.StartN2N(message.source, message.sourceFormId, message.sourceVoiceType, message.target, message.targetFormId, message.location, message.currentDateTime)
+                if(broadcastManager.IsRunning()) {
+                    broadcastManager.AddCharacter(message.source, message.sourceFormId, message.sourceVoiceType, 3)
+                    broadcastManager.AddCharacter(message.target, message.targetFormId, message.targetVoiceType, 3)
+                } else {
+                    await broadcastManager.ConnectToCharacters()
+                }
+                
+                await broadcastManager.Run()
+                await broadcastManager.StartN2N(message.source, message.sourceFormId, message.target, message.targetFormId, message.location, message.currentDateTime)
             } else if (message.type == "stop" && message.is_n2n) {
                 if(broadcastManager) broadcastManager.Stop()
             } else if (message.type == "pause") {
@@ -114,8 +121,9 @@ fastify.register(async function (fastify) {
                 broadcastManager.SetCellCharacters(message.ids)
             } else if (message.type == "broadcast") {
                 broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
-                await broadcastManager.ConnectToCharacters()
-                broadcastManager.Say(message.message, message.location, message.playerName)
+                if(!broadcastManager.IsRunning()) await broadcastManager.ConnectToCharacters();
+                broadcastManager.Run()
+                broadcastManager.Say(message.message, message.playerName, message.playerFormId)
             } else if (message.type == "log_event") {
                 broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
                 fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);

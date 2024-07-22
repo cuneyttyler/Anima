@@ -170,7 +170,9 @@ export class AudioProcessor extends EventEmitter {
             this.convertAudio(tempFileName, audioFile, pitch, async () => {
                 this.generateLipFile(audioFile, lipFile, msg);
                 duration = await this.getAudioDuration(audioFile);
-                fs.unlinkSync(tempFileName);
+                try {
+                    fs.unlinkSync(tempFileName);
+                } catch(e) {}
                 callback( [audioFile, lipFile, duration])
             })
             
