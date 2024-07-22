@@ -72,6 +72,12 @@ public:
         }
     }
 
+    static int TimeDiffInSeconds(std::chrono::high_resolution_clock::time_point start,
+                                 std::chrono::high_resolution_clock::time_point end) {
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+        return duration.count();
+    }
+
     template <typename K, typename V>
     static K GetKeyAtIndex(map<K, V>& mapRef, int index) {
         for (const auto& entry : mapRef) {
@@ -248,7 +254,7 @@ public:
     inline static set<RE::Actor*> cellActors;
     inline static vector<Follower*> followers;
     inline static string currentDateTime;
-    inline static int MAX_BROADCAST_SPEAKER_COUNT = 10;
+    inline static int MAX_BROADCAST_SPEAKER_COUNT = 15;
 
     static std::string DisplayMessage(std::string str, int fontSize, int width) {
         std::stringstream ss(str);
@@ -419,6 +425,17 @@ public:
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         this_thread::sleep_for(250ms);
         SKSE::ModCallbackEvent modEvent_2{"BLC_Send_LookAt", "", 1, targetActor};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent_2);
+    }
+
+    static void StopLookAt(int formId) {
+        RE::Actor* sourceActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
+
+        Util::WriteLog("StopLookAt: " + string(sourceActor->GetName()), 4);
+        SKSE::ModCallbackEvent modEvent{"BLC_Send_LookAt", "", 0, sourceActor};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+        this_thread::sleep_for(250ms);
+        SKSE::ModCallbackEvent modEvent_2{"BLC_Send_LookAt", "", 2, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent_2);
     }
 

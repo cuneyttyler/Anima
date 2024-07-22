@@ -294,7 +294,11 @@ public:
             } else if (type == "stop" && dial_type == 1) {
                 AnimaCaller::StopBroadcastForSpeaker(formId);
             } else if (type == "look-at") {
-                AnimaCaller::SendLookAt(formId, targetFormId);
+                if (targetFormId != 0) {
+                    AnimaCaller::SendLookAt(formId, targetFormId);
+                } else {
+                    AnimaCaller::StopLookAt(formId);
+                }
             } else if (type == "doesntexist" && dial_type == 0) {
                 Util::WriteLog("NPC doesn't exist in database == " +
                                 Util::GetActorName(AnimaCaller::conversationActor) + " ==.", 4);
@@ -446,6 +450,7 @@ public:
     }
 
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
+        Util::WriteLog("SocketManager::SendBroadcast");
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         auto playerFormId = RE::PlayerCharacter::GetSingleton()->GetFormID();
 
@@ -457,6 +462,7 @@ public:
         BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes,
                                                             distances, speaker, listener, playerName, playerFormId, "", "");
         soc->send_message_broadcast(messageObj);
+        Util::WriteLog("Broadcast sent.");
     }
 
     void SendStopSignal() {
@@ -464,6 +470,14 @@ public:
         ValidateSocket();
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         Message* message = new Message("stop", "stop", "", "", playerName);
+        soc->send_message(message);
+    }
+
+    void SendBroadcastStopSignal() {
+        Util::WriteLog("Sending BROADCAST STOP signal.", 4);
+        ValidateSocket();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        Message* message = new Message("broadcast-stop", "broadcast-stop", "", "", playerName);
         soc->send_message(message);
     }
 

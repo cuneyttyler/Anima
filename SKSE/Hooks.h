@@ -8,6 +8,10 @@ public:
     }
 
 private:
+    static inline string lastSubtitle;
+    static inline string newSubtitle;
+    static inline std::chrono::steady_clock::time_point subtitleUpdateTime = std::chrono::high_resolution_clock::now();
+
     static void UpdatePCMod(RE::PlayerCharacter* pc, float delta) {
         // call original function
         UpdatePC(pc, delta);
@@ -17,12 +21,19 @@ private:
         
         bool isEmpty = true;
         for (RE::SubtitleInfo subtitleInfo : subtitleManager->subtitles) {
-            if (std::string(subtitleInfo.subtitle).find("==EMPTY_SUBTITLE==") == std::string::npos) {
+            if (!IsEmptySubtitle(string(subtitleInfo.subtitle)) && std::string(subtitleInfo.subtitle) != newSubtitle) {
+                lastSubtitle = newSubtitle;
+                newSubtitle = std::string(subtitleInfo.subtitle);
+                subtitleUpdateTime = std::chrono::high_resolution_clock::now();
+            }
+
+            if (!IsEmptySubtitle(std::string(subtitleInfo.subtitle))) {
                 isEmpty = false;
                 break;
             }
+            
         }
-        if (isEmpty && SubtitleManager::HideSignal) {
+        if ((isEmpty || (!newSubtitle.empty() && CheckHangingSubtitle()) && SubtitleManager::HideSignal)) {
             SubtitleManager::HideSubtitle();
             SubtitleManager::HideSignal = false;
         }
@@ -30,6 +41,17 @@ private:
             SubtitleManager::HideSignal = true;
         }
     }
+
+    static bool IsEmptySubtitle(string subtitle) { 
+        return subtitle.find("==EMPTY_SUBTITLE==") != std::string::npos;
+    }
+
+    static bool CheckHangingSubtitle() { 
+        auto now = std::chrono::high_resolution_clock::now();
+        int diff = Util::TimeDiffInSeconds(subtitleUpdateTime, now);
+        return diff > 10;
+    }
+
     static inline REL::Relocation<decltype(UpdatePCMod)> UpdatePC;
 };
 
