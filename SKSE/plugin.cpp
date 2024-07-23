@@ -659,6 +659,7 @@ public:
     }
 
     static bool N2N_Stop(RE::StaticFunctionTag*) {
+        Util::WriteLog("SENDING BROADCAST STOP SIGNAL");
         SocketManager::getInstance().SendN2NStopSignal();
 
         return true;

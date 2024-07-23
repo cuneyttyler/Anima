@@ -13,7 +13,7 @@ export default class BroadcastManager {
     private promptManager : PromptManager;
     private fileManager: FileManager;
     private skseController: SKSEController;
-    public static MAX_SPEAKER_COUNT = 5;
+    public static MAX_SPEAKER_COUNT = 15;
     public names;
     private formIds;
     private voiceTypes;
@@ -48,7 +48,9 @@ export default class BroadcastManager {
                 }
             }
             if(process.env.BROADCAST_RECURSIVE && process.env.BROADCAST_RECURSIVE.toLowerCase() == 'true' && message && !_continue) {
-                await this.ConnectToCharacters()
+                if(!this.IsRunning()){
+                    await this.ConnectToCharacters()
+                }
                 await this.WaitUntilPauseEnds()
                 await this.Say(character.name + " said : \"" + message + "\"", character.name, character.formId)
             }
@@ -94,38 +96,43 @@ export default class BroadcastManager {
             await new Promise(resolve => setTimeout(resolve, 50));  // Wait and try again
         }
         this.lock.isLocked = true;
-        this.names = names
-        this.formIds = formIds
-        this.voiceTypes = voiceTypes
-        this.distances = distances
-        this.currentDateTime = currentDateTime
-        BroadcastManager.currentLocation = currentLocation
+        try{
+            this.names = names
+            this.formIds = formIds
+            this.voiceTypes = voiceTypes
+            this.distances = distances
+            this.currentDateTime = currentDateTime
+            BroadcastManager.currentLocation = currentLocation
 
-        if(this.IsRunning()) {
-            for(let i in names) {
-                this.AddCharacter(names[i],formIds[i], voiceTypes[i], distances[i])
-            }
-            for(let i in this.characters) {
-                let found: boolean = false
-                for(let j in names) {
-                    console.log("CHECKING " + this.characters[i].name.toLowerCase() + ", " + names[j].toLowerCase())
-                    if(this.characters[i].name.toLowerCase() == names[j].toLowerCase()) {
-                        found = true
-                        break
-                    }
+            if(this.IsRunning()) {
+                for(let i in names) {
+                    this.AddCharacter(names[i],formIds[i], voiceTypes[i], distances[i])
                 }
-                if(!found || !this.characters[i].name) {
-                    console.log("SENDING STOP FOR " + this.characters[i].name)
-                    this.characters[i].stop = true
-                    this.characters[i].googleController.Stop()
-                }
+                this.StopNonExistingCharacters(names);
             }
+        } finally {
+            this.lock.isLocked = false;
         }
-        this.lock.isLocked = false;
     }
 
     SetCellCharacters(names) {
         BroadcastManager.cellNames = names
+    }
+
+    StopNonExistingCharacters(names) {
+        for(let i in this.characters) {
+            let found: boolean = false
+            for(let j in names) {
+                if(this.characters[i].name && names[j] && this.characters[i].name.toLowerCase() == names[j].toLowerCase()) {
+                    found = true
+                    break
+                }
+            }
+            if(!found || !this.characters[i].name) {
+                this.characters[i].stop = true
+                this.characters[i].googleController.Stop()
+            }
+        }
     }
 
     async ConnectToCharacters() {
@@ -156,8 +163,8 @@ export default class BroadcastManager {
                 character.eventBuffer = this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile)
                 character.thoughtBuffer = this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile)
                 character.googleController = new GoogleGenAIController(4, 1, character, character.voiceType,  parseInt(i), this.profile, this.skseController);
-                console.log("ADDED CHARACTER " + character.name + ", " + character.voiceType)
-                this.characters.push(character)
+                // console.log("ADDED CHARACTER " + character.name + ", " + character.voiceType)
+                if(character.id && character.name) this.characters.push(character)
             }
         } finally {
             this.lock.isLocked = false;
@@ -166,7 +173,6 @@ export default class BroadcastManager {
 
     // Socket version of connection
     async Say(message: string, speakerName : string, speakerFormId: string) {
-        console.log("BroadcastManager::Say")
         if(!this.IsRunning()) {
             console.log("BROADCAST NOT RUNNING::Stopping")
             return
@@ -287,15 +293,19 @@ export default class BroadcastManager {
             await new Promise(resolve => setTimeout(resolve, 50));  // Wait and try again
         }
         this.lock.isLocked = true;
-        this.stop = true
-        console.log("** FINALIZING CONVERSATION **.")
-        for(let i in this.characters) {
-            if(!this.characters[i]) continue
-            const _events = await this.characters[i].googleController.SummarizeEvents(this.fileManager.GetEvents(this.characters[i].id, this.characters[i].formId, this.profile))
-            this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, _events, this.profile, false)
-            this.characters[i].googleController.Stop()
+        try {    
+            this.stop = true
+            console.log("** FINALIZING CONVERSATION **.")
+            for(let i in this.characters) {
+                if(!this.characters[i] || !this.characters[i].id) continue
+                const _events = await this.characters[i].googleController.SummarizeEvents(this.fileManager.GetEvents(this.characters[i].id, this.characters[i].formId, this.profile))
+                this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, _events, this.profile, false)
+                this.characters[i].stop = true;
+                this.characters[i].googleController.Stop()
+            }
+        } finally {
+            this.lock.isLocked = false
         }
-        this.lock.isLocked = false
     }
 
     Run() {

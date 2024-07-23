@@ -84,6 +84,9 @@ export class GoogleGenAIController {
             if(this.type == 0) {
                 return
             } else if(this.type == 1) {
+                let payload = GetPayload(this.character.name + "  not answering.", "notification", 0, 1, this.speaker, 0, "")
+                if(!DEBUG)
+                    this.skseController.Send(payload)
                 EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
                 EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
                 return
@@ -96,7 +99,7 @@ export class GoogleGenAIController {
         }
 
         if(message.toLowerCase().includes("not_related") || message.toLowerCase().includes('not related')) {
-            let payload = GetPayload(this.character.name + " thinks you're not talking to them.", "notification", 0, 1, this.speaker, 0, "")
+            let payload = GetPayload(this.character.name + " leavens conversation.", "notification", 0, 1, this.speaker, 0, "")
             if(!DEBUG && this.character.name.toLowerCase() == this.playerName.toLowerCase())
                 this.skseController.Send(payload)
             if(this.type == 1) {
@@ -168,7 +171,7 @@ export class GoogleGenAIController {
             }
             if(this.speaker == 7) {
                 temp_file_suffix = "8"
-                topic_filename = "AnimaDialo_AnimaBroadcastB_0018EC50_1"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_001A3065_1"
             }
             if(this.speaker == 8) {
                 temp_file_suffix = "9"
@@ -178,40 +181,59 @@ export class GoogleGenAIController {
                 temp_file_suffix = "10"
                 topic_filename = "AnimaDialo_AnimaBroadcastB_0018EC52_1"
             }
-        } else if(this.type == 2) {
             if(this.speaker == 10) {
                 temp_file_suffix = "11"
-                topic_filename = "AnimaDialo_AnimaFollowerBr_0016B533_1"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00198E5E_1"
             }
             if(this.speaker == 11) {
                 temp_file_suffix = "12"
-                topic_filename = "AnimaDialo_AnimaFollowerBr_00175742_1"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00198E5F_1"
             }
             if(this.speaker == 12) {
                 temp_file_suffix = "13"
-                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063D_1"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00198E60_1"
             }
             if(this.speaker == 13) {
                 temp_file_suffix = "14"
-                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063E_1"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00198E61_1"
             }
             if(this.speaker == 14) {
                 temp_file_suffix = "15"
+                topic_filename = "AnimaDialo_AnimaBroadcastB_00198E62_1"
+            }
+        } else if(this.type == 2) {
+            if(this.speaker == 15) {
+                temp_file_suffix = "16"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0016B533_1"
+            }
+            if(this.speaker == 16) {
+                temp_file_suffix = "17"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_00175742_1"
+            }
+            if(this.speaker == 17) {
+                temp_file_suffix = "18"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063D_1"
+            }
+            if(this.speaker == 18) {
+                temp_file_suffix = "19"
+                topic_filename = "AnimaDialo_AnimaFollowerBr_0017063E_1"
+            }
+            if(this.speaker == 19) {
+                temp_file_suffix = "20"
                 topic_filename = "AnimaDialo_AnimaFollowerBr_0017063F_1"
             }
         }
 
         this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, ++this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
             if(this.type == 0) {
-                console.log("TYPE 0")
                 this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue));
                 EventBus.GetSingleton().emit('WEB_TARGET_RESPONSE', message);
                 setTimeout(() => {
                     this.SendEvent(message, this.speaker)
                 }, duration * 1000 + 500)
             } else if(this.type == 1 || this.type == 2) {
-                console.log("SENDING == " + text + "== for " + this.character.name + "(" + this.speaker + ")" + ", " + this.voiceType)
-                console.log(topic_filename)
+                // console.log("SENDING == " + text + "== for " + this.character.name + "(" + this.speaker + ")" + ", " + this.voiceType)
+                // console.log(topic_filename)
                 BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue), duration));
                 // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, message);
             }
@@ -238,8 +260,12 @@ export class GoogleGenAIController {
         this.skseController.Send(payload);
     }
 
+    StopLookAt() {
+        let payload = {message:"look-at", type: "look-at", dial_type: this.type, speaker: 0, formId: parseInt(this.character.formId)}
+        this.skseController.Send(payload);
+    }
+
     Connect() {
-        console.log("Sending CONNECTION_ESTABLISHED for " + this.speaker)
         let payload = GetPayload("connection established", "established", 0, this.type, this.speaker);
         this.skseController.Send(payload);
     }
@@ -248,12 +274,12 @@ export class GoogleGenAIController {
         console.log("Sending STOP for " + this.character.name)
         let payload = GetPayload("stop", "stop", 0, this.type, this.speaker, parseInt(this.character.formId));
         this.skseController.Send(payload);
+        this.StopLookAt()
     }
 
     SendVerifyConnection() {
         let verifyConnection = GetPayload("connection established", "established", 0, this.type, 0);
 
-        console.log("Connection to " + this.character.name + " is succesfull" + JSON.stringify(verifyConnection));
         (console as any).logToLog(`Connection to ${this.character.name} is succesfull.`)            
         if(!DEBUG)
             this.skseController.Send(verifyConnection);
