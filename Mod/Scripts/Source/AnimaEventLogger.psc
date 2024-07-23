@@ -23,7 +23,7 @@ Function LogEvents()
 EndFunction
 
 Function FindAllNpcsInArea()
-    actors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 1000)
+    actors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 700)
     broadcastActors = PapyrusUtil.ActorArray(actors.Length)
     int i = 0
     While i < actors.Length

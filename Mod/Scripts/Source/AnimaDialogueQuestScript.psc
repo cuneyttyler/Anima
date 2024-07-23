@@ -1,8 +1,6 @@
 Scriptname AnimaDialogueQuestScript extends Quest  
 
 topic property target_topic auto
-topic property source_n2n_topic auto
-topic property target_n2n_topic auto
 topic property broadcast_topic_1 auto
 topic property broadcast_topic_2 auto
 topic property broadcast_topic_3 auto
@@ -24,19 +22,8 @@ topic property follower_topic_3 auto
 topic property follower_topic_4 auto
 topic property follower_topic_5 auto
 referencealias property target auto
-referencealias property source_n2n auto
-referencealias property target_n2n auto
-referencealias property broadcast_speaker_1 auto
-referencealias property broadcast_speaker_2 auto
-referencealias property broadcast_speaker_3 auto
-referencealias property broadcast_speaker_4 auto
-referencealias property broadcast_speaker_5 auto
-referencealias property broadcast_speaker_6 auto
-referencealias property broadcast_speaker_7 auto
-referencealias property broadcast_speaker_8 auto
-referencealias property broadcast_speaker_9 auto
-referencealias property broadcast_speaker_10 auto
-package property AnimaTravelToNpcLocationPackage auto
+referencealias property n2n_target auto
+package property AnimaTravelToNPCPackage auto
 package property AnimaStandPackage auto
 package property AnimaN2NStandPackage auto
 formlist property _AnimaRaceList auto
@@ -71,6 +58,8 @@ function OnInit()
    ConversationOngoing.SetValueInt(0)
    N2N_ConversationOngoing.SetValueInt(0)
    N2N_LastSuccessfulStart.SetValueInt(0)
+;    Debug.Trace("Anima: Init. Setting Stage to 10");
+;    self.SetStage(10)
 endFunction
 
 function SetHoldPosition(String eventName, String strArg, Float numArg, Form sender)
@@ -84,18 +73,11 @@ function ShowNotification(String eventName, String strArg, Float numArg, Form se
 endFunction
 
 function TravelToNPCLocation(String eventName, String strArg, Float numArg, Form sender)
-    ActorUtil.AddPackageOverride(source_n2n.GetActorRef(), AnimaTravelToNpcLocationPackage, 0)
-    source_n2n.GetActorRef().EvaluatePackage()
 endFunction
 
 function _Start(String eventName, String strArg, Float numArg, Form sender) 
     If (sender as Actor) == None
         debug.Trace("Anima: Actor is None. Returning.")
-        Reset_Normal()
-        return;
-    EndIf
-    If (sender as Actor) == source_n2n.GetActorRef() || (sender as Actor) == target_n2n.GetActorRef()
-        debug.Notification("NPC is busy.")
         Reset_Normal()
         return;
     EndIf
@@ -224,51 +206,36 @@ function Stop_Broadcast(String eventName, String strArg, Float numArg, Form send
 endFunction
 
 function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
-    Debug.Trace("Send_LookAt " + (sender as Actor).GetDisplayName() + " (" + numArg + ")")
     If numArg == 0
+        If sender == None || (sender as Actor) == None
+            Return
+        EndIf
         lookAtSource = sender as Actor
     ElseIf numArg == 1
+        If sender == None || (sender as Actor) == None || lookAtSource == None || lookAtSource == None
+            Return
+        EndIf
+        Debug.Trace("Send_LookAt " + (sender as Actor).GetDisplayName() + " (" + numArg + ")")
         lookAtSource.SetLookAt(sender as Actor)
     ElseIf numArg == 2
-        lookAtSource.SetLookat(None)
+        lookAtSource.ClearLookAt()
     EndIf
 endFunction
 
 function Start_N2N(String eventName, String strArg, Float numArg, Form sender)
-    Debug.Trace("Anima: Starting N2N Dialogue.")
-    N2N_ConversationOnGoing.SetValue(1)
-    N2N_LastSuccessfulStart.SetValueInt((Utility.GetCurrentRealTime() as int) % 1000)
-endFunction
-
-function Start_N2N_Source(String eventName, String strArg, Float numArg, Form sender)
-    source_n2n.ForceRefTo(sender as Actor)
-endFunction
-
-function Start_N2N_Target(String eventName, String strArg, Float numArg, Form sender)
-    target_n2n.ForceRefTo(sender as Actor)
-    If source_n2n.GetActorRef() != None && target_n2n.GetActorRef() != None
-        source_n2n.GetActorRef().SetLookAt(target_n2n.GetActorRef())
-        target_n2n.GetActorRef().SetLookAt(source_n2n.GetActorRef())
-    EndIf
-    ; (AnimaDialogueQuest as AnimaDIalogueQuestN2NScript).SetPreviousActors(source_n2n.GetActorRef(), target_n2n.GetActorRef())
-endFunction
-
-function Stop_N2N(String eventName, String strArg, Float numArg, Form sender)
-    Debug.Trace("Anima: Stopping N2N Dialogue.")
-    Utility.Wait(3) ; Wait for last line to be spoken
-    N2N_ConversationOnGoing.SetValue(0)
-    source_n2n.Clear()
-    target_n2n.Clear()
-endFunction
-
-function Speak_N2N(String eventName, String strArg, Float numArg, Form sender) 
-    debug.Trace("Anima: Speak request for " + numArg + " -> " + (sender as Actor).GetDisplayName())
-    If numArg == 0 && N2N_ConversationOnGoing.GetValueInt() == 1
-        source_n2n.GetActorRef().SetLookAt(target_n2n.GetActorRef())
-        source_n2n.GetActorRef().Say(source_n2n_topic)
-    ElseIf N2N_ConversationOnGoing.GetValueInt() == 1
-        target_n2n.GetActorRef().SetLookAt(source_n2n.GetActorRef())
-        target_n2n.GetActorRef().Say(target_n2n_topic)
+    If numArg == 0
+        If n2n_target == None
+            Debug.Trace("n2n_target ref alias is NONE. RETURNING.")
+            Return
+        EndIf
+        Debug.Trace("Anima: Setting N2N Target Ref ==> " + (sender as Actor).GetDisplayName())
+        n2n_target.ForceRefTo(sender as Actor)
+    ElseIf numArg == 1
+        Debug.Trace("Anima: Starting N2N Dialogue.")
+        ActorUtil.AddPackageOverride((sender as Actor), AnimaTravelToNPCPackage)
+        N2N_ConversationOnGoing.SetValue(1)
+        N2N_LastSuccessfulStart.SetValueInt((Utility.GetCurrentRealTime() as int) % 1000)
+        AnimaSKSE.N2N_Start(Utility.GameTimeToString(Utility.GetCurrentGameTime()))
     EndIf
 endFunction
 
@@ -287,20 +254,6 @@ endFunction
 
 function Reset_N2N()
     Debug.Trace("Anima: Reset_N2N.")
-    ; If source_n2n.GetActorRef() != None
-    ;     Debug.Trace("Toggling actor" + source_n2n.GetActorRef().GetDisplayName())
-    ;     source_n2n.GetActorRef().Disable()
-    ;     Utility.Wait(0.1)
-    ;     source_n2n.GetActorRef().Enable()
-    ; EndIf
-    ; If target_n2n.GetActorRef() != None
-    ;     Debug.Trace("Toggling actor" + target_n2n.GetActorRef().GetDisplayName())
-    ;     target_n2n.GetActorRef().Disable()
-    ;     Utility.Wait(0.1)
-    ;     target_n2n.GetActorRef().Enable()
-    ; EndIf
-    source_n2n.Clear()
-    target_n2n.Clear()
     N2N_ConversationOnGoing.SetValueInt(0)
     N2N_LastSuccessfulStart.SetValueInt(0)
     AnimaSKSE.N2N_Stop()
@@ -317,18 +270,6 @@ function HardReset(String eventName, String strArg, Float numArg, Form sender)
         target.GetActorRef().Enable()
     EndIf
     target.Clear()
-    If source_n2n.GetActorRef() != None
-        source_n2n.GetActorRef().Disable()
-        Utility.Wait(0.1)
-        source_n2n.GetActorRef().Enable()
-    EndIf
-    If target_n2n.GetActorRef() != None
-        target_n2n.GetActorRef().Disable()
-        Utility.Wait(0.1)
-        target_n2n.GetActorRef().Enable()
-    EndIf
-    source_n2n.Clear()
-    target_n2n.Clear()
 endfunction
 
 function SendResponseLog(String eventName, String strArg, Float numArg, Form sender)
