@@ -289,10 +289,11 @@ public:
     static void N2N_Init() {
         Util::WriteLog("Starting dialogue between " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + " and " +
                         Util::GetActorName(AnimaCaller::N2N_TargetActor) + ".", 3);
-        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N", "", 1.0f, nullptr};
+        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N", "", 0, AnimaCaller::N2N_TargetActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
-        N2N_Init_Source();
-        N2N_Init_Target();
+        this_thread::sleep_for(0.25s);
+        SKSE::ModCallbackEvent modEvent_2{"BLC_Start_N2N", "", 1, AnimaCaller::N2N_SourceActor};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent_2);
     }
 
     static void N2N_Init_Source() {
@@ -642,6 +643,8 @@ public:
             return false;
         }
 
+        AnimaCaller::N2N_SourceActor = source;
+        AnimaCaller::N2N_TargetActor = target;
         SocketManager::getInstance().connectTo_N2N(source, target, sourceVoiceType, targetVoiceType, currentDateTime);
 
         return true;

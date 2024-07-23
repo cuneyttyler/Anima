@@ -270,9 +270,11 @@ public:
 
             std::string message = j["message"];
             std::string type = j["type"];
-            int dial_type = !j["dial_type"].is_null() ? (int) j["dial_type"] : 0;
-            int speaker = !j["speaker"].is_null() ? (int) j["speaker"] : 0;
+            int dial_type = !j["dial_type"].is_null() ? (int)j["dial_type"] : 0;
+            int speaker = !j["speaker"].is_null() ? (int)j["speaker"] : 0;
+            int listener = !j["listener"].is_null() ? (int)j["listener"] : 0;
             int formId = !j["formId"].is_null() ? (int) j["formId"] : 0;
+            int sourceFormId = !j["sourceFormId"].is_null() ? (int)j["sourceFormId"] : 0;
             int targetFormId = !j["targetFormId"].is_null() ? (int)j["targetFormId"] : 0;
             float duration = !j["duration"].is_null() ? (float) j["duration"] : 0;
 
@@ -281,6 +283,8 @@ public:
 
             if (type == "established" && dial_type == 0) {
                 AnimaCaller::ConnectionSuccessful();
+            } if (type == "established" && dial_type == 1) {
+                AnimaCaller::N2N_Init();
             } else if (type == "chat" && dial_type == 0) {
                 AnimaCaller::Speak(message, duration);
             } else if (type == "chat" && dial_type == 1) {
