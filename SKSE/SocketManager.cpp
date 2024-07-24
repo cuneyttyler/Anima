@@ -14,7 +14,12 @@ using websocketpp::lib::bind;
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 
-class Message {
+class AbstractMessage {
+public:
+    virtual json toJson() const = 0;
+};
+
+class Message : public AbstractMessage {
 public:
     Message(const string& type, const string& message, const string& id, const string& formId, const string& voiceType, const string& playerName = "",
             const string& location = "",
@@ -54,7 +59,7 @@ private:
     bool stop;
 };
 
-class N2NMessage {
+class N2NMessage : public AbstractMessage {
 public:
     N2NMessage(const string& type, const string& message, const string& source, const string& target, const string& sourceFormId, const string& targetFormId, const string& sourceVoiceType, const string& targetVoiceType, const string& playerName, int speaker,
                const string& location, const string& currentDateTime = "")
@@ -103,11 +108,12 @@ private:
 };
 
 
-class BroadcastMessage {
+class BroadcastMessage : public AbstractMessage {
 public:
     BroadcastMessage(const string& type, const string& message, const vector<string> ids, const vector<string> formIds,
-                     const vector<string> voiceTypes, const vector<float> distances, const string& speaker, const string& listener,
-                     const string& playerName, const int playerFormId, const string& location, const string& currentDateTime)
+                     const vector<string> voiceTypes, const vector<float> distances, const string& speaker,
+                     const string& listener, const string& playerName, const int playerFormId, const string& location,
+                     const string& currentDateTime)
         : type(type),
           message(message),
           ids(ids),
@@ -119,13 +125,22 @@ public:
           location(location),
           currentDateTime(currentDateTime),
           speaker(speaker),
-          listener(listener){}
+          listener(listener) {}
 
     json toJson() const {
-        return {{"type", type},       {"message", message},       {"ids", ids}, 
-            {"formIds", formIds}, {"voiceTypes", voiceTypes}, {"distances", distances}, {"playerName", playerName},
+        return {{"type", type},
+                {"message", message},
+                {"ids", ids},
+                {"formIds", formIds},
+                {"voiceTypes", voiceTypes},
+                {"distances", distances},
+                {"playerName", playerName},
                 {"playerFormId", playerFormId},
-                {"is_n2n", false},{"location", location},{"currentDateTime", currentDateTime}, {"speaker", speaker}, {"listener", listener}};
+                {"is_n2n", false},
+                {"location", location},
+                {"currentDateTime", currentDateTime},
+                {"speaker", speaker},
+                {"listener", listener}};
     }
 
 private:
@@ -142,7 +157,38 @@ private:
     string speaker;
     string listener;
 };
-    
+
+class Lecture : public AbstractMessage {
+public:
+    Lecture(const string& type, const string& teacher, const string& teacherFormId, const string& teacherVoiceType, const int lectureNo, const string& currentDateTime, const string& playerName)
+        : type(type),
+          teacher(teacher),
+          teacherFormId(teacherFormId),  
+          teacherVoiceType(teacherVoiceType),
+          lectureNo(lectureNo),
+          currentDateTime(currentDateTime),
+          playerName(playerName) {}
+
+    json toJson() const {
+        return {{"type", type},
+                {"teacher", teacher},
+                {"teacherFormId", teacherFormId},
+                {"teacherVoiceType", teacherVoiceType},
+                {"lectureNo", lectureNo},
+                {"currentDateTime", currentDateTime},
+                {"playerName", playerName}};
+    }
+
+private:
+    string type;
+    string teacher;
+    string teacherFormId;
+    string teacherVoiceType;
+    int lectureNo;
+    string currentDateTime;
+    string playerName;
+};
+
 class AnimaSocketController {
 
 public:
@@ -216,38 +262,7 @@ public:
         c.run();
     }
 
-    void send_message(Message* message) {
-        // Send a JSON message to the server
-        try {
-            json messageJson = message->toJson();
-            std::string message_str = messageJson.dump();
-            c.send(con->get_handle(), message_str, websocketpp::frame::opcode::text);
-        } catch (const exception& e) {
-            Util::WriteLog("Exception during send_message: " + string(e.what()), 1);
-            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
-            AnimaCaller::Reset();
-        } catch (...) {
-            Util::WriteLog("Unkown exception during send_message", 1);
-            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
-            AnimaCaller::Reset();
-        }
-    }
-
-    void send_message_n2n(N2NMessage* message) {
-        try {
-            json messageJson = message->toJson();
-            std::string message_str = messageJson.dump();
-            c.send(con->get_handle(), message_str, websocketpp::frame::opcode::text);
-        } catch (const exception& e) {
-            Util::WriteLog("Exception during send_message_n2n: " + string(e.what()), 1);
-            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
-        } catch (...) {
-            Util::WriteLog("Unkown exception during send_message_n2n", 1);
-            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
-        }
-    }
-
-    void send_message_broadcast(BroadcastMessage* message) {
+    void send_message(AbstractMessage* message) {
         // Send a JSON message to the server
         try {
             json messageJson = message->toJson();
@@ -276,7 +291,8 @@ public:
             int formId = !j["formId"].is_null() ? (int) j["formId"] : 0;
             int sourceFormId = !j["sourceFormId"].is_null() ? (int)j["sourceFormId"] : 0;
             int targetFormId = !j["targetFormId"].is_null() ? (int)j["targetFormId"] : 0;
-            float duration = !j["duration"].is_null() ? (float) j["duration"] : 0;
+            float duration = !j["duration"].is_null() ? (float)j["duration"] : 0;
+            string command = !j["command"].is_null() ? (string)j["command"] : "";
 
             Util::WriteLog("ON_MESSAGE ==" + type + "==" + to_string(dial_type) + "==" + to_string(speaker) +
                            "==" + to_string(formId) + "==" + to_string(duration) + "==" + message + "==");
@@ -318,6 +334,10 @@ public:
                 AnimaCaller::N2N_TargetActor = nullptr;
             } else if (type == "notification") {
                 AnimaCaller::ShowReplyMessage(message);
+            } else if (type == "follower-command") {
+                AnimaCaller::SendFollowerCommand(command);
+            } else if (type == "end_lecture") {
+                AnimaCaller::EndLecture();
             }
         } 
         catch (const exception& e) {
@@ -369,13 +389,11 @@ public:
     }
 
     void SendPause() {
-        Util::WriteLog("SENDING PAUSE", 4);
         Message* messageObj = new Message("pause", "", "", "", "", "", "", "", false);
         soc->send_message(messageObj);
     }
 
     void SendContinue() {
-        Util::WriteLog("SENDING CONTINUE", 4);
         Message* messageObj = new Message("continue", "", "", "", "", "", "", "", false);
         soc->send_message(messageObj);
     }
@@ -400,7 +418,30 @@ public:
 
         BroadcastMessage* messageObj = new BroadcastMessage("broadcast-set", "", names, formIds, voiceTypes, distances,
                                                             "", "", playerName, 0, currentLocation, currentDateTime);
-        soc->send_message_broadcast(messageObj);
+        soc->send_message(messageObj);
+    }
+
+    void SendN2NBroadcastActors(map<RE::Actor*, ActorData*> actors, string currentDateTime, string currentLocation) {
+        if (actors.size() == 0) return;
+
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+
+        vector<string> names;
+        vector<string> formIds;
+        vector<string> voiceTypes;
+        vector<float> distances;
+
+        map<RE::Actor*, ActorData*>::iterator iter;
+        for (iter = actors.begin(); iter != actors.end(); iter++) {
+            names.push_back(iter->first->GetName());
+            formIds.push_back(to_string(iter->first->GetFormID()));
+            voiceTypes.push_back(iter->second->voice);
+            distances.push_back(iter->second->distance);
+        }
+
+        BroadcastMessage* messageObj = new BroadcastMessage("broadcast-n2n-set", "", names, formIds, voiceTypes, distances,
+                                                            "", "", playerName, 0, currentLocation, currentDateTime);
+        soc->send_message(messageObj);
     }
 
     void ClearFollowers() {
@@ -413,7 +454,7 @@ public:
 
         BroadcastMessage* messageObj = new BroadcastMessage("followers-clear", "", names, formIds, voiceTypes,
                                                             distances, "", "", playerName, 0, "", "");
-        soc->send_message_broadcast(messageObj);
+        soc->send_message(messageObj);
     }
 
     void SendFollower(Follower* follower) {
@@ -431,7 +472,7 @@ public:
 
         BroadcastMessage* messageObj =
             new BroadcastMessage("followers-set", "", names, formIds, voiceTypes, distances, "", "", playerName, 0, "", "");
-        soc->send_message_broadcast(messageObj);
+        soc->send_message(messageObj);
     }
 
     void SendCellActors(set<RE::Actor*> actors) {
@@ -450,11 +491,10 @@ public:
 
         BroadcastMessage* messageObj = new BroadcastMessage("cellactors-set", "", names, formIds, voiceTypes, distances,
                                                             "", "",  playerName, 0, "", "");
-        soc->send_message_broadcast(messageObj);
+        soc->send_message(messageObj);
     }
 
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
-        Util::WriteLog("SocketManager::SendBroadcast");
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         auto playerFormId = RE::PlayerCharacter::GetSingleton()->GetFormID();
 
@@ -465,12 +505,24 @@ public:
 
         BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes,
                                                             distances, speaker, listener, playerName, playerFormId, "", "");
-        soc->send_message_broadcast(messageObj);
-        Util::WriteLog("Broadcast sent.");
+        soc->send_message(messageObj);
+    }
+
+    void SendStartLecture(RE::Actor* teacher, string teacherVoiceType, int lectureNo, string currentDateTime) {
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        Lecture* lecture = new Lecture("start-lecture", teacher->GetName(), to_string(teacher->GetFormID()),
+                                       teacherVoiceType, lectureNo, currentDateTime, playerName);
+
+        soc->send_message(lecture);
+    }
+
+    void SendEndLecture() {
+        Lecture* lecture = new Lecture("end-lecture", "", "", "", 0, "", "");
+
+        soc->send_message(lecture);
     }
 
     void SendStopSignal() {
-        Util::WriteLog("Sending STOP signal.", 4);
         ValidateSocket();
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         Message* message = new Message("stop", "stop", "", "", playerName);
@@ -478,10 +530,16 @@ public:
     }
 
     void SendBroadcastStopSignal() {
-        Util::WriteLog("Sending BROADCAST STOP signal.", 4);
         ValidateSocket();
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         Message* message = new Message("broadcast-stop", "broadcast-stop", "", "", playerName);
+        soc->send_message(message);
+    }
+
+    void SendBroadcastStopSignalForActor(RE::Actor* actor) {
+        ValidateSocket();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        Message* message = new Message("broadcast-stop", "broadcast-stop", actor->GetName(), "", playerName);
         soc->send_message(message);
     }
 
@@ -503,25 +561,21 @@ public:
 
     void SendN2NStartSignal(RE::Actor* source, RE::Actor* target, string currentDateTime) {
         if (source == nullptr|| target == nullptr) return;
-        Util::WriteLog(
-            "Sending N2N Start Signal == " + Util::GetActorName(source) + ", " + Util::GetActorName(target) + " ==", 4);
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         N2NMessage* message = new N2NMessage("start", "", source->GetName(), target->GetName(), to_string(source->GetFormID()),
             to_string(target->GetFormID()), "", "", playerName, 0,
                            source->GetCurrentLocation() != nullptr ? source->GetCurrentLocation()->GetName()
                            : "", currentDateTime);
-        soc->send_message_n2n(message);
+        soc->send_message(message);
     }
 
     void SendN2NStopSignal() {
-        Util::WriteLog("Sending N2N STOP Signal.", 4);
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         N2NMessage* message = new N2NMessage("stop", "", "", "", "", "", "", "", playerName, 0, "");
-        soc->send_message_n2n(message);
+        soc->send_message(message);
     }
 
     void SendHardReset() {
-        Util::WriteLog("Sending HardReset Signal To Client.", 4);
         Message* message = new Message("hard-reset", "", "", "", "", "");
         soc->send_message(message);
     }
@@ -591,6 +645,6 @@ public:
         N2NMessage* message = new N2NMessage("connect", "connect", source_id, target_id, to_string(source_form_id),
                                              to_string(target_form_id), source_voice_type, target_voice_type,
                                              playerName, 0, location, currentDateTime);
-        soc->send_message_n2n(message);
+        soc->send_message(message);
     }
 };

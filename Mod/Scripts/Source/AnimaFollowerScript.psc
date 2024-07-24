@@ -16,40 +16,40 @@ Event OnInit()
         Actor _actor = Follower.GetActorRef()
 
         If _actor != None
-            Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
+            ; Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
         
         _actor = FollowerExtra1.GetActorRef()
         If _actor != None
-            Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
+            ; Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
         
         _actor = FollowerExtra2.GetActorRef()
         If _actor != None
-            Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
+            ; Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
         
         _actor = FollowerExtra3.GetActorRef()
         If _actor != None
-            Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
+            ; Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
         
         _actor = FollowerExtra4.GetActorRef()
         If _actor != None
-            Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
+            ; Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
         
         _actor = FollowerExtra5.GetActorRef()
         If _actor != None
-            Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
+            ; Debug.Trace("Anima: SENDING FOLLOWER: " + _actor.GetDisplayName())
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
-        Utility.Wait(60)
+        Utility.Wait(10)
     EndWhile
 EndEvent
 

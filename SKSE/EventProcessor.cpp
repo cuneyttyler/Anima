@@ -23,26 +23,26 @@ class EventProcessor : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
 
     class TextboxResultCallback : public RE::BSScript::IStackCallbackFunctor {
     public:
+        bool broadcast = false;
         RE::Actor* conversationActor;
-        TextboxResultCallback(std::function<void()> callback, RE::Actor* form) : callback_(callback) {
+        TextboxResultCallback(std::function<void()> callback, RE::Actor* form, bool sendingBroadcast) : callback_(callback) {
+            broadcast = sendingBroadcast;
             conversationActor = form;
         }
 
         virtual inline void operator()(RE::BSScript::Variable a_result) override {
             SocketManager::getInstance().SendContinue();
+
             if (a_result.IsNoneObject()) {
             } else if (a_result.IsString()) {
                 auto playerMessage = std::string(a_result.GetString());
 
                 if (Util::trim(playerMessage).length() == 0) {
-                    EventProcessor::GetSingleton()->sendingBroadcast = false;
                     return;
                 }
 
-                Util::WriteLog("Received input == " + playerMessage + " ==.", 4);
-                Util::WriteLog("SendingBroadcast?" + to_string(EventProcessor::GetSingleton()->sendingBroadcast));
                 if (Util::toLower(playerMessage).find(std::string("goodbye")) != std::string::npos) {
-                    if (EventProcessor::GetSingleton()->sendingBroadcast) {
+                    if (broadcast) {
                         SocketManager::getInstance().SendN2NStopSignal();
                     } else {
                         EventProcessor::GetSingleton()->conversationPair = nullptr;
@@ -50,19 +50,16 @@ class EventProcessor : public RE::BSTEventSink<SKSE::CrosshairRefEvent>,
                     }
                 }
 
-                if (EventProcessor::GetSingleton()->sendingBroadcast) {
+                if (broadcast) {
                     std::thread([](std::string msg) { 
-                        Util::WriteLog("EventProcessor::SendingBroadcast");
                             SocketManager::getInstance().SendBroadcast(
                                 msg, RE::PlayerCharacter::GetSingleton()->GetName(), "");
-                            EventProcessor::GetSingleton()->sendingBroadcast = false;
                         }, playerMessage)
                         .detach();
                 } else {
                     std::thread(
                         [](RE::Actor* actor, std::string msg) {
                             SocketManager::getInstance().sendMessage(msg, actor, AnimaCaller::stopSignal);
-                            EventProcessor::GetSingleton()->sendingBroadcast = false;
                         },
                         conversationActor, playerMessage)
                         .detach();
@@ -162,7 +159,7 @@ public:
         auto vm = skyrimVM ? skyrimVM->impl : nullptr;
         if (vm) {
             RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> callback(new TextboxResultCallback(
-                []() { EventProcessor::GetSingleton()->ReleaseListener(); }, conversationPair));
+                []() { EventProcessor::GetSingleton()->ReleaseListener(); }, conversationPair, sendingBroadcast));
             auto args = RE::MakeFunctionArguments(std::move(menuID));
             vm->DispatchStaticCall("UIExtensions", "GetMenuResultString", args, callback);
             isOpenedWindow = false;
@@ -185,40 +182,40 @@ public:
                 auto dxScanCode = buttonEvent->GetIDCode();
                 // Press V key to speak.
                 if (dxScanCode == 47) {
-                    if (!isOpenedWindow) {
+                    /*if (!isOpenedWindow) {
                         if (buttonEvent->IsUp()) {
                             OnKeyReleased();
                         } else {
                             OnKeyPressed();
                         }
-                    }
+                    }*/
                     // Y key
                 } else if (dxScanCode == 21) {
                     if (buttonEvent->IsDown() && conversationPair != nullptr && !AnimaCaller::stopSignal &&
                         !AnimaCaller::conversationOngoing && !AnimaCaller::connecting) {
                         AnimaCaller::Start(conversationPair);
-                    } else if (buttonEvent->IsDown() && AnimaCaller::conversationOngoing && !AnimaCaller::stopSignal) {
-                        EventProcessor::GetSingleton()->sendingBroadcast = false;
+                    } else if (buttonEvent->IsDown() && AnimaCaller::conversationOngoing && !AnimaCaller::stopSignal && !isOpenedWindow) {
+                        sendingBroadcast = false;
                         SocketManager::getInstance().SendPause();
-                        if (!isOpenedWindow) OnPlayerRequestInput("UITextEntryMenu");
+                        OnPlayerRequestInput("UITextEntryMenu");
                     }
                     // U key
                 } else if (dxScanCode == 22) {
-                    if (buttonEvent->IsDown()) {
-                        if (!isOpenedWindow) {
-                            Util::WriteLog("SETTING SEND BROADCAST TO TRUE");
-                            sendingBroadcast = true;
-                            SocketManager::getInstance().SendPause();
-                            OnPlayerRequestInput("UITextEntryMenu");
-                        }
+                    if (buttonEvent->IsDown() && !isOpenedWindow) {
+                        sendingBroadcast = true;
+                        SocketManager::getInstance().SendPause();
+                        OnPlayerRequestInput("UITextEntryMenu");
                     }
-                    // ] key
+                    // [ key
                 } else if (buttonEvent->IsDown() && dxScanCode == 26) {
                     conversationPair = nullptr;
                     SocketManager::getInstance().SendN2NStopSignal();
                     SocketManager::getInstance().SendHardReset();
                     AnimaCaller::HardReset();
+                    // ] key
                 } else if (buttonEvent->IsDown() && dxScanCode == 27) {
+                    AnimaCaller::Stop();
+                    AnimaCaller::N2N_Stop();
                     SocketManager::getInstance().SendN2NStopSignal();
                 }
             }

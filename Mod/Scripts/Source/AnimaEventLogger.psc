@@ -1,7 +1,7 @@
 Scriptname AnimaEventLogger extends Quest
 
-actor[] previousBroadcastActors
 actor[] broadcastActors
+actor[] n2nBroadcastActors
 actor[] actors
 int numFoundActors
 
@@ -18,13 +18,14 @@ Function LogEvents()
         FindAllNpcsInArea()
         AssignActorsToRefs()
         SendActors()
-        Utility.Wait(7)
+        Utility.Wait(1)
     EndWhile
 EndFunction
 
 Function FindAllNpcsInArea()
-    actors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 700)
-    broadcastActors = PapyrusUtil.ActorArray(actors.Length)
+    actors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 1400)
+    n2nBroadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 700)
+    broadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 350)
     int i = 0
     While i < actors.Length
         If !IsAvailable(actors[i])
@@ -33,36 +34,22 @@ Function FindAllNpcsInArea()
             i += 1
         EndIf
     EndWhile
-    i = 0
-    While i < previousBroadcastActors.Length
-        bool found = false
-        int j = 0
-        While j < broadcastActors.Length
-            If previousBroadcastActors[i] == broadcastActors[j]
-                found = true
-            EndIf
-            j += 1
-        EndWhile
-        If !found
-            AnimaSKSE.RemoveBroadcastActor(previousBroadcastActors[i])
-        EndIf
-        i += 1
-    EndWhile
-    i = 0
-    int j = 0
-    While i < actors.Length
-        If IsAvailableForBroadcast(actors[i])
-            broadcastActors[j] = actors[i]
-            j += 1
-        EndIf
-        i += 1
-    EndWhile
-    previousBroadcastActors = PapyrusUtil.ActorArray(broadcastActors.Length)
-    i = 0
-    While i < broadcastActors.Length
-        previousBroadcastActors[i] = broadcastActors[i]
-        i += 1
-    EndWhile
+    ; i = 0
+    ; While i < broadcastActors.Length
+    ;     If !IsAvailableForBroadcast(broadcastActors[i])
+    ;         broadcastActors = PapyrusUtil.RemoveActor(broadcastActors, broadcastActors[i])
+    ;     Else
+    ;         i += 1
+    ;     EndIf
+    ; EndWhile
+    ; i = 0
+    ; While i < n2nBroadcastActors.Length
+    ;     If !IsAvailableForBroadcast(n2nBroadcastActors[i])
+    ;         n2nBroadcastActors = PapyrusUtil.RemoveActor(n2nBroadcastActors, n2nBroadcastActors[i])
+    ;     Else
+    ;         i += 1
+    ;     EndIf
+    ; EndWhile
 EndFunction
 
 Function AssignActorsToRefs()
@@ -80,7 +67,7 @@ Function SendActors()
     int i = 0
     While i < actors.Length
         If actors[i] != None
-            Debug.Trace("Anima: SENDING ACTOR " + actors[i].GetDisplayName())
+            ; Debug.Trace("Anima: SENDING ACTOR " + actors[i].GetDisplayName())
             AnimaSKSE.SendActor(actors[i], GetVoiceType(actors[i]), Game.GetPlayer().GetDistance(actors[i]) / 71, Utility.GameTimeToString(Utility.GetCurrentGameTime()))
         EndIf
         i += 1
@@ -88,13 +75,21 @@ Function SendActors()
     i = 0
     While i < broadcastActors.Length
         If broadcastActors[i] != None && broadcastActors[i] != Game.GetPlayer()
-            Debug.Trace("Anima: SENDING BROADCAST ACTOR " + broadcastActors[i].GetDisplayName())
+            ; Debug.Trace("Anima: SENDING BROADCAST ACTOR " + broadcastActors[i].GetDisplayName())
             AnimaSKSE.SetBroadcastActor(broadcastActors[i], GetVoiceType(broadcastActors[i]), Game.GetPlayer().GetDistance(broadcastActors[i]) / 71)
         EndIf
         i += 1
     EndWhile
-    Utility.Wait(0.1)
+    i = 0
+    While i < n2nBroadcastActors.Length
+        If n2nBroadcastActors[i] != None && n2nBroadcastActors[i] != Game.GetPlayer()
+            ; Debug.Trace("Anima: SENDING BROADCAST ACTOR " + broadcastActors[i].GetDisplayName())
+            AnimaSKSE.SetN2NBroadcastActor(n2nBroadcastActors[i], GetVoiceType(n2nBroadcastActors[i]), Game.GetPlayer().GetDistance(n2nBroadcastActors[i]) / 71)
+        EndIf
+        i += 1
+    EndWhile
     AnimaSKSE.SendBroadcastActors(Utility.GameTimeToString(Utility.GetCurrentGameTime()))
+    AnimaSKSE.SendN2NBroadcastActors(Utility.GameTimeToString(Utility.GetCurrentGameTime()))
 EndFunction
 
 string function GetVoiceType(Actor _actor)
@@ -109,7 +104,7 @@ bool function IsRaceIncluded(Actor _actor)
 endFunction
 
 bool function IsAvailable(Actor _actor)
-    return  IsRaceIncluded(_actor) && _actor.IsEnabled() && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
+    return IsRaceIncluded(_actor) && _actor.IsEnabled() && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
 endFunction
 
 bool function IsAvailableForBroadcast(Actor _actor)

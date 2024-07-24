@@ -18,11 +18,10 @@ function OnInit()
 endFunction
 
 function CheckN2NDialogue()
-   lastTryTime = 0
-   retryInterval = 10
-   initiateTimeInterval = 60
-   initiateSamePairTimeInterval = 120
-    
+    lastTryTime = 0
+    retryInterval = 10
+    initiateTimeInterval = 60
+    initiateSamePairTimeInterval = 120
     N2N_ConversationOnGoing.SetValueInt(0)
     N2N_LastSuccessfulStart.SetValueInt(0)
     
@@ -32,18 +31,12 @@ function CheckN2NDialogue()
 
         If N2N_ConversationOnGoing != None && N2N_ConversationOnGoing.GetValueInt() == 0
             Actor sourceActor = game.FindRandomActorFromRef(Game.GetPlayer(), 1000)
+            Debug.Trace("Source Actor: " + sourceActor.GetDisplayName() + ", " + IsAvailableForDialogue(sourceActor))
             If sourceActor != None && sourceActor != Game.GetPlayer() && IsAvailableForDialogue(sourceActor)
-                Debug.Trace("Anima: Source Actor = " + sourceActor.GetDisplayName())
                 Actor targetActor = game.FindRandomActorFromRef(sourceActor, 350)
-                
-                Debug.Trace("Anima: Target Actor = " + targetActor.GetDisplayName())    
-                If targetActor != None && targetActor != sourceActor && targetActor != Game.GetPlayer() && IsAvailableForDialogue(targetActor)
-		                            
+                Debug.Trace("Target Actor: " + targetActor.GetDisplayName() + ", " + IsAvailableForDialogue(targetActor))
 
-                    Debug.Trace("_time: " + _time)
-                    Debug.Trace("N2N_LastSuccessfulStart: " + N2N_LastSuccessfulStart.GetValueInt())
-                    Debug.Trace("INTERVAL: " + interval)
-                    
+                If targetActor != None && targetActor != sourceActor && targetActor != Game.GetPlayer() && IsAvailableForDialogue(targetActor)               
                     Int interval = initiateTimeInterval
                     If IsSameActors(sourceActor, targetActor)
                         interval = initiateSamePairTimeInterval
@@ -53,17 +46,20 @@ function CheckN2NDialogue()
                         N2N_LastSuccessfulStart.SetValueInt(0)
                     EndIf
                     If N2N_ConversationOnGoing != None && N2N_ConversationOnGoing.GetValueInt() == 0 && (lastTryTime == 0 || diff > interval)
-                        
                         Debug.Trace("Anima: Sending InitiateConversation Signal For " + sourceActor.GetDisplayName() + " and " + targetActor.GetDisplayName())
                         lastTryTime = _time
                         AnimaSKSE.N2N_Initiate(sourceActor, targetActor, GetVoiceType(sourceActor), GetVoiceType(targetActor), Utility.GameTimeToString(Utility.GetCurrentGameTime()))
                         SetPreviousActors(sourceActor, targetActor)
-                        Utility.Wait(10)
+                        Utility.Wait(20)
+                    Else
+                        Debug.Trace("Anima: NOT STARTING.")
+                        Debug.Trace("Anima: Ongoing? : " + N2N_ConversationOnGoing.GetValueInt())
+                        Debug.Trace("Anima: " + diff +" > " + interval + " ?")
                     EndIf
                 EndIf
             EndIf
         EndIf
-        Utility.Wait(1)
+        Utility.Wait(3)
     EndWhile
 endFunction
 

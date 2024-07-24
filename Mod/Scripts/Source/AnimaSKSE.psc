@@ -11,7 +11,12 @@ bool function ClearActors(bool empty) global native
 bool function SendActor(Actor actor, string voice, float distance, string currentDateTime) global native
 bool function SetBroadcastActor(Actor actor, string voice, float distance) global native
 bool function SendBroadcastActors(string currentDateTime) global native
+bool function SetN2NBroadcastActor(Actor actor, string voice, float distance) global native
+bool function SendN2NBroadcastActors(string currentDateTime) global native
 bool function RemoveBroadcastActor(Actor actor) global native
+bool function StopBroadcast(Actor actor) global native
 bool function SendResponseLog(Actor actor, string message) global native
 bool function ClearFollowers() global native
 bool function SendFollower(Actor actor, string voice, float distance) global native
+bool function StartLecture(Actor actor, String actorVoiceType, int lectureNo, string currentDateTime) global native
+bool function EndLecture() global native

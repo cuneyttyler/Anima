@@ -193,7 +193,7 @@ public:
         }
 
         if (equalIndex != -1 && index > equalIndex) {
-            Util::WriteLog("NEW_SUBTITLE_FOUND " + string(RE::SubtitleManager::GetSingleton()->subtitles[index-1].subtitle));
+            //Util::WriteLog("NEW_SUBTITLE_FOUND " + string(RE::SubtitleManager::GetSingleton()->subtitles[index-1].subtitle));
         }
 
         return index > equalIndex;
@@ -201,14 +201,19 @@ public:
 
     static void ShowSubtitle(RE::Actor* actor, string subtitle, float duration) {
         try {
-            Util::WriteLog("SHOW_SUBTITLE " + subtitle);
+            //Util::WriteLog("SHOW_SUBTITLE " + subtitle);
             RE::SubtitleInfo* subtitleInfo = GetSubtitle(actor, subtitle);
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*subtitleInfo);
-            this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000)));
-            if (!CheckNewSubtitle(subtitleInfo)) {
-                RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
-                RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
-            }
+            std::thread(
+                [](RE::Actor* actor, float duration, RE::SubtitleInfo* subtitleInfo) {
+                    this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000)));
+                    if (!CheckNewSubtitle(subtitleInfo)) {
+                        RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
+                        RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
+                    }   
+                }, actor, duration, subtitleInfo)
+                .detach();
+            
         } catch (const exception& e) {
             Util::WriteLog("Exception during ==ShowSubtitle==: " + string(e.what()), 1);
         } catch (...) {
@@ -250,6 +255,7 @@ public:
     inline static RE::Actor* N2N_SourceActor;
     inline static RE::Actor* N2N_TargetActor;
     inline static map<RE::Actor*, ActorData*> broadcastActors;
+    inline static map<RE::Actor*, ActorData*> n2nBroadcastActors;
     inline static map<RE::Actor*, float> distances;
     inline static set<RE::Actor*> cellActors;
     inline static vector<Follower*> followers;
@@ -286,13 +292,18 @@ public:
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 
+    static void SendFollowerCommand(string command) {
+        SKSE::ModCallbackEvent modEvent{"BLC_FollowerCommand", command, 0, nullptr};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+    }
+
     static void N2N_Init() {
         Util::WriteLog("Starting dialogue between " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + " and " +
                         Util::GetActorName(AnimaCaller::N2N_TargetActor) + ".", 3);
-        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N", "", 0, AnimaCaller::N2N_TargetActor};
+        SKSE::ModCallbackEvent modEvent{"BLC_Start_N2N_Target", "", 0, AnimaCaller::N2N_TargetActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         this_thread::sleep_for(0.25s);
-        SKSE::ModCallbackEvent modEvent_2{"BLC_Start_N2N", "", 1, AnimaCaller::N2N_SourceActor};
+        SKSE::ModCallbackEvent modEvent_2{"BLC_Start_N2N_Source", "", 0, AnimaCaller::N2N_SourceActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent_2);
     }
 
@@ -348,8 +359,7 @@ public:
     }
 
     static void N2N_Stop() {
-        Util::WriteLog("Stopping dialogue between " + Util::GetActorName(AnimaCaller::N2N_SourceActor) + " and " +
-                            Util::GetActorName(AnimaCaller::N2N_SourceActor) + ".", 3);
+        Util::WriteLog("Stopping broadcast dialogue.", 3);
         SKSE::ModCallbackEvent modEvent{"BLC_Stop_N2N", "", 1.0f, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         AnimaCaller::N2N_SourceActor = nullptr;
@@ -441,7 +451,6 @@ public:
     }
 
     static void HardReset() {
-        Util::WriteLog("Sending HardReset Signal To Mod.", 4);
         SKSE::ModCallbackEvent modEvent{"BLC_HardReset", "", 0, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         AnimaCaller::conversationOngoing = false;
@@ -450,6 +459,11 @@ public:
         AnimaCaller::conversationActor = nullptr;
         AnimaCaller::N2N_SourceActor = nullptr;
         AnimaCaller::N2N_TargetActor = nullptr;
+    }
+
+    static void EndLecture() {
+        SKSE::ModCallbackEvent modEvent{"BLC_EndLecture", "", 0, nullptr};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 };
 
@@ -479,8 +493,6 @@ public:
         inline static REL::Relocation<ProcessMessage_t> _ProcessMessage;
 
         void ProcessTopic(RE::MenuTopicManager* topicManager, RE::Actor* speaker) {
-            Util::WriteLog("Processing dialogue menu with " + Util::GetActorName(speaker), 4);
-
             if (topicManager->lastSelectedDialogue != nullptr) {
                 RE::BSSimpleList<RE::DialogueResponse*> responses = topicManager->lastSelectedDialogue->responses;
 
@@ -573,9 +585,9 @@ public:
             actorsStr += Util::GetActorName(actor) + ", ";
         }
         if (actorsStr.length() > 0) actorsStr = actorsStr.substr(0, actorsStr.length() - 2);
-        Util::WriteLog(
+        /*Util::WriteLog(
             "Sending subtitle  == " + Util::GetActorName(speaker) + " == " + subtitle + " == to [" + actorsStr + "] ==",
-            4);
+            4);*/
         m.unlock();
     }
 
@@ -668,6 +680,12 @@ public:
         return true;
     }
 
+    static bool StopBroadcast(RE::StaticFunctionTag*, RE::Actor* actor) { 
+        SocketManager::getInstance().SendBroadcastStopSignalForActor(actor);
+
+        return true;
+    }
+
     static bool LogEvent(RE::StaticFunctionTag*, RE::Actor* actor, string log) {
         if (actor == nullptr) {
             return false;
@@ -701,7 +719,6 @@ public:
 
     static bool SendFollower(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
         try{
-            Util::WriteLog("Sending follower: " + string(actor->GetName()));
             Follower* follower = new Follower(actor, voice, distance);
             AnimaCaller::followers.push_back(follower);
             SocketManager::getInstance().SendFollower(follower);
@@ -721,6 +738,8 @@ public:
         EventWatcher::actors.clear();
         EventWatcher::voiceMap.clear();
         AnimaCaller::cellActors.clear();
+        AnimaCaller::broadcastActors.clear();
+        AnimaCaller::n2nBroadcastActors.clear();
         if (empty) {
             SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
         }
@@ -765,26 +784,10 @@ public:
         return true;
     }
 
-
     static bool SetBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
         try {
-            bool found = false;
-            map<RE::Actor*, ActorData*>::iterator iter;
-            for (iter = AnimaCaller::broadcastActors.begin(); iter != AnimaCaller::broadcastActors.end(); iter++) {
-                if (actor->GetName() == iter->first->GetName()) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                ActorData* actorData = new ActorData(voice, distance);
-                AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
-                string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
-                                             ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
-                                             : "";
-            }
-
+            ActorData* actorData = new ActorData(voice, distance);
+            AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
         } catch (const exception& e) {
             Util::WriteLog("Exception during SetBroadcastActor: " + string(e.what()), 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
@@ -800,18 +803,6 @@ public:
 
     static bool SendBroadcastActors(RE::StaticFunctionTag*, string currentDateTime) {
         try {
-            bool first = true;
-            string actors = "";
-            map<RE::Actor*, ActorData*>::iterator iter;
-            for (iter = AnimaCaller::broadcastActors.begin(); iter != AnimaCaller::broadcastActors.end(); iter++) {
-                if (!first) {
-                    actors += ", ";
-                }
-                actors += string(iter->first->GetName());
-                first = false;
-            }
-
-            Util::WriteLog("SENDING BROADCAST ACTOR => " + actors);
             string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
                                          ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
                                          : "";
@@ -831,8 +822,61 @@ public:
         return true;
     }
 
+    static bool SetN2NBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
+        try {
+            ActorData* actorData = new ActorData(voice, distance);
+            AnimaCaller::n2nBroadcastActors.insert(std::pair(actor, actorData));
+        } catch (const exception& e) {
+            Util::WriteLog("Exception during SetN2NBroadcastActor: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        } catch (...) {
+            Util::WriteLog("Unkown exception during SetN2NBroadcastActor", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        }
+
+        return true;
+    }
+
+    static bool SendN2NBroadcastActors(RE::StaticFunctionTag*, string currentDateTime) {
+        try {
+            string currentLocation = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
+                                         ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
+                                         : "";
+
+            SocketManager::getInstance().SendN2NBroadcastActors(AnimaCaller::n2nBroadcastActors, currentDateTime,
+                                                             currentLocation);
+        } catch (const exception& e) {
+            Util::WriteLog("Exception during SendN2NBroadcastActors: " + string(e.what()), 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        } catch (...) {
+            Util::WriteLog("Unkown exception during SendN2NBroadcastActors", 1);
+            AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
+            AnimaCaller::Reset();
+        }
+
+        return true;
+    }
+
     static bool SendResponseLog(RE::StaticFunctionTag*, RE::Actor* actor, string message) {
         EventWatcher::SendSubtitle(actor, message);
+
+        return true;
+    }
+
+    static bool StartLecture(RE::StaticFunctionTag*, RE::Actor* teacher, string teacherVoiceType, int lectureNo, string currentDateTime) {
+        Util::WriteLog(string(teacher->GetName()) + " started lecture " + to_string(lectureNo) + ".");
+
+        SocketManager::getInstance().SendStartLecture(teacher, teacherVoiceType, lectureNo, currentDateTime);
+
+        return true;
+    }
+
+    static bool EndLecture(RE::StaticFunctionTag*) {
+        Util::WriteLog("EndLecture.");
+        SocketManager::getInstance().SendEndLecture();
 
         return true;
     }
@@ -857,10 +901,15 @@ bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("SendActor", "AnimaSKSE", &ModPort::SendActor);
     vm->RegisterFunction("SetBroadcastActor", "AnimaSKSE", &ModPort::SetBroadcastActor);
     vm->RegisterFunction("SendBroadcastActors", "AnimaSKSE", &ModPort::SendBroadcastActors);
+    vm->RegisterFunction("SetN2NBroadcastActor", "AnimaSKSE", &ModPort::SetN2NBroadcastActor);
+    vm->RegisterFunction("SendN2NBroadcastActors", "AnimaSKSE", &ModPort::SendN2NBroadcastActors);
     vm->RegisterFunction("RemoveBroadcastActor", "AnimaSKSE", &ModPort::RemoveBroadcastActor);
+    vm->RegisterFunction("StopBroadcast", "AnimaSKSE", &ModPort::StopBroadcast);
     vm->RegisterFunction("SendResponseLog", "AnimaSKSE", &ModPort::SendResponseLog);
     vm->RegisterFunction("ClearFollowers", "AnimaSKSE", &ModPort::ClearFollowers);
     vm->RegisterFunction("SendFollower", "AnimaSKSE", &ModPort::SendFollower);
+    vm->RegisterFunction("StartLecture", "AnimaSKSE", &ModPort::StartLecture);
+    vm->RegisterFunction("EndLecture", "AnimaSKSE", &ModPort::EndLecture);
 
     return true;
 }

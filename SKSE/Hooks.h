@@ -33,7 +33,7 @@ private:
             }
             
         }
-        if ((isEmpty || (!newSubtitle.empty() && CheckHangingSubtitle()) && SubtitleManager::HideSignal)) {
+        if ((isEmpty && SubtitleManager::HideSignal) || (!newSubtitle.empty() && CheckHangingSubtitle())) {
             SubtitleManager::HideSubtitle();
             SubtitleManager::HideSignal = false;
         }

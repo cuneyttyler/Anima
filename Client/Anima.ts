@@ -11,6 +11,7 @@ import path from "path";
 import waitSync from 'wait-sync';
 import { BroadcastQueue } from './Anima/BroadcastQueue.js';
 import FollowerManager from './Anima/FollowerManager.js';
+import LectureManager from './Anima/LectureManager.js';
 
 const resolved = path.resolve(".env");
 logToLog("Reading .env from location: " + resolved);
@@ -42,7 +43,9 @@ const fileManager = new FileManager()
 const ClientManager = new DialogueManager();
 const ClientManager_N2N = new DialogueManager()
 let broadcastManager : BroadcastManager
+let n2nBroadcastManager : BroadcastManager
 let followerManager : FollowerManager
+let lectureManager : LectureManager
 
 export let BROADCAST_QUEUE = new BroadcastQueue(null)
 
@@ -65,77 +68,108 @@ fastify.register(async function (fastify) {
         connection.socket.on('message', async (msg) => {
 
             let message = JSON.parse(msg.toString());
-            if(message.type != 'log_event' && message.type != 'broadcast-set' && message.type != 'cellactors-set' && message.type != 'followers-clear') {
-                console.log("Message received", msg.toString());
-            }
             if (message.type == "connect" && !message.is_n2n) {
+                console.log("** Incoming Message: Connect request to " + message.id + " **");
                 let result = await ClientManager.ConnectToCharacter(message.id, message.formId, message.voiceType, message.playerName, message.playerName, connection.socket);
                 if(result) {
                     ClientManager.InititializeSession('In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ');
                 }
-                if(broadcastManager) broadcastManager.Stop()
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                if(n2nBroadcastManager) n2nBroadcastManager.Stop()
             } else if (message.type == "message" && !message.is_n2n) {
+                console.log("** Incoming Message: Player saying: " + message.message + " **");
                 if(message.stop) {
                     ClientManager.Stop();
                 }
                 await ClientManager.Say(message.message);
             } else if (message.type == "stop" && !message.is_n2n) {
+                console.log("** Incoming Message: Stop request. **");
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
-                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
-                if(broadcastManager.IsRunning()) {
-                    broadcastManager.AddCharacter(message.source, message.sourceFormId, message.sourceVoiceType, 3)
-                    broadcastManager.AddCharacter(message.target, message.targetFormId, message.targetVoiceType, 3)
-                } else {
-                    await broadcastManager.ConnectToCharacters()
+                console.log("** Incoming Message: Connect(N2N) request to " + message.source + " and " + message.target + " **");
+                if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
+                    console.log("** Lecture ongoing, ignoring request.");
+                    return;
                 }
-                
-                await broadcastManager.Run()
-                await broadcastManager.StartN2N(message.source, message.sourceFormId, message.target, message.targetFormId, message.location, message.currentDateTime)
-            } else if (message.type == "stop" && message.is_n2n) {
-                if(broadcastManager) broadcastManager.Stop()
-            } else if (message.type == "pause") {
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                await n2nBroadcastManager.ConnectToCharacters(true)
+                await n2nBroadcastManager.Run()
+                let result = n2nBroadcastManager.IsCharactersPresent([message.source, message.target])
+                if(result) {
+                    n2nBroadcastManager.SendVerifyConnection()
+                }
+            } else if (message.type == "start" && message.is_n2n) {
+                console.log("** Incoming Message: Start request for " + message.source + " and " + message.target + " **");
+                if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
+                    console.log("** Lecture ongoing, ignoring request.");
+                    return;
+                }
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                await n2nBroadcastManager.Run()
+                await n2nBroadcastManager.StartN2N(message.source, message.sourceFormId, message.target, message.targetFormId, message.location, message.currentDateTime)
+            }else if (message.type == "pause") {
+                broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager) broadcastManager.Pause()
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
+                if(n2nBroadcastManager) n2nBroadcastManager.Pause()
             } else if (message.type == "continue") {
+                broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager) broadcastManager.Continue()
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
+                if(n2nBroadcastManager) n2nBroadcastManager.Continue()
             } else if (message.type == "followers-clear") {
-                if(!followerManager) {
-                    followerManager = new FollowerManager(message.playerName, connection.socket)
-                }
-                followerManager.Clear()
+                FollowerManager.GetInstance(message.playerName, connection.socket).Clear()
             } else if (message.type == "followers-set") {
-                if(!followerManager) {
-                    followerManager = new FollowerManager(message.playerName, connection.socket)
-                    followerManager.Run()
-                }
-                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
+                followerManager = FollowerManager.GetInstance(message.playerName, connection.socket)
+                if(!followerManager.IsRunning())followerManager.Run()
                 followerManager.ConnectToCharacter(message.ids[0], message.formIds[0], message.voiceTypes[0], message.distances[0])
                 if(!followerManager.IsRunning()) {
                     followerManager.Run()
                 }
-            } else if (message.type == "broadcast-set") {
-                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
-                await broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "cellactors-set") {
-                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
+                broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
                 broadcastManager.SetCellCharacters(message.ids)
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                n2nBroadcastManager.SetCellCharacters(message.ids)
+            } else if (message.type == "broadcast-stop") {
+                broadcastManager = BroadcastManager.GetInstance('player')
+                if(broadcastManager && !message.id) broadcastManager.Stop()
+                if(broadcastManager && message.id) broadcastManager.StopForCharacter(message.id)
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
+                if(n2nBroadcastManager && !message.id) n2nBroadcastManager.Stop()
+                if(n2nBroadcastManager && message.id) n2nBroadcastManager.StopForCharacter(message.id)
+            }  else if (message.type == "broadcast-set") {
+                broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
+                await broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "broadcast") {
-                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
-                if(!broadcastManager.IsRunning()) await broadcastManager.ConnectToCharacters();
-                broadcastManager.Run()
-                broadcastManager.Say(message.message, message.playerName, message.playerFormId)
-            } else if (message.type == "log_event") {
-                broadcastManager = BroadcastManager.GetInstance(message.playerName, connection.socket)
-                fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
-                
-                if(ClientManager.IsConversationOngoing() && message.id == ClientManager.GetId() && message.formId == ClientManager.GetFormId()) {
-                    ClientManager.SendNarratedAction(message.message + " ");
+                console.log("** Incoming Message: Player saying broadcast: " + message.message + " **");
+                if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
+                    lectureManager.Say(message.message, message.playerName, message.playerFormId)
+                } else {
+                    broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
+                    broadcastManager.ConnectToCharacters(true)
+                    broadcastManager.Run()
+                    broadcastManager.Say(message.message, message.playerName, message.playerFormId)
                 }
+            } else if (message.type == "broadcast-n2n-set") {
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                await n2nBroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
+            } else if (message.type == "log_event") {
+                fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
+            } else if (message.type == "start-lecture") {
+                lectureManager = new LectureManager(message.playerName, connection.socket)
+                lectureManager.StartLecture(message.teacher, message.teacherFormId, message.teacherVoiceType, message.lectureNo, message.currentDateTime)
+            }  else if (message.type == "end-lecture") {
+
             } else if (message.type == "hard-reset") {
+                console.log("** Incoming Message: HARD_RESET **");
                 if(ClientManager.IsConversationOngoing()) {
                     ClientManager.StopImmediately();
                 }
+                broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager) broadcastManager.Stop()
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
+                if(n2nBroadcastManager) n2nBroadcastManager.Stop()
             }
         })
     })
