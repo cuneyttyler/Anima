@@ -4,13 +4,15 @@ import Vue from 'vue'
 import App from './App'
 import Home from './views/Home'
 import Chat from './views/Chat'
+import Alive from './views/Alive'
 import VueRouter from 'vue-router'
 
 Vue.use(VueRouter)
 
 const routes = [
   { path: '/', component: Home },
-  { path: '/chat', component: Chat }
+  { path: '/chat', component: Chat },
+  { path: '/alive', component: Alive }
 ]
  
  const router = new VueRouter({

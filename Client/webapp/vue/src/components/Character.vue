@@ -10,6 +10,10 @@
                 <td><input v-model="character.name"/></td>
             </tr>
             <tr>
+                <td class="first">Form Id: </td>
+                <td><input v-model="character.formId"/></td>
+            </tr>
+            <tr>
                 <td class="first">Gender: </td>
                 <td><input v-model="character.gender"/></td>
             </tr>

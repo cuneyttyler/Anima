@@ -100,7 +100,6 @@ ReferenceAlias Property Alias_Broadcast_Speaker_1 Auto
 ;BEGIN FRAGMENT Fragment_4
 Function Fragment_4()
 ;BEGIN CODE
-Debug.Trace("Anima: Setting stage 10")
 setstage(10)
 ;END CODE
 EndFunction
@@ -109,7 +108,6 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_6
 Function Fragment_6()
 ;BEGIN CODE
-Debug.Trace("Anima: Stage 10")
 ;END CODE
 EndFunction
 ;END FRAGMENT

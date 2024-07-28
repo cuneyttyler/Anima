@@ -15,13 +15,12 @@ export default class OpenRouter {
 
     try {
       const completion = await openai.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: prompt.prompt + " " + prompt.message }],
         model: OPENROUTER_LLM_MODEL,
       })
     
       if(!completion || !completion.choices || completion.choices.length == 0 || !completion.choices[0].message || !completion.choices[0].message.content) {
-        throw Error("ERROR: NO RESPONSE RETURNED FROM OPENROUTER.")
-        return { status: 2, text: completion.choices[0].message.content };
+        return { status: 2 };
       }
       
       return {status: 1, text: completion.choices[0].message.content}

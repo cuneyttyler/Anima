@@ -27,12 +27,24 @@ export default  class Api {
         return this.characterManager.GetCharacterList()
     }
 
+    AliveCharacterList() {
+        return this.characterManager.GetAliveCharacterList();
+    }
+
     SaveCharacter(character) {
         this.characterManager.SaveCharacter(character)
     }
 
+    SaveAliveCharacter(character) {
+        this.characterManager.SaveAliveCharacter(character)
+    }
+
     DeleteCharacter(id) {
         this.characterManager.DeleteCharacter(id)
+    }
+
+    DeleteAliveCharacter(id) {
+        this.characterManager.DeleteAliveCharacter(id)
     }
 
     MaleVoices() {
@@ -78,7 +90,7 @@ export default  class Api {
         SET_DEBUG(true)
 
         let dialogueManager = new DialogueManager()
-        await dialogueManager.ConnectToCharacter(ids[0], "0", "MaleNord", speaker, speaker, null)
+        await dialogueManager.ConnectToCharacter(ids[0], "0", "MaleNord", speaker, speaker, "", null)
         dialogueManager.Say(text)
 
         EventBus.GetSingleton().removeAllListeners('WEB_TARGET_RESPONSE')

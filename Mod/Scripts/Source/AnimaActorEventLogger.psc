@@ -8,13 +8,6 @@ int lastBowShotTime
 Event OnCombatStateChanged(Actor akTarget, int aeCombatState)
     Actor[] actors = GetRefsAsActors()
     int i = 0
-    Debug.Trace("Actors: ")
-    While i < 20
-        If actors[i] != None
-            Debug.Trace(actors[i].GetDisplayName())
-        EndIf
-        i += 1
-    EndWhile
     i = 0
     While i < 20
         if (aeCombatState == 0)

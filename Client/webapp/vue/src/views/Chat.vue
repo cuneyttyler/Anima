@@ -2,6 +2,7 @@
     <div id="chat">
       <div class="router">
         <router-link to="/">Home</router-link>
+        <router-link to="/alive">Alive</router-link>
         <hr>
       </div>
 

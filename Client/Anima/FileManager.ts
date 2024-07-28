@@ -4,7 +4,7 @@ export default class FileManager {
     
     private GetFile(type, id, formId, profile) {
         try {
-            id = id.toLowerCase();
+            id = id.toLowerCase().replaceAll(" ", "_");
             let profileFolder = './Profiles/' + profile;
             if(!fs.existsSync(profileFolder)) {
                 fs.mkdirSync(profileFolder);
@@ -25,7 +25,7 @@ export default class FileManager {
 
     private SaveFile(type, id, formId, log, profile, append) {
         try {
-            id = id.toLowerCase();
+            id = id.toLowerCase().replaceAll(" ", "_");
             let file = this.GetFile(type, id, formId, profile);
 
             if(!fs.existsSync(file)) {
@@ -54,6 +54,10 @@ export default class FileManager {
 
     SaveEventLog(id, formId, log, profile, append=true) {
         this.SaveFile('Events', id, formId, log, profile, append)
+    }
+
+    SaveLectureLog(id, formId, log, profile, append=true) {
+        this.SaveFile('Lectures', id, formId, log, profile, append)
     }
 
     GetThoughts(id, formId, profile) {

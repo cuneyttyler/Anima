@@ -23,15 +23,12 @@
   </template>
   
   <script>
-  import api from '../services/api'
-
   export default {
     name: 'CharacterList',
     props: ['page', 'characters'],
     data () {
       return {
         filterText: "",
-        characters: [],
         filteredCharacters: []
       }
     }, 
@@ -46,11 +43,10 @@
                 this.filteredCharacters = this.characters
                 return
             }
-            // || (this.characters[i].voice && this.characters[i].voice.includes(newFilter))
             
             let filteredCharacters = []
             for(let i in this.characters) {
-                if(this.characters[i].name.toLowerCase().includes(newFilter.toLowerCase())) {
+                if(this.characters[i].name && this.characters[i].name.toLowerCase().includes(newFilter.toLowerCase())) {
                     filteredCharacters.push(this.characters[i])
                 }
             }
@@ -61,7 +57,7 @@
         openCharacter(character){
           if(this.page == 'home')
             this.$emit('show-character', character)
-          else if(this.page == 'chat')
+          else if(this.page == 'chat' || this.page == 'alive')
             this.$emit('add-character', character)
         },
         showAddCharacter() {

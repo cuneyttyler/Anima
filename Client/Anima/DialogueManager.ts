@@ -7,6 +7,7 @@ import {GoogleGenAIController, GetPayload} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
 import SKSEController from './SKSEController.js';
+import FollowerManager from './FollowerManager.js';
 
 export default class DialogueManager {
     private managerId: number;
@@ -20,8 +21,7 @@ export default class DialogueManager {
     private profile;
     private listener;
     private voiceType;
-    private eventBuffer = "";
-    private thoughtBuffer = "";
+    private currentDateTime;
     private conversationOngoing;
     private isInteractionOngoing;
     private isEnding = false;
@@ -43,7 +43,8 @@ export default class DialogueManager {
 
     InitEvents() {
         EventBus.GetSingleton().on('TARGET_RESPONSE', (msg) => {
-            this.eventBuffer += "You said \"" + msg + "\"."
+            if(!this.character) return
+            // this.fileManager.SaveEventLog(this.character.id, this.character.formId,  "You said : \"" + msg + "\"", this.profile)
             if(this.isEnding) {
                 setTimeout(() => {
                     EventBus.GetSingleton().emit('END')
@@ -69,16 +70,10 @@ export default class DialogueManager {
 
     async InititializeSession(initString) {
         if(!this.id) return
-        this.SendNarratedAction(initString);
-        let events = await this.fileManager.GetEvents(this.id, this.formId, this.profile)
-        if(events && events != "") {
-            console.log("Sending event log for " + this.id);
-            this.SendNarratedAction(events);
-        }
     }
 
     // Socket version of connection
-    async ConnectToCharacter(characterId : string, formId: string, voiceType: string, listener : string, playerName : string, socket : WebSocket) {
+    async ConnectToCharacter(characterId : string, formId: string, voiceType: string, listener : string, playerName : string, currentDateTime: string, socket : WebSocket) {
         console.log(`Trying to connect to ${characterId}`);
         this.listener = listener;
         let character =  Object.assign({}, this.characterManager.GetCharacter(characterId));
@@ -95,14 +90,14 @@ export default class DialogueManager {
         this.character = character
         this.id = characterId;
         this.formId = formId;
+        this.character.formId = formId;
         this.profile = playerName;
         this.voiceType = voiceType;
+        this.currentDateTime = currentDateTime;
         this.isEnding = false;
         this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.voiceType, 0, this.profile, new SKSEController(socket));
 
         this.conversationOngoing = true;
-        this.eventBuffer = this.promptManager.PastEventsPrompt(await this.fileManager.GetEvents(characterId, formId, playerName))
-        this.thoughtBuffer = this.promptManager.PastEventsPrompt(await this.fileManager.GetThoughts(characterId, formId, playerName))
 
         this.googleController.SendVerifyConnection()      
         
@@ -116,7 +111,6 @@ export default class DialogueManager {
     }
 
     StopImmediately() {
-        console.log("HARDRESET")
         this.character = null
         this.id = null;
         this.formId = null;
@@ -127,7 +121,7 @@ export default class DialogueManager {
     }
 
     async Finalize() {
-        let events = await this.googleController.SummarizeEvents(this.fileManager.GetEvents(this.id, this.formId, this.profile) + " " + this.eventBuffer)
+        let events = await this.googleController.SummarizeEvents(this.character, this.fileManager.GetEvents(this.id, this.formId, this.profile))
         this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, true)
         this.conversationOngoing = false;
         this.profile = null;
@@ -135,14 +129,15 @@ export default class DialogueManager {
         this.formId = null;
     }
 
-   Say(message : string) {
-        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, this.eventBuffer, this.thoughtBuffer, message, BroadcastManager.currentLocation) 
-        this.eventBuffer += " == CURRENT EVENT ==> " + this.listener + " says to you: \"" + message + "\""   
+   async Say(message : string) {
+        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, await this.fileManager.GetEvents(this.character.id, this.character.formId, this.profile), await this.fileManager.GetThoughts(this.character.id, this.character.formId, this.profile), message, BroadcastManager.currentLocation) 
+        
+        this.fileManager.SaveEventLog(this.id, this.formId,  "On " + this.currentDateTime + ", " + this.listener + " said to you: \"" + message + "\"", this.profile)
         this.googleController.Send(messageToSend)
-    }
-
-    SendNarratedAction(message: string) {
-        this.eventBuffer += " " + message + " ";
+        if(process.env.USING_NFF) {
+            let followerManager = FollowerManager.GetInstance();
+            if(followerManager) followerManager.SendFollowerCommand(message)
+        }
     }
 
     SendEndSignal() {

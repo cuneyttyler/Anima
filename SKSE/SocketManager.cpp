@@ -160,12 +160,13 @@ private:
 
 class Lecture : public AbstractMessage {
 public:
-    Lecture(const string& type, const string& teacher, const string& teacherFormId, const string& teacherVoiceType, const int lectureNo, const string& currentDateTime, const string& playerName)
+    Lecture(const string& type, const string& teacher, const string& teacherFormId, const string& teacherVoiceType, const int lectureNo, const int lectureIndex, const string& currentDateTime, const string& playerName)
         : type(type),
           teacher(teacher),
           teacherFormId(teacherFormId),  
           teacherVoiceType(teacherVoiceType),
           lectureNo(lectureNo),
+          lectureIndex(lectureIndex),
           currentDateTime(currentDateTime),
           playerName(playerName) {}
 
@@ -175,6 +176,7 @@ public:
                 {"teacherFormId", teacherFormId},
                 {"teacherVoiceType", teacherVoiceType},
                 {"lectureNo", lectureNo},
+                {"lectureIndex", lectureIndex},
                 {"currentDateTime", currentDateTime},
                 {"playerName", playerName}};
     }
@@ -185,6 +187,7 @@ private:
     string teacherFormId;
     string teacherVoiceType;
     int lectureNo;
+    int lectureIndex;
     string currentDateTime;
     string playerName;
 };
@@ -303,7 +306,7 @@ public:
                 AnimaCaller::N2N_Init();
             } else if (type == "chat" && dial_type == 0) {
                 AnimaCaller::Speak(message, duration);
-            } else if (type == "chat" && dial_type == 1) {
+            } else if (type == "chat" && (dial_type == 1 || dial_type == 3)) {
                 AnimaCaller::SpeakBroadcast(message, speaker, formId, duration);
             } else if (type == "end" && dial_type == 0) {
                 AnimaCaller::Stop();
@@ -367,6 +370,12 @@ public:
 
     void initSocket() { 
         soc = new AnimaSocketController();
+    }
+
+    void SendInit() {
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        Message* messageObj = new Message("init", "", "", "", "", playerName, "", "", false);
+        soc->send_message(messageObj);
     }
 
     void sendMessage(std::string message, RE::Actor* conversationActor, bool stop) {
@@ -508,16 +517,16 @@ public:
         soc->send_message(messageObj);
     }
 
-    void SendStartLecture(RE::Actor* teacher, string teacherVoiceType, int lectureNo, string currentDateTime) {
+    void SendStartLecture(RE::Actor* teacher, string teacherVoiceType, int lectureNo, int lectureIndex, string currentDateTime) {
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         Lecture* lecture = new Lecture("start-lecture", teacher->GetName(), to_string(teacher->GetFormID()),
-                                       teacherVoiceType, lectureNo, currentDateTime, playerName);
+                                       teacherVoiceType, lectureNo, lectureIndex, currentDateTime, playerName);
 
         soc->send_message(lecture);
     }
 
     void SendEndLecture() {
-        Lecture* lecture = new Lecture("end-lecture", "", "", "", 0, "", "");
+        Lecture* lecture = new Lecture("end-lecture", "", "", "", 0, 0, "", "");
 
         soc->send_message(lecture);
     }

@@ -6,7 +6,6 @@ import * as fs from 'fs';
 import { BROADCAST_QUEUE, DEBUG } from '../Anima.js'
 import SKSEController from './SKSEController.js';
 import waitSync from 'wait-sync'
-import { BroadcastQueue } from './BroadcastQueue.js';
 
 class Queue<T> {
     private items: T[] = [];
@@ -46,8 +45,9 @@ export class SenderData extends EventEmitter {
     public speaker: number;
     public character;
     public _continue: boolean;
+    public readyForQuestions;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, _continue) {
+    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, _continue, readyForQuestions?) {
         super();
         this.text = text;
         this.duration = duration;
@@ -58,6 +58,7 @@ export class SenderData extends EventEmitter {
         this.speaker = speaker;
         this.character = character;
         this._continue = _continue;
+        this.readyForQuestions = readyForQuestions;
     }
 }
 
@@ -122,34 +123,47 @@ export class SenderQueue extends EventEmitter{
                 }
 
                 while(this.type == 0 && BROADCAST_QUEUE.doesHaveSpeechForCharacter(data.character)) {
+                    console.log("HAVE_SPEECH_FOR_CHARACTER. WAITING...")
                     waitSync(0.5)
                 }
                 
                 setTimeout(() => {
                     let payload = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, parseInt(data.character.formId));
-                    if(!DEBUG)
-                        this.skseController.Send(payload);
-
-                    if(data._continue) {
-                        EventBus.GetSingleton().emit("CONTINUE", this.type, data.character, data.text)
-                    }
+                    if(!DEBUG) this.skseController.Send(payload);
                 }, 250)
-
+            
                 setTimeout(() => {
                     this.processing = false;
                     this.emit(this.eventName);
-                    setTimeout(() => {
-                        this.processing = false;
-                        console.log("EMITTING ==BROADCAST_RESPONSE== EVENT: " + data.character.name + ", " + data.text)
+                    EventBus.GetSingleton().emit('processNext_broadcast')
+                }, data.duration * 1000 + 1500)
+                
+                setTimeout(() => {
+                    if(this.type == 1 || this.type == 2) {
                         EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.text, data._continue)
                         EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
-                        EventBus.GetSingleton().emit('processNext_broadcast')
-                    }, 1500)
-                }, data.duration * 1000)
+                        if(data._continue) {
+                            EventBus.GetSingleton().emit("BROADCAST_CONTINUE", data.character, data.text)
+                        }
+                    } else if(this.type == 3) {
+                        EventBus.GetSingleton().emit('LECTURE_RESPONSE', data.character, data.text, data._continue)
+                        if(data._continue) {
+                            EventBus.GetSingleton().emit("LECTURE_CONTINUE", data.character, data.text)
+                        }
+                        if(data.readyForQuestions) {
+                            EventBus.GetSingleton().emit("READY_FOR_QUESTIONS", data.character, data.text)
+                        }
+                    }
+                    
+                }, this.CalculateResponseDelay(data.duration))
             } catch(e) {
                 console.error("ERROR: " + e);
             }
         });
+    }
+
+    CalculateResponseDelay(duration) {
+        return duration * 1000 - 3000 > 0 ? duration * 1000 - 3000 : duration * 1000
     }
 
     private async copyFiles(data: SenderData) {

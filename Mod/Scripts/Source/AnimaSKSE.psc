@@ -18,5 +18,5 @@ bool function StopBroadcast(Actor actor) global native
 bool function SendResponseLog(Actor actor, string message) global native
 bool function ClearFollowers() global native
 bool function SendFollower(Actor actor, string voice, float distance) global native
-bool function StartLecture(Actor actor, String actorVoiceType, int lectureNo, string currentDateTime) global native
+bool function StartLecture(Actor actor, String actorVoiceType, int lectureNo, int lectureIndex, string currentDateTime) global native
 bool function EndLecture() global native

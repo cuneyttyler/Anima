@@ -12,6 +12,7 @@ import waitSync from 'wait-sync';
 import { BroadcastQueue } from './Anima/BroadcastQueue.js';
 import FollowerManager from './Anima/FollowerManager.js';
 import LectureManager from './Anima/LectureManager.js';
+import AliveCharacterManager from './Anima/AliveCharacterManager.js';
 
 const resolved = path.resolve(".env");
 logToLog("Reading .env from location: " + resolved);
@@ -46,8 +47,10 @@ let broadcastManager : BroadcastManager
 let n2nBroadcastManager : BroadcastManager
 let followerManager : FollowerManager
 let lectureManager : LectureManager
+let aliveCharacterManager : AliveCharacterManager
 
-export let BROADCAST_QUEUE = new BroadcastQueue(null)
+export let BROADCAST_QUEUE = new BroadcastQueue(1, null)
+export let LECTURE_QUEUE = new BroadcastQueue(3, null)
 
 RunInformation();
 
@@ -63,14 +66,20 @@ fastify.register(async function (fastify) {
         websocket: true
     }, (connection : SocketStream, req : FastifyRequest) => {
         DEBUG = false
-        BROADCAST_QUEUE = new BroadcastQueue(connection.socket)
+        BROADCAST_QUEUE = new BroadcastQueue(1, connection.socket)
+        LECTURE_QUEUE = new BroadcastQueue(3, connection.socket)
 
         connection.socket.on('message', async (msg) => {
 
             let message = JSON.parse(msg.toString());
-            if (message.type == "connect" && !message.is_n2n) {
+            if(message.type == 'init') {
+                if(!aliveCharacterManager) {
+                    aliveCharacterManager = new AliveCharacterManager(message.playerName, connection.socket)
+                    aliveCharacterManager.Run()
+                }
+            } else if (message.type == "connect" && !message.is_n2n) {
                 console.log("** Incoming Message: Connect request to " + message.id + " **");
-                let result = await ClientManager.ConnectToCharacter(message.id, message.formId, message.voiceType, message.playerName, message.playerName, connection.socket);
+                let result = await ClientManager.ConnectToCharacter(message.id, message.formId, message.voiceType, message.playerName, message.playerName, message.currentDateTime, connection.socket);
                 if(result) {
                     ClientManager.InititializeSession('In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ');
                 }
@@ -111,12 +120,14 @@ fastify.register(async function (fastify) {
                 broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager) broadcastManager.Pause()
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
-                if(n2nBroadcastManager) n2nBroadcastManager.Pause()
+                if(n2nBroadcastManager) n2nBroadcastManager.Pause();
+                if(lectureManager) lectureManager.Pause()
             } else if (message.type == "continue") {
                 broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager) broadcastManager.Continue()
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
                 if(n2nBroadcastManager) n2nBroadcastManager.Continue()
+                if(lectureManager) lectureManager.Continue()
             } else if (message.type == "followers-clear") {
                 FollowerManager.GetInstance(message.playerName, connection.socket).Clear()
             } else if (message.type == "followers-set") {
@@ -131,6 +142,10 @@ fastify.register(async function (fastify) {
                 broadcastManager.SetCellCharacters(message.ids)
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
                 n2nBroadcastManager.SetCellCharacters(message.ids)
+                if(!aliveCharacterManager) {
+                    aliveCharacterManager = new AliveCharacterManager(message.playerName, connection.socket)
+                    aliveCharacterManager.Run()
+                }
             } else if (message.type == "broadcast-stop") {
                 broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager && !message.id) broadcastManager.Stop()
@@ -144,7 +159,7 @@ fastify.register(async function (fastify) {
             } else if (message.type == "broadcast") {
                 console.log("** Incoming Message: Player saying broadcast: " + message.message + " **");
                 if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
-                    lectureManager.Say(message.message, message.playerName, message.playerFormId)
+                    lectureManager.Say(message.message, message.playerName, message.playerFormId, true)
                 } else {
                     broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
                     broadcastManager.ConnectToCharacters(true)
@@ -155,12 +170,12 @@ fastify.register(async function (fastify) {
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
                 await n2nBroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "log_event") {
-                fileManager.SaveEventLog(message.id.toLowerCase().replaceAll(" ","_"), message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
+                fileManager.SaveEventLog(message.id, message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
             } else if (message.type == "start-lecture") {
                 lectureManager = new LectureManager(message.playerName, connection.socket)
-                lectureManager.StartLecture(message.teacher, message.teacherFormId, message.teacherVoiceType, message.lectureNo, message.currentDateTime)
+                lectureManager.StartLecture(message.teacher, message.teacherFormId, message.teacherVoiceType, message.lectureNo, message.lectureIndex, message.currentDateTime)
             }  else if (message.type == "end-lecture") {
-
+                if(lectureManager) lectureManager.SetEndSignal()
             } else if (message.type == "hard-reset") {
                 console.log("** Incoming Message: HARD_RESET **");
                 if(ClientManager.IsConversationOngoing()) {
@@ -232,11 +247,10 @@ function RunInformation(){
 RunWebApp()
 
 // DEBUG = true
-// let result = await ClientManager.ConnectToCharacter("Faendal", "0", "MaleEvenToned", "Adventurer", "Adventurer", null)
+// let result = await ClientManager.ConnectToCharacter("Colette Marence", "115112", "FemaleShrill", "Uriel", "Uriel", "Fifth of the First Seed", null)
 // if(result) {
 //     console.log("Connection successful.")
-//     // ClientManager.SendNarratedAction("A draugr approaches with an axe in his hands.");
-//     ClientManager.Say("What do you find interesting about me?")
+//     ClientManager.Say("Professor, last lecture was fascinating.")
 //     setTimeout(() => {
 //         EventBus.GetSingleton().emit("END")
 //     }, 3000)
@@ -260,3 +274,11 @@ RunWebApp()
 // DEBUG = true
 // BroadcastManager.SetCharacters(['Eerie', 'Ilynn', 'Llynn', 'Arynn'], ['0', '1', '2', '3'], ['FemaleNord', 'FemaleChild', 'FemaleChild', 'MaleChild'])
 // new BroadcastManager(null).Say('Hi, I hope you are enjoying your day.', 'Uriel', null, 'Uriel')
+
+// DEBUG = true
+// lectureManager = new LectureManager("Uriel", null)
+// lectureManager.StartLecture("Colette Marence", "115112", "FemaleShrill", 0, 4, "Fourth of the First Seed")
+
+// setTimeout(() => {
+//     lectureManager.SetEndSignal()
+// }, 20000)

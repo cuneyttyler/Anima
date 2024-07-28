@@ -12,7 +12,13 @@ export default class GoogleGenAI {
     const model = genAI.getGenerativeModel({ model: GOOGLE_LLM_MODEL});
 
     try {
-      const result = await model.generateContent({systemInstruction: message.prompt, contents: [{role: 'user', parts:[{text:message.message}]}]});
+      let request = null
+      if (GOOGLE_LLM_MODEL == 'gemini-1.0-pro') {
+        request = {contents: [{role: 'user', parts:[{text: message.prompt + "\n" + message.message}]}]}
+      } else {
+        request = {systemInstruction: message.prompt, contents: [{role: 'user', parts:[{text:message.message}]}]}
+      }
+      const result = await model.generateContent(request);
       const response = await result.response;
       const text = response.text()
 

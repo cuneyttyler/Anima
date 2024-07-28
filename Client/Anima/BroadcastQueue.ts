@@ -38,16 +38,16 @@ export class BroadcastData {
     }
 }
 
-export class BroadcastQueue extends EventEmitter{
+export class BroadcastQueue extends EventEmitter {
     private eventName: string;
     private queue: Queue<BroadcastData>;
     private senderQueue: SenderQueue;
 
-    constructor(socket: WebSocket) {
+    constructor(type: number, socket: WebSocket) {
         super()
         this.eventName = 'processNext_broadcast';
         this.queue = new Queue<BroadcastData>();
-        this.senderQueue = new SenderQueue(3, 1, new SKSEController(socket))
+        this.senderQueue = new SenderQueue(3, type, new SKSEController(socket))
         this.senderQueue.processing = false;
         this.on(this.eventName, this.processNext);
         EventBus.GetSingleton().on(this.eventName, () => {

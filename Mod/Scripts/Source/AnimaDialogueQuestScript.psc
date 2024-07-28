@@ -76,16 +76,13 @@ endFunction
 
 function _Start(String eventName, String strArg, Float numArg, Form sender) 
     If (sender as Actor) == None
-        debug.Trace("Anima: Actor is None. Returning.")
         Reset_Normal()
         return;
     EndIf
     If !IsAvailableForDialogue(sender as Actor)
-        Debug.Notification("NPC is not available for dialogue.")
         Reset_Normal()
         return
     EndIf
-    debug.Trace("Anima: Start Dialogue")
     debug.Notification("NPC is listening...")
     ConversationOnGoing.SetValueInt(1)
     target.ForceRefTo(sender as Actor)
@@ -96,7 +93,6 @@ function _Start(String eventName, String strArg, Float numArg, Form sender)
 endFunction
 
 function _Stop(String eventName, String strArg, Float numArg, Form sender) 
-    debug.Trace("Anima: Stop Dialogue")
     ConversationOnGoing.SetValueInt(0)
     target.Clear()
 endFunction
@@ -112,7 +108,6 @@ function CheckDistance()
 	While ConversationOnGoing.GetValueInt() == 1
          Actor _actor = target.GetActorRef()
          If _actor != None && Game.GetPlayer().GetDistance(_actor) > 350
-              Debug.Trace("Sending STOP")
              Reset_Normal()
          EndIf
         Utility.Wait(1)
@@ -121,20 +116,15 @@ endFunction
 
 function Speak(String eventName, String strArg, Float numArg, Form sender) 
     If sender == None
-        debug.Trace("Anima: Speak request == Actor NULL, returning.")
         Return
     EndIf
-    debug.Trace("Anima: Speak request for " + (sender as Actor).GetDisplayName())
     target.GetActorRef().Say(target_topic)
-    debug.Trace("Anima: " + target.GetActorRef().GetDisplayName() + " speaked.")
 endFunction
 
 function Speak_Broadcast(String eventName, String strArg, Float numArg, Form sender) 
     If (sender as Actor) == None
-        debug.Trace("Anima: Broadcast/Follower Speak request == Actor NULL, returning.")
         Return
     EndIf
-    debug.Trace("Anima: Broadcast/Follower Speak request for " + (sender as Actor).GetDisplayName() + " (" + numArg + ")")
     ActorUtil.AddPackageOverride(sender as Actor, AnimaStandPackage)
     If numArg == 0
         (sender as Actor).Say(broadcast_topic_1)
@@ -197,7 +187,6 @@ function Speak_Broadcast(String eventName, String strArg, Float numArg, Form sen
         (sender as Actor).Say(follower_topic_5)
     EndIf
     CheckBroadcastDistance(sender as Actor)
-    debug.Trace("Anima: " + (sender as Actor).GetDisplayName() + "(" + numARg + ") speaked.")
 endFunction
 
 function CheckBroadcastDistance(Actor _actor)
@@ -205,14 +194,12 @@ function CheckBroadcastDistance(Actor _actor)
          ; IDLE WAIT
     EndWhile
     If _actor != None
-        Debug.Trace("Anima: DISTANCE CHECK: Clearing package override.")
         ActorUtil.ClearPackageOverride(_actor)
         AnimaSKSE.StopBroadcast(_actor)
     EndIf
 endFunction
 
 function Stop_Broadcast(String eventName, String strArg, Float numArg, Form sender) 
-    debug.Trace("Anima: Broadcast/Follower Stop request for " + " (" + numArg + ")")
     ActorUtil.ClearPackageOverride(sender as Actor)
 endFunction
 
@@ -226,7 +213,6 @@ function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
         If sender == None || (sender as Actor) == None || lookAtSource == None || lookAtSource == None
             Return
         EndIf
-        Debug.Trace("Send_LookAt " + (sender as Actor).GetDisplayName() + " (" + numArg + ")")
         lookAtSource.SetLookAt(sender as Actor)
     ElseIf numArg == 2
         lookAtSource.ClearLookAt()
@@ -234,9 +220,7 @@ function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
 endFunction
 
 function Start_N2N_Source(String eventName, String strArg, Float numArg, Form sender)
-    Debug.Trace("Anima: SET N2N SOURCE to " + (sender as Actor).GetDisplayName())
     If n2n_SourceRefAlias == None
-        Debug.Trace("n2n_SourceRefAlias is None. RETURNING.")
         Return
     EndIf
     n2n_SourceRefAlias.ForceRefTo(sender as Actor)
@@ -248,9 +232,7 @@ endFunction
 
 function Start_N2N_Target(String eventName, String strArg, Float numArg, Form sender)
     Utility.Wait(0)
-    Debug.Trace("Anima: SET N2N TARGET to " + (sender as Actor).GetDisplayName())
     If n2n_TargetRefAlias == None
-        Debug.Trace("n2n_TargetRefAlias is None. RETURNING.")
         Return
     EndIf
     n2n_TargetRefAlias.ForceRefTo(sender as Actor)
@@ -271,14 +253,12 @@ function Reset()
 endFunction
 
 function Reset_Normal()
-    Debug.Trace("Anima: Reset.")
     target.Clear()
     ConversationOnGoing.SetValueInt(0)
     AnimaSKSE.Stop()
 endFunction
 
 function Reset_N2N()
-    Debug.Trace("Anima: Reset_N2N.")
     N2N_ConversationOnGoing.SetValueInt(0)
     N2N_LastSuccessfulStart.SetValueInt(0)
     If n2n_SourceRefAlias.GetActorRef() != None
@@ -291,7 +271,6 @@ function Reset_N2N()
 endFunction
 
 function HardReset(String eventName, String strArg, Float numArg, Form sender)
-    debug.Trace("Anima: HARDRESET")
     ConversationOnGoing.SetValueInt(0)
     N2N_ConversationOnGoing.SetValueInt(0)
     N2N_LastSuccessfulStart.SetValueInt(N2N_LastSuccessfulStart.GetValueInt() - 120)

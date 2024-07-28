@@ -5,7 +5,6 @@ Scriptname PF_AnimaTravelToNPCPackage_051AD266 Extends Package Hidden
 ;BEGIN FRAGMENT Fragment_0
 Function Fragment_0(Actor akActor)
 ;BEGIN CODE
-Debug.Trace("Anima: TravelPackage Begin")
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -13,7 +12,6 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_2
 Function Fragment_2(Actor akActor)
 ;BEGIN CODE
-Debug.Trace("Anima: TravelPackage Change")
 AnimaSKSE.N2N_Start(Utility.GameTimeToString(Utility.GetCurrentGameTime()))
 ActorUtil.AddPackageOverride(n2n_SourceRefAlias.GetActorRef(), AnimaStandPackage,1)
 n2n_SourceRefAlias.GetActorRef().EvaluatePackage()
@@ -28,7 +26,6 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_1
 Function Fragment_1(Actor akActor)
 ;BEGIN CODE
-Debug.Trace("Anima: TravelPackage End")
 AnimaSKSE.N2N_Start(Utility.GameTimeToString(Utility.GetCurrentGameTime()))
 ActorUtil.AddPackageOverride(n2n_SourceRefAlias.GetActorRef(), AnimaStandPackage,1)
 n2n_SourceRefAlias.GetActorRef().EvaluatePackage()

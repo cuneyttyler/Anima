@@ -502,8 +502,8 @@ public:
                 }
 
                 string characterEventText = "";
-                string playerEventText = string(RE::PlayerCharacter::GetSingleton()->GetName()) + " said \"" +
-                                   string(topicManager->lastSelectedDialogue->topicText.c_str()) + "\".";
+                string playerEventText = "== DON'T REPEAT THIS ==" + string(RE::PlayerCharacter::GetSingleton()->GetName()) + " said \"" +
+                                   string(topicManager->lastSelectedDialogue->topicText.c_str()) + "\". <== DON'T REPEAT THIS ==";
                 
                 if (!contains(playerEventText)) {
                     string actorsStr = "";
@@ -521,9 +521,10 @@ public:
                     string actorsStr = "";
                     for (RE::Actor* actor : actors) {
                         if (Util::GetActorName(actor) == Util::GetActorName(speaker)) {
-                            characterEventText = "You said \"" + string(fullResponse) + "\".";
+                            characterEventText = "== DON'T REPEAT THIS ==> You said \"" + string(fullResponse) + "\". <== DON'T REPEAT THIS ==";
                         } else {
-                            characterEventText = Util::GetActorName(speaker) + " said \"" + string(fullResponse) + "\".";
+                            characterEventText = "== DON'T REPEAT THIS ==> " + Util::GetActorName(speaker) + " said \"" +
+                                                 string(fullResponse) + "\". <== DON'T REPEAT THIS ==";
                         }
 
                         SocketManager::getInstance().SendLogEvent(actor, characterEventText);
@@ -577,9 +578,9 @@ public:
         for (RE::Actor* actor : actors) {
             string eventText = "";
             if (Util::GetActorName(actor) == Util::GetActorName(speaker)) {
-                eventText = "You said \"" + string(subtitle) + "\".";
+                eventText = "== DON'T REPEAT THIS ==> You said \"" + string(subtitle) + "\". <== DON'T REPEAT THIS ==";
             } else {
-                eventText = Util::GetActorName(speaker) + " said \"" + subtitle + "\".";
+                eventText = "== DON'T REPEAT THIS ==> " + Util::GetActorName(speaker) + " said \"" + subtitle + "\". <== DON'T REPEAT THIS ==";
             }
             SocketManager::getInstance().SendLogEvent(actor, eventText);
             actorsStr += Util::GetActorName(actor) + ", ";
@@ -866,10 +867,10 @@ public:
         return true;
     }
 
-    static bool StartLecture(RE::StaticFunctionTag*, RE::Actor* teacher, string teacherVoiceType, int lectureNo, string currentDateTime) {
+    static bool StartLecture(RE::StaticFunctionTag*, RE::Actor* teacher, string teacherVoiceType, int lectureNo, int lectureIndex, string currentDateTime) {
         Util::WriteLog(string(teacher->GetName()) + " started lecture " + to_string(lectureNo) + ".");
 
-        SocketManager::getInstance().SendStartLecture(teacher, teacherVoiceType, lectureNo, currentDateTime);
+        SocketManager::getInstance().SendStartLecture(teacher, teacherVoiceType, lectureNo, lectureIndex, currentDateTime);
 
         return true;
     }

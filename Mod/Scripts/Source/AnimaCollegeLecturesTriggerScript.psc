@@ -9,11 +9,10 @@ Event OnTriggerEnter(ObjectReference akActionRef)
 	If AnimaCollegeLectureOngoing.GetValueInt() == 0 && AnimaCollegeLectureOngoing_2.GetValueInt() == 0
 		Return
 	EndIf
-	Debug.Trace("Anima: " + (akActionRef as Actor).GetDisplayName() + " entered lecture area.")
-	If akActionRef as Actor == Jzargo
+	If akActionRef as Actor == Jzargo.GetActorRef()
 		isJzargo = true
 	EndIf
-	If akActionRef as Actor == Onmund
+	If akActionRef as Actor == Onmund.GetActorRef()
 		isOnmund = true
 	EndIf
 	If akActionRef as Actor == Brelyna.GetActorRef()
@@ -27,7 +26,7 @@ Event OnTriggerEnter(ObjectReference akActionRef)
 			; idle wait
 		EndWhile
 		If (AnimaCollegeLectureOngoing.GetValueInt() == 1 || AnimaCollegeLectureOngoing_2.GetValueInt() == 1) && AnimaCollegeLectureStarted.GetValueInt() == 0
-			AnimaSKSE.StartLecture(CurrentTeacher.GetActorRef(), _GetVoiceType(CurrentTeacher.GetActorRef()), AnimaCurrentLecture.GetValueInt(), Utility.GameTimeToString(Utility.GetCurrentGameTime()))
+			AnimaSKSE.StartLecture(CurrentTeacher.GetActorRef(), _GetVoiceType(CurrentTeacher.GetActorRef()), AnimaCurrentLecture.GetValueInt(), AnimaLectureIndex.GetValueInt(), Utility.GameTimeToString(Utility.GetCurrentGameTime()))
 			AnimaCollegeLectureStarted.SetValueInt(1)
 		EndIf
 	EndIf
@@ -40,13 +39,15 @@ string function _GetVoiceType(Actor _actor)
     return StringUtil.Substring(str, startIndex + 1, endIndex - startIndex - 1)
 EndFunction
 
-Actor Property Jzargo Auto  
+ReferenceAlias Property Jzargo Auto  
 
-Actor Property Onmund  Auto  
+ReferenceAlias Property Onmund  Auto  
 
 ReferenceAlias Property Brelyna Auto  
 
 ReferenceAlias Property CurrentTeacher  Auto  
+
+GlobalVariable Property AnimaLectureIndex Auto
 
 GlobalVariable Property AnimaCurrentLecture Auto
 

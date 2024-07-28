@@ -70,6 +70,7 @@ export class AudioProcessor extends EventEmitter {
     }
 
     addAudioStream(data: AudioData): void {
+        if(!data.text || data.text == "") return
         this.queue.enqueue(data);
         if (!this.processing) {
             this.emit(this.eventName);
@@ -124,8 +125,6 @@ export class AudioProcessor extends EventEmitter {
     }
 
     convertAudio(inputFile, outputFile, pitch, callback) {
-        // if(!pitch) pitch = 1.0
-        // let rate = 44100//Math.floor(44100*pitch)
         try {
             const rate = 22050 * Math.pow(2, pitch / 12)
             const speedAdjustment = 1 / Math.pow(2, pitch / 12)
@@ -153,32 +152,38 @@ export class AudioProcessor extends EventEmitter {
     }
     
     private async saveAudio(msg: string, voiceFileName: string, voiceModel, pitch, stepCount, temp_file_suffix: string, callback) {
-        if(!msg) {
-            return 0;
-        }
-
         const fileName = `temp-${temp_file_suffix}_${stepCount}.mp3`;
         const tempFileName = `./Audio/Temp/${fileName}`;
 
-        await GoogleVertexAPI.TTS(msg, tempFileName, voiceModel)
-        waitSync(0.2)
+        try {
+            await GoogleVertexAPI.TTS(msg, tempFileName, voiceModel)
+            waitSync(0.2)
+        } catch(e) {
+            console.error("TTS Error: " + e)
+            return
+        }
 
         let duration: number = 0;
         try {
             let audioFile = './Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount + '.wav';
             let lipFile = './Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount + '.lip';
             this.convertAudio(tempFileName, audioFile, pitch, async () => {
-                this.generateLipFile(audioFile, lipFile, msg);
-                duration = await this.getAudioDuration(audioFile);
                 try {
-                    fs.unlinkSync(tempFileName);
-                } catch(e) {}
-                callback( [audioFile, lipFile, duration])
+                    this.generateLipFile(audioFile, lipFile, msg);
+                    duration = await this.getAudioDuration(audioFile);
+                    try {
+                        fs.unlinkSync(tempFileName);
+                    } catch(e) {}
+                    callback( [audioFile, lipFile, duration])
+                } catch(e) {
+                    console.error("ERROR: AudioProcessor: " + e)
+                    return
+                } 
             })
             
         } catch(e) {
-            console.error("ERROR during processing audio!");
-            throw Error(e);
+            console.error("ERROR during processing audio!" + e);
+            return
         }
     }
 }

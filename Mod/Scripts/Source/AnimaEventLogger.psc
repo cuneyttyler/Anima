@@ -24,32 +24,34 @@ EndFunction
 
 Function FindAllNpcsInArea()
     actors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 1400)
-    n2nBroadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 700)
-    broadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 350)
+    n2nBroadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 1000)
+    broadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 400)
     int i = 0
     While i < actors.Length
+        Debug.Trace(actors[i].GetDisplayName())
         If !IsAvailable(actors[i])
             actors = PapyrusUtil.RemoveActor(actors, actors[i])
         Else
             i += 1
         EndIf
     EndWhile
-    ; i = 0
-    ; While i < broadcastActors.Length
-    ;     If !IsAvailableForBroadcast(broadcastActors[i])
-    ;         broadcastActors = PapyrusUtil.RemoveActor(broadcastActors, broadcastActors[i])
-    ;     Else
-    ;         i += 1
-    ;     EndIf
-    ; EndWhile
-    ; i = 0
-    ; While i < n2nBroadcastActors.Length
-    ;     If !IsAvailableForBroadcast(n2nBroadcastActors[i])
-    ;         n2nBroadcastActors = PapyrusUtil.RemoveActor(n2nBroadcastActors, n2nBroadcastActors[i])
-    ;     Else
-    ;         i += 1
-    ;     EndIf
-    ; EndWhile
+     i = 0
+     While i < broadcastActors.Length
+        Debug.Trace(broadcastActors[i].GetDisplayName())
+        If !IsAvailableForBroadcast(broadcastActors[i])
+            broadcastActors = PapyrusUtil.RemoveActor(broadcastActors, broadcastActors[i])
+        Else
+            i += 1
+        EndIf
+     EndWhile
+     i = 0
+     While i < n2nBroadcastActors.Length
+         If !IsAvailableForBroadcast(n2nBroadcastActors[i])
+             n2nBroadcastActors = PapyrusUtil.RemoveActor(n2nBroadcastActors, n2nBroadcastActors[i])
+         Else
+             i += 1
+         EndIf
+     EndWhile
 EndFunction
 
 Function AssignActorsToRefs()
@@ -67,7 +69,6 @@ Function SendActors()
     int i = 0
     While i < actors.Length
         If actors[i] != None
-            ; Debug.Trace("Anima: SENDING ACTOR " + actors[i].GetDisplayName())
             AnimaSKSE.SendActor(actors[i], GetVoiceType(actors[i]), Game.GetPlayer().GetDistance(actors[i]) / 71, Utility.GameTimeToString(Utility.GetCurrentGameTime()))
         EndIf
         i += 1
@@ -75,7 +76,6 @@ Function SendActors()
     i = 0
     While i < broadcastActors.Length
         If broadcastActors[i] != None && broadcastActors[i] != Game.GetPlayer()
-            ; Debug.Trace("Anima: SENDING BROADCAST ACTOR " + broadcastActors[i].GetDisplayName())
             AnimaSKSE.SetBroadcastActor(broadcastActors[i], GetVoiceType(broadcastActors[i]), Game.GetPlayer().GetDistance(broadcastActors[i]) / 71)
         EndIf
         i += 1
@@ -83,7 +83,6 @@ Function SendActors()
     i = 0
     While i < n2nBroadcastActors.Length
         If n2nBroadcastActors[i] != None && n2nBroadcastActors[i] != Game.GetPlayer()
-            ; Debug.Trace("Anima: SENDING BROADCAST ACTOR " + broadcastActors[i].GetDisplayName())
             AnimaSKSE.SetN2NBroadcastActor(n2nBroadcastActors[i], GetVoiceType(n2nBroadcastActors[i]), Game.GetPlayer().GetDistance(n2nBroadcastActors[i]) / 71)
         EndIf
         i += 1

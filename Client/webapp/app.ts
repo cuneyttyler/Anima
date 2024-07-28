@@ -69,13 +69,27 @@ export default function RunWebApp() {
         res.send(api.CharacterList())
     })
 
+    app.get('/api/character/alive', (req,res) => {
+        res.send(api.AliveCharacterList())
+    })
+
     app.post('/api/character', (req,res) => {
         api.SaveCharacter(req.body)
         res.sendStatus(200)
     })
 
+    app.post('/api/character/alive', (req,res) => {
+        api.SaveAliveCharacter(req.body)
+        res.sendStatus(200)
+    })
+
     app.delete('/api/character/:id', (req,res) => {
         api.DeleteCharacter(req.params.id)
+        res.sendStatus(200)
+    })
+
+    app.delete('/api/character/alive/:id', (req,res) => {
+        api.DeleteAliveCharacter(req.params.id)
         res.sendStatus(200)
     })
 

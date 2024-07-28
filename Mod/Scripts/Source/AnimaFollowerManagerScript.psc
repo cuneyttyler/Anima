@@ -4,7 +4,6 @@ GlobalVariable property nwsAllowSandbox auto
 
 Event OnInit()
     self.RegisterForModEvent("BLC_FollowerCommand", "FollowerCommand")
-    Debug.Trace("AnimaFollowerManager initialized.")
 EndEvent
 
 Function FollowerCommand(String eventName, String strArg, Float numArg, Form sender)

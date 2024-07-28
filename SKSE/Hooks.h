@@ -49,7 +49,7 @@ private:
     static bool CheckHangingSubtitle() { 
         auto now = std::chrono::high_resolution_clock::now();
         int diff = Util::TimeDiffInSeconds(subtitleUpdateTime, now);
-        return diff > 10;
+        return diff > 20;
     }
 
     static inline REL::Relocation<decltype(UpdatePCMod)> UpdatePC;
