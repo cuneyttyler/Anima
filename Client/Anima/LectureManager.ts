@@ -142,7 +142,7 @@ export default class LectureManager{
                 character.awaitingResponse = false;
                 this.fileManager.SaveEventLog(this.names[i], this.formIds[i], "==LECTURE_START== On " + this.currentDateTime + ", you started " + this.lecture.name + " class in the College of Winterhold.", this.profile)
                 this.fileManager.SaveLectureLog(this.names[i], this.formIds[i], "==LECTURE_START== On " + this.currentDateTime + ", you started " + this.lecture.name + " class in the College of Winterhold.", this.profile)
-                character.eventBuffer = this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile);
+                character.eventBuffer = this.fileManager.GetLecture(this.names[i], this.formIds[i], this.profile);
                 character.thoughtBuffer = this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile);
                 character.googleController = new GoogleGenAIController(4, 3, character, character.voiceType,  parseInt(i), this.profile, this.skseController);
                 if(character.id && character.name) {
@@ -178,10 +178,10 @@ export default class LectureManager{
     private async SendStartLecture(message) {
         console.log("**College Lectures** Sending Start Lecture")
         if(!message) {
-            let prompt = this.promptManager.PrepareLectureStartMessage(this.teacher, this.lecture, this.lectureIndex, this.location, this.StudentNames(), this.fileManager.GetEvents(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), this.currentDateTime)
+            let prompt = this.promptManager.PrepareLectureStartMessage(this.teacher, this.lecture, this.lectureIndex, this.location, this.StudentNames(), this.fileManager.GetLecture(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), this.currentDateTime)
             this.teacher.googleController.Send(prompt)
         } else {
-            let prompt = this.promptManager.PrepareLectureStartContinueMessage(this.teacher, this.lecture,  this.lectureIndex, this.location, this.StudentNames(), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), "", this.currentDateTime)
+            let prompt = this.promptManager.PrepareLectureStartContinueMessage(this.teacher, this.lecture,  this.lectureIndex, this.location, this.StudentNames(), this.fileManager.GetLecture(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), "", this.currentDateTime)
             this.teacher.googleController.Send(prompt)
         }
     }
@@ -204,7 +204,7 @@ export default class LectureManager{
 
     private async Send(character, speakerName, speakerFormId, message) {
         console.log("**College Lectures** Sending Message")
-        let messageToSend = this.promptManager.PrepareLectureMessage(character, this.lecture, this.location, speakerName, this.teacherName, this.StudentNames(), "", this.fileManager.GetThoughts(character.name, character.formId, this.profile), message, this.currentDateTime);
+        let messageToSend = this.promptManager.PrepareLectureMessage(character, this.lecture, this.location, speakerName, this.teacherName, this.StudentNames(), this.fileManager.GetLecture(character.name, character.formId, this.profile), this.fileManager.GetThoughts(character.name, character.formId, this.profile), message, this.currentDateTime);
         character.googleController.Send(messageToSend);
         character.googleController.SendLookAt(speakerFormId);
     }
@@ -217,7 +217,7 @@ export default class LectureManager{
             this.state = 2;
             for(let i in this.students) {
                 console.log("**College Lectures** Sending to " + this.characters[i].name + ", " + this.characters[i].voiceType);
-                let messageToSend = this.promptManager.PrepareLectureAskQuestionMessage(this.characters[i], this.lecture, this.location, this.teacherName, this.StudentNames(), "", this.fileManager.GetThoughts(this.characters[i].name, this.characters[i].formId, this.profile), message, this.currentDateTime);
+                let messageToSend = this.promptManager.PrepareLectureAskQuestionMessage(this.characters[i], this.lecture, this.location, this.teacherName, this.StudentNames(), this.fileManager.GetLecture(this.characters[i].name, this.characters[i].formId, this.profile), this.fileManager.GetThoughts(this.characters[i].name, this.characters[i].formId, this.profile), message, this.currentDateTime);
                 this.characters[i].googleController.Send(messageToSend);
                 this.characters[i].googleController.SendLookAt(this.teacher.formId);
             }
@@ -232,7 +232,7 @@ export default class LectureManager{
             this.SendEndMessage(message)
         } else {
             this.state = 1;
-            let messageToSend = this.promptManager.PrepareLectureOngoingMessage(this.teacher, this.lecture, this.location, this.StudentNames(), "", this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), "", this.currentDateTime);
+            let messageToSend = this.promptManager.PrepareLectureOngoingMessage(this.teacher, this.lecture, this.location, this.StudentNames(), this.fileManager.GetLecture(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), "", this.currentDateTime);
             this.teacher.googleController.Send(messageToSend);
             this.teacher.googleController.SendLookAt(this.characters[Math.ceil(Math.random() * 3)].formId) 
         }
@@ -241,10 +241,10 @@ export default class LectureManager{
     private async SendEndMessage(message) {
         console.log("**College Lectures** Sending end message.")
         if(this.state == 3) {
-            let messageToSend = this.promptManager.PrepareLectureEndMessage(this.teacher, this.lecture, this.location, this.StudentNames(), "", this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), message, this.currentDateTime);
+            let messageToSend = this.promptManager.PrepareLectureEndMessage(this.teacher, this.lecture, this.location, this.StudentNames(), this.fileManager.GetLecture(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), message, this.currentDateTime);
             this.teacher.googleController.Send(messageToSend);
         } else {
-            let messageToSend = this.promptManager.PrepareLectureEndContinueMessage(this.teacher, this.lecture, this.location, this.StudentNames(), "", this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), message, this.currentDateTime);
+            let messageToSend = this.promptManager.PrepareLectureEndContinueMessage(this.teacher, this.lecture, this.location, this.StudentNames(), this.fileManager.GetLecture(this.teacher.name, this.teacher.formId, this.profile), this.fileManager.GetThoughts(this.teacher.name, this.teacher.formId, this.profile), message, this.currentDateTime);
             this.teacher.googleController.Send(messageToSend);
         }
         this.state = 4
@@ -264,7 +264,7 @@ export default class LectureManager{
         for(let i in this.characters) {
             if(!this.characters[i] || !this.characters[i].id) continue;
             setTimeout(async () => {
-                const _events = await this.characters[i].googleController.SummarizeEvents(this.characters[i], this.fileManager.GetEvents(this.characters[i].id, this.characters[i].formId, this.profile));
+                const _events = await this.characters[i].googleController.SummarizeEvents(this.characters[i], this.fileManager.GetLecture(this.characters[i].id, this.characters[i].formId, this.profile));
                 this.fileManager.SaveEventLog(this.characters[i].id, this.characters[i].formId, _events, this.profile, false);
                 this.fileManager.SaveLectureLog(this.characters[i].id, this.characters[i].formId, _events, this.profile, false);
             }, 0)

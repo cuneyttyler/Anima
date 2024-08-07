@@ -2,10 +2,21 @@
 ;NEXT FRAGMENT INDEX 3
 Scriptname PF_AnimaColetteLecturePackag_06005904 Extends Package Hidden
 
+;BEGIN FRAGMENT Fragment_0
+Function Fragment_0(Actor akActor)
+;BEGIN CODE
+Debug.Trace("Anima: Colette Lecture Begin")
+AnimaCollegeLectures.SetStage(10)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;BEGIN FRAGMENT Fragment_2
 Function Fragment_2(Actor akActor)
 ;BEGIN CODE
+Debug.Trace("Anima: Lecture Change")
 AnimaCollegeLectureEnding.SetValueInt(1)
+ActorUtil.AddPackageOverride(Colette.GetActorRef(), AnimaColetteEndLecturePackage, 1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -13,15 +24,9 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_1
 Function Fragment_1(Actor akActor)
 ;BEGIN CODE
+Debug.Trace("Anima: Lecture End")
 AnimaCollegeLectureEnding.SetValueInt(1)
-;END CODE
-EndFunction
-;END FRAGMENT
-
-;BEGIN FRAGMENT Fragment_0
-Function Fragment_0(Actor akActor)
-;BEGIN CODE
-AnimaCollegeLectures.SetStage(10)
+ActorUtil.AddPackageOverride(Colette.GetActorRef(), AnimaColetteEndLecturePackage, 1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -31,3 +36,7 @@ EndFunction
 Quest Property AnimaCollegeLectures  Auto  
 
 GlobalVariable Property AnimaCollegeLectureEnding  Auto  
+
+Package Property AnimaColetteEndLecturePackage  Auto  
+
+ReferenceAlias Property Colette  Auto  

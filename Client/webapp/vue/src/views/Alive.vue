@@ -107,6 +107,10 @@
     margin: 0 20px 0 20px;
   }
 
+  #alive .alive-inner a {
+    color: #42b983;
+  }
+
   #alive .alive-inner .alive-characters {
     margin-left: 100px;
   }

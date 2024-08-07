@@ -2,6 +2,15 @@
 ;NEXT FRAGMENT INDEX 5
 Scriptname PF__06005913 Extends Package Hidden
 
+;BEGIN FRAGMENT Fragment_3
+Function Fragment_3(Actor akActor)
+;BEGIN CODE
+Debug.Trace("Anima: Lecture End")
+ActorUtil.AddPackageOverride(Sergius.GetActorRef(), AnimaSergiusEndLecturePackage, 1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;BEGIN FRAGMENT Fragment_2
 Function Fragment_2(Actor akActor)
 ;BEGIN CODE
@@ -10,18 +19,11 @@ AnimaCollegeLectures.SetStage(70)
 EndFunction
 ;END FRAGMENT
 
-;BEGIN FRAGMENT Fragment_3
-Function Fragment_3(Actor akActor)
-;BEGIN CODE
-AnimaCollegeLectureEnding.SetValueInt(1)
-;END CODE
-EndFunction
-;END FRAGMENT
-
 ;BEGIN FRAGMENT Fragment_4
 Function Fragment_4(Actor akActor)
 ;BEGIN CODE
-AnimaCollegeLectureEnding.SetValueInt(1)
+Debug.Trace("Anima: Lecture Change")
+ActorUtil.AddPackageOverride(Sergius.GetActorRef(), AnimaSergiusEndLecturePackage, 1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -33,3 +35,7 @@ GlobalVariable Property AnimaCollegeLectureStart  Auto
 Quest Property AnimaCollegeLectures  Auto  
 
 GlobalVariable Property AnimaCollegeLectureEnding  Auto  
+
+Package Property AnimaSergiusEndLecturePackage  Auto  
+
+ReferenceAlias Property Sergius  Auto  

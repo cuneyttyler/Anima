@@ -206,7 +206,7 @@ public:
             RE::SubtitleManager::GetSingleton()->subtitles.push_back(*subtitleInfo);
             std::thread(
                 [](RE::Actor* actor, float duration, RE::SubtitleInfo* subtitleInfo) {
-                    this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000)));
+                    this_thread::sleep_for(chrono::milliseconds(((long)duration * 1000) + 2000));
                     if (!CheckNewSubtitle(subtitleInfo)) {
                         RE::SubtitleInfo* emptySubtitleInfo = GetSubtitle(actor, "==EMPTY_SUBTITLE==");
                         RE::SubtitleManager::GetSingleton()->subtitles.push_back(*emptySubtitleInfo);
@@ -254,6 +254,7 @@ public:
     inline static bool connecting = false;
     inline static RE::Actor* N2N_SourceActor;
     inline static RE::Actor* N2N_TargetActor;
+    inline static RE::Actor* ForceGreetActor;
     inline static map<RE::Actor*, ActorData*> broadcastActors;
     inline static map<RE::Actor*, ActorData*> n2nBroadcastActors;
     inline static map<RE::Actor*, float> distances;
@@ -463,6 +464,18 @@ public:
 
     static void EndLecture() {
         SKSE::ModCallbackEvent modEvent{"BLC_EndLecture", "", 0, nullptr};
+        SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+    }
+
+    static void ForceGreetPlayer(int formId) {
+        RE::Actor* actor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
+        if (actor == nullptr) {
+            Util::WriteLog("ForceGreetPlayer => Actor NULL. RETURNING.");
+            return;
+        }
+        AnimaCaller::ForceGreetActor = actor;
+        Util::WriteLog("ForceGreetPlayer => " + string(actor->GetName()));
+        SKSE::ModCallbackEvent modEvent{"BLC_ForceGreetPlayer", "", 0, actor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 };
@@ -704,7 +717,7 @@ public:
     }
     
     static bool ClearFollowers(RE::StaticFunctionTag*){
-        try{
+        try {
             AnimaCaller::followers.clear();
             SocketManager::getInstance().ClearFollowers();
 
@@ -734,25 +747,9 @@ public:
         }
     }
 
-    static bool ClearActors(RE::StaticFunctionTag*, bool empty) {
-        EventWatcher::m.lock();
-        EventWatcher::actors.clear();
-        EventWatcher::voiceMap.clear();
-        AnimaCaller::cellActors.clear();
-        AnimaCaller::broadcastActors.clear();
-        AnimaCaller::n2nBroadcastActors.clear();
-        if (empty) {
-            SocketManager::getInstance().SendCellActors(AnimaCaller::cellActors);
-        }
-        EventWatcher::m.unlock();
-
-        return true;
-    }
-
     static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
                           string currentDateTime) {
         try {
-            EventWatcher::m.lock();
             EventWatcher::actors.insert(actor);
             EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
             AnimaCaller::cellActors.clear();
@@ -774,19 +771,13 @@ public:
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
             AnimaCaller::Reset();
         }
-        EventWatcher::m.unlock();
 
-        return true;
-    }
-
-    static bool RemoveBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor) {
-        AnimaCaller::broadcastActors.erase(actor);
-        
         return true;
     }
 
     static bool SetBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
         try {
+            Util::WriteLog("Setting broadcast actor: " + string(actor->GetName()));
             ActorData* actorData = new ActorData(voice, distance);
             AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
         } catch (const exception& e) {
@@ -818,7 +809,7 @@ public:
             Util::WriteLog("Unkown exception during SendBroadcastActors", 1);
             AnimaCaller::ShowReplyMessage("Exception occured. Check Anima logs.");
             AnimaCaller::Reset();
-        }
+        } 
 
         return true;
     }
@@ -861,6 +852,24 @@ public:
         return true;
     }
 
+    static bool RemoveActor(RE::StaticFunctionTag*, RE::Actor* actor) {
+        EventWatcher::actors.erase(actor);
+
+        return true;
+    }
+
+    static bool RemoveBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor) {
+        AnimaCaller::broadcastActors.erase(actor);
+
+        return true;
+    }
+
+    static bool RemoveN2NActor(RE::StaticFunctionTag*, RE::Actor* actor) {
+        AnimaCaller::n2nBroadcastActors.erase(actor);
+
+        return true;
+    }
+
     static bool SendResponseLog(RE::StaticFunctionTag*, RE::Actor* actor, string message) {
         EventWatcher::SendSubtitle(actor, message);
 
@@ -868,7 +877,7 @@ public:
     }
 
     static bool StartLecture(RE::StaticFunctionTag*, RE::Actor* teacher, string teacherVoiceType, int lectureNo, int lectureIndex, string currentDateTime) {
-        Util::WriteLog(string(teacher->GetName()) + " started lecture " + to_string(lectureNo) + ".");
+        Util::WriteLog(string(teacher->GetName()) + " started lecture " + to_string(lectureNo) + ". LectureIndex => " + to_string(lectureIndex));
 
         SocketManager::getInstance().SendStartLecture(teacher, teacherVoiceType, lectureNo, lectureIndex, currentDateTime);
 
@@ -878,6 +887,20 @@ public:
     static bool EndLecture(RE::StaticFunctionTag*) {
         Util::WriteLog("EndLecture.");
         SocketManager::getInstance().SendEndLecture();
+
+        return true;
+    }
+
+    static bool OpenTextBox(RE::StaticFunctionTag*) {
+        Util::WriteLog("OpenTextBox.");
+        EventProcessor::GetSingleton()->OnPlayerRequestInput("UITextEntryMenu");
+
+        return true;
+    }
+
+    static bool ShowForceGreetSubtitles(RE::StaticFunctionTag*, string subtitle, float duration) {
+        Util::WriteLog("ShowForceGreetSubtitles.");
+        SubtitleManager::ShowSubtitle(AnimaCaller::ForceGreetActor, subtitle, duration);
 
         return true;
     }
@@ -898,19 +921,22 @@ bool RegisterPapyrusFunctions(RE::BSScript::IVirtualMachine* vm) {
     vm->RegisterFunction("N2N_Stop", "AnimaSKSE", &ModPort::N2N_Stop);
     vm->RegisterFunction("LogEvent", "AnimaSKSE", &ModPort::LogEvent);
     vm->RegisterFunction("WatchSubtitles", "AnimaSKSE", &ModPort::WatchSubtitles);
-    vm->RegisterFunction("ClearActors", "AnimaSKSE", &ModPort::ClearActors);
     vm->RegisterFunction("SendActor", "AnimaSKSE", &ModPort::SendActor);
     vm->RegisterFunction("SetBroadcastActor", "AnimaSKSE", &ModPort::SetBroadcastActor);
     vm->RegisterFunction("SendBroadcastActors", "AnimaSKSE", &ModPort::SendBroadcastActors);
     vm->RegisterFunction("SetN2NBroadcastActor", "AnimaSKSE", &ModPort::SetN2NBroadcastActor);
     vm->RegisterFunction("SendN2NBroadcastActors", "AnimaSKSE", &ModPort::SendN2NBroadcastActors);
+    vm->RegisterFunction("RemoveActor", "AnimaSKSE", &ModPort::RemoveActor);
     vm->RegisterFunction("RemoveBroadcastActor", "AnimaSKSE", &ModPort::RemoveBroadcastActor);
+    vm->RegisterFunction("RemoveN2NActor", "AnimaSKSE", &ModPort::RemoveN2NActor);
     vm->RegisterFunction("StopBroadcast", "AnimaSKSE", &ModPort::StopBroadcast);
     vm->RegisterFunction("SendResponseLog", "AnimaSKSE", &ModPort::SendResponseLog);
     vm->RegisterFunction("ClearFollowers", "AnimaSKSE", &ModPort::ClearFollowers);
     vm->RegisterFunction("SendFollower", "AnimaSKSE", &ModPort::SendFollower);
     vm->RegisterFunction("StartLecture", "AnimaSKSE", &ModPort::StartLecture);
     vm->RegisterFunction("EndLecture", "AnimaSKSE", &ModPort::EndLecture);
+    vm->RegisterFunction("OpenTextBox", "AnimaSKSE", &ModPort::OpenTextBox);
+    vm->RegisterFunction("ShowForceGreetSubtitles", "AnimaSKSE", &ModPort::ShowForceGreetSubtitles);
 
     return true;
 }

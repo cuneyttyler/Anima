@@ -42,6 +42,9 @@ export default class BroadcastManager {
         EventBus.GetSingleton().on('BROADCAST_RESPONSE', async (character, message, _continue) => {
             let _character = this.FindCharacterByName(character.name)
             if(_character) _character.awaitingResponse = false;
+            if(message) {
+                this.anyResponse = true;
+            }
             if(DEBUG && message) {
                 for(let j in this.characters) {
                     this.fileManager.SaveEventLog(this.characters[j].id, this.characters[j].formId, " It's " + this.currentDateTime + ". " + (character.name == this.characters[j].name 
@@ -55,9 +58,6 @@ export default class BroadcastManager {
                 }
                 await this.WaitUntilPauseEnds();
                 await this.Say(message, character.name, character.formId);
-            }
-            if(message) {
-                this.anyResponse = true;
             }
             if (!message && ((this.N2N_SPEAKER && character && character.name && character.name.toLowerCase() == this.N2N_SPEAKER.toLowerCase()) || (this.N2N_LISTENER && character && character.name && character.name.toLowerCase() == this.N2N_LISTENER.toLowerCase()))) {
                 this.SendEndSignal();
@@ -84,6 +84,10 @@ export default class BroadcastManager {
                     await this.Send(_character, null, null, message);
                 }
             }
+        })
+
+        EventBus.GetSingleton().on("FORCE_GREET_MESSAGE", (character, message) => {
+            this.fileManager.SaveEventLog(character.id, character.formId, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", this.profile);
         })
     }
 
@@ -191,7 +195,7 @@ export default class BroadcastManager {
                 console.log("STOPPING DUE TO NO RESPONSE.")
                 this.Stop()
             }
-        }, 20000)
+        }, 60000)
 
         if(!sent && speakerName == this.profile) {
             this.skseController.Send(GetPayload("There are no actors near.", "notification", 0, 1, 0));
@@ -206,7 +210,7 @@ export default class BroadcastManager {
             return;
         }
         if(character.stop) return
-        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, character.name, speakerName, this.characters, character, this.currentDateTime, message, BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, this.profile), this.fileManager.GetThoughts(character.name, character.formId, this.profile));
+        let messageToSend = this.promptManager.PrepareBroadcastMessage(this.profile, character.name, speakerName, this.characters, character, this.currentDateTime, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, this.profile), this.fileManager.GetThoughts(character.name, character.formId, this.profile));
         character.awaitingResponse = true;
         character.googleController.Send(messageToSend);
         if(speakerFormId) character.googleController.SendLookAt(speakerFormId);
@@ -391,6 +395,10 @@ export default class BroadcastManager {
 
     IsPaused() {
         return this.paused;
+    }
+
+    GetCharacters() {
+        return this.characters
     }
 
     FindCharacterByName(name) {

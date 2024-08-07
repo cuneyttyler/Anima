@@ -82,6 +82,10 @@
                 <td><input v-model="character.mood.surprise"/></td>
             </tr>
             <tr>
+                <td class="first">Personality::Kindness: </td>
+                <td><input v-model="character.personality.kind"/></td>
+            </tr>
+            <tr>
                 <td class="first">Personality::Positive: </td>
                 <td><input v-model="character.personality.positive"/></td>
             </tr>

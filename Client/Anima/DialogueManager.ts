@@ -44,7 +44,6 @@ export default class DialogueManager {
     InitEvents() {
         EventBus.GetSingleton().on('TARGET_RESPONSE', (msg) => {
             if(!this.character) return
-            // this.fileManager.SaveEventLog(this.character.id, this.character.formId,  "You said : \"" + msg + "\"", this.profile)
             if(this.isEnding) {
                 setTimeout(() => {
                     EventBus.GetSingleton().emit('END')
@@ -122,7 +121,7 @@ export default class DialogueManager {
 
     async Finalize() {
         let events = await this.googleController.SummarizeEvents(this.character, this.fileManager.GetEvents(this.id, this.formId, this.profile))
-        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, true)
+        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, false)
         this.conversationOngoing = false;
         this.profile = null;
         this.id = null;
@@ -132,7 +131,6 @@ export default class DialogueManager {
    async Say(message : string) {
         let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, await this.fileManager.GetEvents(this.character.id, this.character.formId, this.profile), await this.fileManager.GetThoughts(this.character.id, this.character.formId, this.profile), message, BroadcastManager.currentLocation) 
         
-        this.fileManager.SaveEventLog(this.id, this.formId,  "On " + this.currentDateTime + ", " + this.listener + " said to you: \"" + message + "\"", this.profile)
         this.googleController.Send(messageToSend)
         if(process.env.USING_NFF) {
             let followerManager = FollowerManager.GetInstance();

@@ -23,7 +23,7 @@ export default class PromptManager {
             + "\n========================\n"
 
     GetUserProfilePrompt(profile) {
-        let profileText = new CharacterManager().GetUserProfile(profile)
+        let profileText = this.characterManager.GetUserProfile(profile)
         if(!profileText) return ""
         return "THIS IS INFORMATION ABOUT " + profile + " WHOM YOU TALK: " + profileText + "\n========================\n"
     }
@@ -87,8 +87,12 @@ export default class PromptManager {
         return events && events.length > 0 ? this.PastEventHelper() + " \n HERE IS WHAT HAPPENED PREVIOUSLY: " + this.PastEventHelperText() + events +  "\n========================\n" : ""
     }
 
+    PastLecturesPrompt(events) {
+        return events && events.length > 0 ? this.PastEventHelper() + " \n HERE IS WHAT HAS BEEN THOUGHT IN THIS LECTURE PREVIOUSLY. (DO NOT TEACH THE SAME THINGS, CONTINUE WITH THE NEXT TOPIC): " + this.PastEventHelperText() + events +  "\n========================\n" : ""
+    }
+
     BroadcastEventMessage(speaker, listener, message) {
-        return " == CURRENT EVENT (GENERATE YOUR RESPONSES BASED ON THIS AND DO NOT REPEAT PREVIOUS LINES YOU SAID EARLIER) ==> " + ((message.length > 2 && message.substring(0,2) == "**") ? message : speaker + " says: " + message + "\"")
+        return " == CURRENT EVENT (** VERY IMPORTANT ** => GENERATE YOUR RESPONSES BASED ON THIS PART AND DO NOT REPEAT PREVIOUS LINES YOU SAID EARLIER) ==> " + ((message.length > 2 && message.substring(0,2) == "**") ? message : speaker + " says: " + message + "\"")
     }
 
     BroadcastPrompt(speaker, listener, message, currentDateTime, closest) {
@@ -104,6 +108,13 @@ export default class PromptManager {
             + "The date is \"" + currentDateTime + ".\" \n"
             + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER \n" 
             + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"
+    }
+
+    TriggerPrompt(playerName) {
+        return " == CURRENT EVENT => You see " + playerName + ". Is there something you wish to tell him/her? \n"
+            + " If so answer, if not RESPOND **__NOT_ANSWERING__**. \n"
+            + " Speak only if you have something reasonable to tell and if you know " + playerName + " already. Do not speak in vain."
+            + " If you don't know him/her, you can introduce yourself but do this rarely."
     }
 
     ThoughtsPrompt(thoughtBuffer) {
@@ -136,7 +147,7 @@ export default class PromptManager {
             + " If there's __CONTINUE__ at the end of your last speech, it means you're continuing your talk. \n"
             + " Do not send only __CONTINUE__, it's meaning is that you say something and you wish to continue. \n"
             + " Ignore the events occured after Dragonborn's appearance in the fourth era. \n"
-            + " Please make short sentences(MAX 15 words) and use __CONTINUE__ at the end to continue your introduction. \n"
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " == IMPORTANT == Either use __CONTINUE__ or __START_LECTURE__ at the end of your response. Do not let your response lack either of these."
     }
 
@@ -148,6 +159,7 @@ export default class PromptManager {
             + " Regarding what you said earlier, continue to your introduction. Do not start your introduction or greet students as you've started already. Just continue. \n"
             + " Add **__CONTINUE__** to the end of your speech, if you'd like to go on with your introduction to the current session. \n"
             + " Ignore the events occured after Dragonborn's appearance in the fourth era. \n"
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " Add **__START_LECTURE__** to the end of your speech, if you'd like to end your introduction and start the lecture. Do this eventually as this is only introduction. \n"
             + (message ? " == CURRENT EVENT ==> " + message : "")
     }
@@ -158,10 +170,11 @@ export default class PromptManager {
             + " Go on with the lecture, continuing with the topic that you're telling. \n"
             + " If you want to continue your conversation, end your response with **__CONTINUE__** \n"
             + " If you're ready for accepting questions or comments, add **__READY_FOR_QUESTIONS__** to the end of your response. Do ask for questions often. \n"
-            + " ** IMPORTANT ** Continue your discussion of topic progressively, not lingering on any topic too much. \n"
+            + " ** IMPORTANT ** Continue your discussion of topic without losing track of what you are teaching. \n"
+            + " Do smooth transitions between topics. \n"
             + " ** IMPORTANT ** Do not repeat subjects that you mentioned already or do not repeat sentences over and over again. \n"
             + " Ignore the events occured after Dragonborn's appearance in the fourth era. \n"
-            + " ** IMPORTANT ** Please make short sentences(MAX 15 words) and use __CONTINUE__ at the end to continue your lecture. \n"
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " ** IMPORTANT ** Also when adding __READY_FOR_QUESTIONS for taking questions, make short sentences (MAX 15 words). \n"
             + " == IMPORTANT == Either use __CONTINUE or __READY_FOR_QUESTIONS__ at the end of your response. Do not let your response lack either of these. \n"
             + ( message ? " == CURRENT EVENT => " + message : "")
@@ -174,7 +187,7 @@ export default class PromptManager {
             + " It's time to end the lecture. Wrap up the subjects, say goodbyes and maybe talk about what you'd like to talk about next. \n"
             + " You don't need to end in one message. If you'd like to continue your 'ending' speech, add **__CONTINUE__** at the end of your speech. \n"
             + " Ignore the events occured after Dragonborn's appearance in the fourth era. \n"
-            + " Please make short sentences(MAX 15 words) and use __CONTINUE__ at the end of your speech  to continue your ending. \n"
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " Do not send only __CONTINUE__, it's meaning is that you say something and you wish to continue. \n"
             + " If you'd like to end your speech end session, RESPOND **__END_SESSION__** at the end of your response. \n"
             + " == IMPORTANT == End your session when you've talked enough in your closing speech. Do not make it too long. \n"
@@ -188,11 +201,12 @@ export default class PromptManager {
             + " Your previous speeches are given to you in the previous lines of this prompt. \n"
             + " You are ending your lesson, you started your ending speech and continuing on. Do not continue too long, keep your ending talk short. \n"
             + " You don't need to end in one message. If you'd like to continue your 'ending' speech, add **__CONTINUE__** at the end of your speech. \n"
-            + " Please make short sentences(MAX 15 words) and use __CONTINUE__ at the end of your speech  to continue your ending. \n"
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " Do not send only __CONTINUE__, it's meaning is that you say something and you wish to continue. \n"
             + " If you'd like to end your speech end session, RESPOND **__END_SESSION__** at the end of your response. \n"
             + " End your session if you deem CURRENT EVENT good point to end. (NOTE DO NOT BE TOO CRITICAL ON THIS, JUST END)\n"
             + " == IMPORTANT == End your session when you've talked enough in your closing speech by using **END_SESSION__**. Do not keep it too long. DO NOT KEEP SAYING THE SAME LINES. \n"
+            + " == IMPORTANT == ONLY 10% of the time continue your ending speech and 90% of the time, end it with __END_SESSION__ \n"
             + " == IMPORTANT == Either use __CONTINUE__ or __END_SESSION__ at the end of your response. Do not let your response lack either of these."
             + " Ignore the events occured after Dragonborn's appearance in the fourth era. \n"
             + " == CURRENT EVENT => " + message
@@ -206,7 +220,7 @@ export default class PromptManager {
             + " Ask a question or comment on a point you find interesting. \n"
             + " If there's too much interruption or you don't want to speak, RESPOND **__NOT_ANSWERING__** \n"
             + " Do not interrupt the lecture too much, only speak if you have something interesting to say. \n"
-            + " Please make short sentences(MAX 15 words) "
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " == CURRENT EVENT => " + message
     }
 
@@ -214,6 +228,7 @@ export default class PromptManager {
         return " == LECTURE INFO ==> It's " + currentDateTime + ". " + teacher + " is  giving a lecture on " + lecture.name + " to " + students + ". \n"
             + "This is the content of the lecture: \"" + lecture.content + "\" \n"
             + " Previous speeches are given to you in the previous lines of this prompt. \n"
+            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
             + " Remember, it's teacher who mostly talks in the lecture. If you're not the teacher and you don't have something significant to tell, RESPOND **__NOT_ANSWERING__**"
             + " == CURRENT EVENT ==> " + speaker + " says: \"" + message + "\"\n"
     }
@@ -224,6 +239,10 @@ export default class PromptManager {
 
     PrepareThoughtMessage(profile, character, location, events, thoughts) {
         return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.FollowerThoughtPrompt()}    
+    }
+
+    PrepareTriggerMessage(profile, character, location, events, thoughts) {
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.TriggerPrompt(profile)}    
     }
 
     PrepareFollowerPeriodicMessage(profile, character, location, events, thoughts) {
@@ -243,31 +262,31 @@ export default class PromptManager {
     }
 
     PrepareLectureStartMessage(character, lecture, lectureIndex, location, students, events, thoughts, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureStartPrompt(lecture, lectureIndex, students, currentDateTime)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureStartPrompt(lecture, lectureIndex, students, currentDateTime)}
     }
 
     PrepareLectureStartContinueMessage(character, lecture, lectureIndex, location, students, events, thoughts, message, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureStartContinuePrompt(lecture, lectureIndex, students, currentDateTime, message)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureStartContinuePrompt(lecture, lectureIndex, students, currentDateTime, message)}
     }
 
     PrepareLectureOngoingMessage(character, lecture, location, students, events, thoughts, message, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureOngoingPrompt(lecture, students, currentDateTime, message)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureOngoingPrompt(lecture, students, currentDateTime, message)}
     }
 
     PrepareLectureEndMessage(character, lecture, location, students, events, thoughts, message, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureEndPrompt(lecture, students, message, currentDateTime)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureEndPrompt(lecture, students, message, currentDateTime)}
     }
 
     PrepareLectureEndContinueMessage(character, lecture, location, students, events, thoughts, message, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureEndContinuePrompt(lecture, students, message, currentDateTime)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureEndContinuePrompt(lecture, students, message, currentDateTime)}
     }
 
     PrepareLectureAskQuestionMessage(character, lecture, location, teacher, students, events, thoughts, message, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureAskQuestionPrompt(teacher, lecture, students, message, currentDateTime)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureAskQuestionPrompt(teacher, lecture, students, message, currentDateTime)}
     }
 
     PrepareLectureMessage(character, lecture, location, playerName, teacherName, students, events, thoughts, message, currentDateTime) {
-        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureMessagePrompt(lecture, playerName, teacherName, students, message, currentDateTime)}
+        return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character), message: this.CellActorsPrompt(location) + this.PastLecturesPrompt(events) + this.ThoughtsPrompt(thoughts) + this.LectureMessagePrompt(lecture, playerName, teacherName, students, message, currentDateTime)}
     }
 
     PrepareFollowerCommandMessage(followers, message) {
@@ -286,6 +305,7 @@ export default class PromptManager {
     PrepareSummarizeEventsMessage(character, events) {
         return {message: "Please summarize these events from the point of view of " + character + ". \n"
             + " Organize them by separating each day into different section. \n"
+            + " In the given text, do not omit any event in the output if it seems significant. \n"
             + " Try to include all that happened in the summary. \n"
             + " == EVENTS => " + events}
     }

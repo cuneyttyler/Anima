@@ -1,7 +1,10 @@
 Scriptname AnimaEventLogger extends Quest
 
+actor[] previousBroadcastActors
 actor[] broadcastActors
+actor[] previousN2NActors
 actor[] n2nBroadcastActors
+actor[] previousActors
 actor[] actors
 int numFoundActors
 
@@ -17,18 +20,23 @@ Function LogEvents()
     While True
         FindAllNpcsInArea()
         AssignActorsToRefs()
+        RemoveNonExisting()
         SendActors()
         Utility.Wait(1)
     EndWhile
 EndFunction
 
 Function FindAllNpcsInArea()
+    previousActors = CopyArray(actors)
+    previousBroadcastActors = CopyArray(broadcastActors)
+    previousN2NActors = CopyArray(n2nBroadcastActors)
+
     actors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 1400)
     n2nBroadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 1000)
     broadcastActors = MiscUtil.ScanCellNPCs(Game.GetPlayer(), 400)
+
     int i = 0
     While i < actors.Length
-        Debug.Trace(actors[i].GetDisplayName())
         If !IsAvailable(actors[i])
             actors = PapyrusUtil.RemoveActor(actors, actors[i])
         Else
@@ -37,7 +45,6 @@ Function FindAllNpcsInArea()
     EndWhile
      i = 0
      While i < broadcastActors.Length
-        Debug.Trace(broadcastActors[i].GetDisplayName())
         If !IsAvailableForBroadcast(broadcastActors[i])
             broadcastActors = PapyrusUtil.RemoveActor(broadcastActors, broadcastActors[i])
         Else
@@ -64,8 +71,31 @@ Function AssignActorsToRefs()
     EndWhile
 EndFunction
 
+Function RemoveNonExisting()
+    int i = 0
+    While i < previousActors.Length
+        If !IsInArray(previousActors[i], actors)
+            AnimaSKSE.RemoveActor(previousActors[i])
+        EndIf
+        i += 1
+    EndWhile
+    i = 0
+    While i < previousBroadcastActors.Length
+        If !IsInArray(previousBroadcastActors[i], broadcastActors)
+            AnimaSKSE.RemoveBroadcastActor(previousBroadcastActors[i])
+        EndIf
+        i += 1
+    EndWhile
+    i = 0
+    While i < previousN2NActors.Length
+        If !IsInArray(previousN2NActors[i], n2nBroadcastActors)
+            AnimaSKSE.RemoveN2NActor(previousN2NActors[i])
+        EndIf
+        i += 1
+    EndWhile
+EndFunction
+
 Function SendActors()
-    AnimaSKSE.ClearActors(actors.Length == 0)
     int i = 0
     While i < actors.Length
         If actors[i] != None
@@ -107,8 +137,19 @@ bool function IsAvailable(Actor _actor)
 endFunction
 
 bool function IsAvailableForBroadcast(Actor _actor)
-    return  IsRaceIncluded(_actor) && _actor.IsEnabled() && _actor.GetCurrentScene() == None && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
+    return  IsRaceIncluded(_actor) && _actor.IsEnabled() && !_actor.isDead() && !_actor.IsUnconscious() && _actor.GetSleepState() == 0
 endFunction
+
+Actor[] Function CopyArray(Actor[] arr)
+    Actor[] target = PapyrusUtil.ActorArray(arr.Length)
+    int i = 0
+    While i < arr.Length
+        target[i] = arr[i]
+        i += 1
+    EndWhile
+    
+    return target
+EndFunction
 
 bool Function IsInArray(Actor _actor, Actor[] arr)
     If _actor == None

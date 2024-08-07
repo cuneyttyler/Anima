@@ -37,6 +37,7 @@ class Queue<T> {
 
 export class SenderData extends EventEmitter {
     public text: string;
+    public type: number;
     public duration: number;
     public audioFile: string;
     public lipFile: string;
@@ -47,9 +48,10 @@ export class SenderData extends EventEmitter {
     public _continue: boolean;
     public readyForQuestions;
 
-    constructor(text, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, _continue, readyForQuestions?) {
+    constructor(text, type, audioFile, lipFile, voiceType, voiceFileName, duration, speaker, character, _continue, readyForQuestions?) {
         super();
         this.text = text;
+        this.type = type;
         this.duration = duration;
         this.audioFile = audioFile;
         this.lipFile = lipFile;
@@ -127,10 +129,15 @@ export class SenderQueue extends EventEmitter{
                     waitSync(0.5)
                 }
                 
-                setTimeout(() => {
-                    let payload = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, parseInt(data.character.formId));
-                    if(!DEBUG) this.skseController.Send(payload);
-                }, 250)
+                if(data.type == 0 || data.type == 1 || data.type == 2 || data.type == 3) {
+                    setTimeout(() => {
+                        let payload = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, parseInt(data.character.formId));
+                        if(!DEBUG) this.skseController.Send(payload);
+                    }, 250)
+                } else if(data.type == 4){
+                    EventBus.GetSingleton().emit("FORCE_GREET_MESSAGE", data.character, data.text)
+                    this.skseController.Send({type: "force-greet-player", message: "Force greet player", formId: parseInt(data.character.formId)})
+                }
             
                 setTimeout(() => {
                     this.processing = false;
@@ -139,7 +146,7 @@ export class SenderQueue extends EventEmitter{
                 }, data.duration * 1000 + 1500)
                 
                 setTimeout(() => {
-                    if(this.type == 1 || this.type == 2) {
+                    if((this.type == 1 || this.type == 2) && data.type != 4) {
                         EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.text, data._continue)
                         EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
                         if(data._continue) {

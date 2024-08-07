@@ -25,6 +25,7 @@ referencealias property target auto
 referencealias property n2n_SourceRefAlias auto
 referencealias property n2n_TargetRefAlias auto
 package property AnimaTravelToNPCPackage auto
+package property AnimaForceGreetPlayerPackage auto
 package property AnimaStandPackage auto
 package property AnimaN2NStandPackage auto
 formlist property _AnimaRaceList auto
@@ -69,9 +70,6 @@ endFunction
 
 function ShowNotification(String eventName, String strArg, Float numArg, Form sender)
     Debug.Notification(strArg)
-endFunction
-
-function TravelToNPCLocation(String eventName, String strArg, Float numArg, Form sender)
 endFunction
 
 function _Start(String eventName, String strArg, Float numArg, Form sender) 
@@ -125,7 +123,7 @@ function Speak_Broadcast(String eventName, String strArg, Float numArg, Form sen
     If (sender as Actor) == None
         Return
     EndIf
-    ActorUtil.AddPackageOverride(sender as Actor, AnimaStandPackage)
+    ActorUtil.AddPackageOverride(sender as Actor, AnimaStandPackage, 1)
     If numArg == 0
         (sender as Actor).Say(broadcast_topic_1)
     EndIf
@@ -208,11 +206,13 @@ function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
         If sender == None || (sender as Actor) == None
             Return
         EndIf
+        Debug.Trace("Send_LookAt " + numArg + ", " + (sender as Actor).GetDisplayName())
         lookAtSource = sender as Actor
     ElseIf numArg == 1
-        If sender == None || (sender as Actor) == None || lookAtSource == None || lookAtSource == None
+        If sender == None || (sender as Actor) == None || lookAtSource == None
             Return
         EndIf
+        Debug.Trace("Send_LookAt " + numArg + ", " + (sender as Actor).GetDisplayName())
         lookAtSource.SetLookAt(sender as Actor)
     ElseIf numArg == 2
         lookAtSource.ClearLookAt()

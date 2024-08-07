@@ -2,6 +2,15 @@
 ;NEXT FRAGMENT INDEX 5
 Scriptname PF__06005912 Extends Package Hidden
 
+;BEGIN FRAGMENT Fragment_3
+Function Fragment_3(Actor akActor)
+;BEGIN CODE
+Debug.Trace("Anima: Lecture End")
+ActorUtil.AddPackageOverride(Tolfdir.GetActorRef(), AnimaTolfdirEndLecturePackage, 1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;BEGIN FRAGMENT Fragment_2
 Function Fragment_2(Actor akActor)
 ;BEGIN CODE
@@ -10,18 +19,11 @@ AnimaCollegeLectures.SetStage(60)
 EndFunction
 ;END FRAGMENT
 
-;BEGIN FRAGMENT Fragment_3
-Function Fragment_3(Actor akActor)
-;BEGIN CODE
-AnimaCollegeLectureEnding.SetValueInt(1)
-;END CODE
-EndFunction
-;END FRAGMENT
-
 ;BEGIN FRAGMENT Fragment_4
 Function Fragment_4(Actor akActor)
 ;BEGIN CODE
-AnimaCollegeLectureEnding.SetValueInt(1)
+Debug.Trace("Anima: Lecture Change")
+ActorUtil.AddPackageOverride(Tolfdir.GetActorRef(), AnimaTolfdirEndLecturePackage, 1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -31,3 +33,7 @@ EndFunction
 Quest Property AnimaCollegeLectures  Auto  
 
 GlobalVariable Property AnimaCollegeLectureEnding  Auto  
+
+Package Property AnimaTolfdirEndLecturePackage  Auto  
+
+ReferenceAlias Property Tolfdir  Auto  

@@ -302,7 +302,7 @@ public:
 
             if (type == "established" && dial_type == 0) {
                 AnimaCaller::ConnectionSuccessful();
-            } if (type == "established" && dial_type == 1) {
+            } else if (type == "established" && dial_type == 1) {
                 AnimaCaller::N2N_Init();
             } else if (type == "chat" && dial_type == 0) {
                 AnimaCaller::Speak(message, duration);
@@ -341,6 +341,8 @@ public:
                 AnimaCaller::SendFollowerCommand(command);
             } else if (type == "end_lecture") {
                 AnimaCaller::EndLecture();
+            } else if (type == "force-greet-player") {
+                AnimaCaller::ForceGreetPlayer(formId);
             }
         } 
         catch (const exception& e) {
@@ -506,6 +508,9 @@ public:
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
         auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
         auto playerFormId = RE::PlayerCharacter::GetSingleton()->GetFormID();
+        auto location = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
+                            ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
+                            : "";
 
         vector<string> names;
         vector<string> formIds;
@@ -513,7 +518,7 @@ public:
         vector<float> distances;
 
         BroadcastMessage* messageObj = new BroadcastMessage("broadcast", message, names, formIds, voiceTypes,
-                                                            distances, speaker, listener, playerName, playerFormId, "", "");
+                                                            distances, speaker, listener, playerName, playerFormId, location, "");
         soc->send_message(messageObj);
     }
 

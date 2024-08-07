@@ -62,10 +62,19 @@ export default class FileManager {
 
     GetThoughts(id, formId, profile) {
         if(!id) {
-            console.error("ID is needed for GetEvents!")
+            console.error("ID is needed for GetThoughts!")
             return
         }
         let eventFile = this.GetFile('Thoughts', id, formId, profile);
+        return fs.readFileSync(eventFile, 'utf8')
+    }
+
+    GetLecture(id, formId, profile) {
+        if(!id) {
+            console.error("ID is needed for GetLecture!")
+            return
+        }
+        let eventFile = this.GetFile('Lectures', id, formId, profile);
         return fs.readFileSync(eventFile, 'utf8')
     }
 

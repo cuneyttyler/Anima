@@ -8,6 +8,7 @@ import { BROADCAST_QUEUE, LECTURE_QUEUE } from '../Anima.js';
 import { BroadcastData } from './BroadcastQueue.js';
 import { logToLog } from './LogUtil.js';
 import PromptManager from './PromptManager.js'
+import waitSync from 'wait-sync'
 
 export function GetPayload(message: string, type: string, duration, dialogue_type: number, speaker: number, formId?: number, listenerName?: string) {
     return {"message": message, "type": type, "duration": duration, "dial_type": dialogue_type, "speaker": speaker, "formId": formId, "listenerName": listenerName}
@@ -103,8 +104,8 @@ export class GoogleGenAIController {
         }
 
         if(message.toLowerCase().includes("not_related") || message.toLowerCase().includes('not related')) {
-            let payload = GetPayload(this.character.name + " leavens conversation.", "notification", 0, 1, this.speaker, 0, "")
-            if(this.character.name.toLowerCase() == this.playerName.toLowerCase())
+            let payload = GetPayload(this.character.name + " thinks it's unrelated.", "notification", 0, 1, this.speaker, 0, "")
+            if(this.character.name.toLowerCase() != this.playerName.toLowerCase())
                 this.skseController.Send(payload)
             if(this.type == 1) {
                 console.log("NOT_RELATED => SENDING STOP SIGNAL")
@@ -248,32 +249,28 @@ export class GoogleGenAIController {
                 temp_file_suffix = "20"
                 topic_filename = "AnimaDialo_AnimaFollowerBr_001B74A6_1"
             }
+        } else if(this.type == 4) {
+            temp_file_suffix = "21"
+            topic_filename = "AnimaDialo_AnimaAliveBranc_001CB8AB_1"
         }
 
         this.audioProcessor.addAudioStream(new AudioData(message, topic_filename, this.character.voice, this.character.voicePitch, ++this.stepCount, temp_file_suffix, (text, audioFile, lipFile, duration) => {
+            console.log(`${this.character.name} said(${this.speaker}): ${message}`)
+            logToLog(`${this.character.name} said(${this.speaker}): ${message}`)
             if(this.type == 0) {
-                this.senderQueue.addData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue));
+                this.senderQueue.addData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue));
                 EventBus.GetSingleton().emit('WEB_TARGET_RESPONSE', message);
-                setTimeout(() => {
-                    this.SendEvent(message, this.speaker)
+                setTimeout(() => { 
+                    EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
+                    EventBus.GetSingleton().emit('TARGET_RESPONSE', message);
                 }, duration * 1000 + 500)
-            } else if(this.type == 1 || this.type == 2) {
-                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue), duration));
+            } else if(this.type == 1 || this.type == 2 || this.type == 4) {
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue), duration));
                 // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, message);
             } else if(this.type == 3) {
-                LECTURE_QUEUE.addData(new BroadcastData(new SenderData(text, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue, readyForQuestions), duration));
+                LECTURE_QUEUE.addData(new BroadcastData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue, readyForQuestions), duration));
             }
         }))
-    }
-
-    SendEvent(message, speaker) {
-        console.log(`${this.character.name} said(${speaker}): ${message}`)
-        logToLog(`${this.character.name} said(${speaker}): ${message}`)
-
-        if(this.type == 0) {
-            EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
-            EventBus.GetSingleton().emit('TARGET_RESPONSE', message);
-        }
     }
 
     SendLookAt(targetFormId) {

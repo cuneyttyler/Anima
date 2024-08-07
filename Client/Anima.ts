@@ -73,10 +73,6 @@ fastify.register(async function (fastify) {
 
             let message = JSON.parse(msg.toString());
             if(message.type == 'init') {
-                if(!aliveCharacterManager) {
-                    aliveCharacterManager = new AliveCharacterManager(message.playerName, connection.socket)
-                    aliveCharacterManager.Run()
-                }
             } else if (message.type == "connect" && !message.is_n2n) {
                 console.log("** Incoming Message: Connect request to " + message.id + " **");
                 let result = await ClientManager.ConnectToCharacter(message.id, message.formId, message.voiceType, message.playerName, message.playerName, message.currentDateTime, connection.socket);
@@ -156,6 +152,9 @@ fastify.register(async function (fastify) {
             }  else if (message.type == "broadcast-set") {
                 broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
                 await broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
+                if(aliveCharacterManager) {
+                    aliveCharacterManager.SetBroadcastManager(broadcastManager)
+                }
             } else if (message.type == "broadcast") {
                 console.log("** Incoming Message: Player saying broadcast: " + message.message + " **");
                 if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
@@ -238,10 +237,9 @@ function RunInformation(){
                                                   ,                                                 
                                                                                                    `);
     console.log("\x1b[34m", "****************************************************");
-    console.log("\x1b[32m", "Don't worry, you are suppose to see this!");
-    console.log("\x1b[34m", "\n****************************************************\n\n");
-    console.log("\x1b[31m", "DONT close this window or other window that opens if you want to use the mod. Close both only once you are done with the game. (Especially audio one because it really hits CPU)");
+    console.log("\x1b[31m", "DON'T close this window.");
     console.log("\x1b[32m", "Errors will show here.");
+    console.log("\x1b[34m", "****************************************************");
 }
 
 RunWebApp()
