@@ -6,7 +6,7 @@ import {AudioData, AudioProcessor} from './AudioProcessor.js'
 import SKSEController from './SKSEController.js'
 import EventBus from './EventBus.js'
 import { SenderData, SenderQueue } from './SenderQueue.js';
-import { BROADCAST_QUEUE, LECTURE_QUEUE } from '../Anima.js';
+import { BROADCAST_QUEUE, LECTURE_QUEUE } from '../Anima.js'
 import { BroadcastData } from './BroadcastQueue.js';
 import { logToLog } from './LogUtil.js';
 import PromptManager from './PromptManager.js'

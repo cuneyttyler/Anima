@@ -44,10 +44,10 @@ export default function RunWebApp() {
       });
 
     // Parse application/x-www-form-urlencoded
-    app.use(bodyParser.urlencoded({ extended: false }));
+    // app.use(bodyParser.urlencoded({ extended: false }));
 
-    // Parse application/json
-    app.use(bodyParser.json());
+    // // Parse application/json
+    // app.use(bodyParser.json());
 
     const allowedOrigins = ['www.example1.com', 'www.example2.com'];
         app.use(cors({

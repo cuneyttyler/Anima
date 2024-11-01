@@ -3,17 +3,16 @@
   "configurations": [
     {
       "name": "Electron: Main",
-      "cwd":"${workspaceFolder}/app/desktop-app",
       "type": "node",
       "request": "launch",
-      // "protocol": "inspector",
-      "runtimeExecutable": "${workspaceRoot}/app/desktop-app/node_modules/.bin/electron",
+      "protocol": "inspector",
+      "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron",
       "windows": {
-        "runtimeExecutable": "${workspaceRoot}/app/desktop-app/node_modules/.bin/electron.cmd"
+        "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron.cmd"
       },
-      "preLaunchTask": "electron-debug",
+      "preLaunchTask": "build",
       "args": ["--remote-debugging-port=9223", "./dist_electron"],
-      "outFiles": ["${workspaceFolder}/app/desktop-app/dist_electron/**/*.js"]
+      "outFiles": ["${workspaceFolder}/dist_electron/**/*.js"]
     },
     {
       "name": "Electron: Renderer",
@@ -22,7 +21,7 @@
       "port": 9223,
       "urlFilter": "http://localhost:*",
       "timeout": 30000,
-      "webRoot": "${workspaceFolder}/app/desktop-app/src",
+      "webRoot": "${workspaceFolder}/src",
       "sourceMapPathOverrides": {
         "webpack:///./src/*": "${webRoot}/*"
       }

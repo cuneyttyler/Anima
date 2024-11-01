@@ -4,7 +4,7 @@ import fs from 'fs';
 import http from 'http'
 
 import EventBus from './EventBus.js'
-import { XTTS_URI, XTTS_SERVICE } from '../Anima.js';
+import { XTTS_URI, XTTS_SERVICE } from '../Anima.js'
 
 export default class XTTSAPI {
     public static async TTS(text, outputFile, voiceModel, callback) {  

@@ -1,4 +1,4 @@
-import { DEBUG } from "../Anima.js"
+import { DEBUG } from '../Anima.js'
 
 export default class SKSEController {
     constructor(private socket : WebSocket) {}

@@ -1,4 +1,4 @@
-import { OLLAMA_URI, OLLAMA_MODEL, OLLAMA_SERVICE } from '../Anima.js';
+import { OLLAMA_URI, OLLAMA_MODEL, OLLAMA_SERVICE } from '../Anima.js'
 
 import http from 'http'
 import https from 'https'

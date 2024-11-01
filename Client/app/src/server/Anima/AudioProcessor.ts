@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { parseFile } from 'music-metadata';
 import syncExec from 'sync-exec';
-import { TTS_PROVIDER } from '../Anima.js';
+import { TTS_PROVIDER } from '../Anima.js'
 import GoogleVertexAPI from './GoogleVertexAPI.js'
 import XTTSAPI from './XTTSAPI.js';
 import ffmpeg from 'fluent-ffmpeg';
