@@ -68,7 +68,7 @@ export default class BroadcastManager {
 
         EventBus.GetSingleton().removeAllListeners('BROADCAST_STOP');
         EventBus.GetSingleton().on('BROADCAST_STOP', async (character) => {
-            console.log("BROADCAST_STOP for " + character.name);
+            // console.log("BROADCAST_STOP for " + character.name);
             let i = this.FindCharacterIndexByName(character.name)
             if(i >= 0 &&  this.characters[i]) {
                 this.StopCharacter(this.characters[i])
@@ -94,14 +94,14 @@ export default class BroadcastManager {
     static GetInstance(type: string, playerName?: string, socket?: WebSocket) {
         if(type == 'player') {
             if(!BroadcastManager.playerInstance && (!playerName || !socket)) {
-                console.error("NO BROADCAST INSTANCE FOUND. NEED INIT PARAMETERS.");
+                // console.error("NO BROADCAST INSTANCE FOUND. NEED INIT PARAMETERS.");
                 return
             }
             if(!BroadcastManager.playerInstance) BroadcastManager.playerInstance = new BroadcastManager(playerName, socket)
             return BroadcastManager.playerInstance;
         } else if(type == 'n2n') {
             if(!BroadcastManager.n2nInstance && (!playerName || !socket)) {
-                console.error("NO BROADCAST INSTANCE FOUND. NEED INIT PARAMETERS.");
+                // console.error("NO BROADCAST INSTANCE FOUND. NEED INIT PARAMETERS.");
                 return
             }
             if(!BroadcastManager.n2nInstance) BroadcastManager.n2nInstance = new BroadcastManager(playerName, socket)
@@ -186,7 +186,7 @@ export default class BroadcastManager {
         for(let i in this.characters) {
             if(!this.characters[i].name || this.characters[i].stop || (speakerName && this.characters[i] && this.characters[i].name && this.characters[i].name.toLowerCase() == speakerName.toLowerCase()) || !this.CheckCharacterStillInScene(i, this.characters[i])) continue;
             sent = true;
-            console.log("SENDING to " + this.characters[i].name + ", " + this.characters[i].voiceType);
+            // console.log("SENDING to " + this.characters[i].name + ", " + this.characters[i].voiceType);
             await this.Send(this.characters[i], speakerName, speakerFormId, message)
         }
 
@@ -195,7 +195,7 @@ export default class BroadcastManager {
                 console.log("STOPPING DUE TO NO RESPONSE.")
                 this.Stop()
             }
-        }, 60000)
+        }, 120000)
 
         if(!sent && speakerName == this.profile) {
             this.skseController.Send(GetPayload("There are no actors near.", "notification", 0, 1, 0));
@@ -365,7 +365,7 @@ export default class BroadcastManager {
     StopForCharacter(name) {
         let character = this.FindCharacterByName(name)
         if(!character) return
-        console.log("STOPPING FOR CHARACTER " + name)
+        // console.log("STOPPING FOR CHARACTER " + name)
         character.stop = true
     }
 

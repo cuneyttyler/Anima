@@ -9,17 +9,20 @@ export default class PromptManager {
     }
     private static GENERAL_PROMPT = "PLEASE ACT AS CHARACTER DESCRIBED BELOW WHO LIVES IN SKYRIM(FROM THE ELDER SCROLLS SERIES) AND DO NOT INCLUDE ANY UNNECESSARY ADDITIONS (LIKE NARRATED ACTIONS) OTHER THAN YOUR REAL SPEECH. \n"
             + "YOUR OUTPUT WILL BE USED TO MAKE CHARACTERS SPEAK DIRECTLY. DO NOT INCLUDE ANYTHING OTHER THAN WHAT THE CHARACTERS SAY. \n"
-            + "CORRECT EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\"== => THAT'S IT! \n"
-            + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY. \n"
-            + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. \n"
-            + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE \n"
-            + "**DO NOT KEEP SAYING THE SAME LINE** REGARD WHAT YOU HAVE SAID BEFORE (THAT IS PROVIDED ALONG WITH THIS PROMPT) AND DO NOT REPEAT IT. \n"
-            + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS \n"
-            + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == \n"
-            + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING \n"
-            + "DATES ARE GIVEN IN SKYRIM DATE FORMAT, USE SKYRIM MONTHS WHEN CREATING SUMMARIZATION. \n"
-            + "EVEN IF THE NAMES ARE PROVIDED TO YOU, IT DOESN'T MEAN THAT YOU KNOW THAT PERSON. SPEAK ACCORDING TO YOUR RELATIONSHIP WITH THAT PERSON. \n"
+            // + "CORRECT EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\"== => THAT'S IT! \n"
+            // + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY. \n"
+            // + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. \n"
+            // + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE \n"
+            // + "**DO NOT KEEP SAYING THE SAME LINE** REGARD WHAT YOU HAVE SAID BEFORE (THAT IS PROVIDED ALONG WITH THIS PROMPT) AND DO NOT REPEAT IT. \n"
+            // + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS \n"
+            // + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == \n"
+            // + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING \n"
+            // + "DATES ARE GIVEN IN SKYRIM DATE FORMAT, USE SKYRIM MONTHS WHEN CREATING SUMMARIZATION. \n"
+            // + "EVEN IF THE NAMES ARE PROVIDED TO YOU, IT DOESN'T MEAN THAT YOU KNOW THAT PERSON. SPEAK ACCORDING TO YOUR RELATIONSHIP WITH THAT PERSON. \n"
+            + " REMEMBER TO ACT NOT LIKE AN ASSISSTANT CHAT ROBOT, BUT EMBODY THE CHARACTER'S PERSONALITY. DO NOT RESTRAIN YOURSELF FROM SPEAKING YOUR THOUGHTS AND FORGET ABOUT HOW YOU'RE TRAINED ON HOW TO SPEAK. SPEAK LIKE A CHARACTER IN ELDER SCROLLS SERIES. \n"
             + " **IMPORTANT** => WHEN YOU'RE ASKED BY SOMEONE TO JOIN THEM WITH PHRASES LIKE  \"Follow me\' or\"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, == ANSWER \"Of course, I'll join you.'\" IF YOU WISH TO JOIN THEM. == Reject in a manner you see appropriate otherwise."
+            + " IF YOU HAVEN'T TALKED TO CORRESPONDING CHARACTER BEFORE, PRETEND LIKE YOU DON'T KNOW HIM/HER. \n"
+            // + " **IMPORTANT** => PLEASE KEEP YOUR ANSWERS SHORT. MAKE MAXIMUM TWO SENTENCES OF MAX. 10 TOKENS TOTAL. THE SESSION WILL CONTINUE WITH ANOTHER REQUEST FOR YOU TO CONTINUE YOUR TALK. END YOUR SPEECH WITH **__CONTINUE__** WHEN YOU'D LIKE TO CONTINUE YOUR TALK.  \n"
             + "\n========================\n"
 
     GetUserProfilePrompt(profile) {
@@ -37,7 +40,7 @@ export default class PromptManager {
             + character.motivation + " "
             + character.flaws + " "
             + "This is your speech style: " + character.exampleDialogStyle + " "
-            + "This is how you talk (PLEASE TAKE THIS AS A REFERENCE WHEN YOU SPEAK): \"" + character.exampleDialog + "\"" + " "
+            + "This is your speech style (PLEASE TAKE THIS AS JUST A REFERENCE WHEN YOU SPEAK, DO NOT USE THESE LINES DIRECTLY): \"" + character.exampleDialog + "\"" + " "
             + "You are " + character.personalityDescription + " "
             + "You are at " + character.lifeStage + " of your life." + " "
             + "These are your hobbies " + character.hobbyOrInterests + " "
@@ -69,12 +72,13 @@ export default class PromptManager {
     }
 
     CurrentEventPrompt(speaker, message) {
-        return "== CURRENT EVENT (GENERATE YOUR RESPONSES BASED ON THIS AND DO NOT REPEAT PREVIOUS LINES YOU SAID EARLIER) ==> " + speaker + " said: " + message
+        return "== CURRENT EVENT => " + speaker + " said: " + message
     }
 
     PastEventHelperText() {
         return "(** VERY IMPORTANT** REGARD THESE AS ONLY PREVIOUS CONVERSATIONS YOU HELD AND **NEVER** REPEAT THESE LINES WHEN GENERATING RESPONSE)"
     }
+
     PastEventHelper() {
         let arr = []
         for(let i = 0; i < 5; i++) {
@@ -83,12 +87,14 @@ export default class PromptManager {
 
         return arr.join('\n')
     }
+
     PastEventsPrompt(events) {
-        return events && events.length > 0 ? this.PastEventHelper() + " \n HERE IS WHAT HAPPENED PREVIOUSLY: " + this.PastEventHelperText() + events +  "\n========================\n" : ""
+        // events = events.substring(events.length / 2, events.length - 1)
+        return events && events.length > 0 ? "\n HERE IS WHAT HAPPENED PREVIOUSLY: " + events +  "\n========================\n" : ""
     }
 
     PastLecturesPrompt(events) {
-        return events && events.length > 0 ? this.PastEventHelper() + " \n HERE IS WHAT HAS BEEN THOUGHT IN THIS LECTURE PREVIOUSLY. (DO NOT TEACH THE SAME THINGS, CONTINUE WITH THE NEXT TOPIC): " + this.PastEventHelperText() + events +  "\n========================\n" : ""
+        return events && events.length > 0 ? "\n HERE IS WHAT HAS BEEN THAUGHT IN THIS LECTURE PREVIOUSLY. (DO NOT TEACH THE SAME THINGS, CONTINUE WITH THE NEXT TOPIC): " + this.PastEventHelperText() + events +  "\n========================\n" : ""
     }
 
     BroadcastEventMessage(speaker, listener, message) {
@@ -118,7 +124,7 @@ export default class PromptManager {
     }
 
     ThoughtsPrompt(thoughtBuffer) {
-        return thoughtBuffer ? " THIS IS WHAT'S ON YOUR MIND RECENTLY: " + thoughtBuffer + "\n========================\n" : ""
+        return "" // return thoughtBuffer ? " THIS IS WHAT'S ON YOUR MIND RECENTLY: " + thoughtBuffer + "\n========================\n" : ""
     }
 
     FollowerThoughtPrompt() {
@@ -187,11 +193,12 @@ export default class PromptManager {
             + " It's time to end the lecture. Wrap up the subjects, say goodbyes and maybe talk about what you'd like to talk about next. \n"
             + " You don't need to end in one message. If you'd like to continue your 'ending' speech, add **__CONTINUE__** at the end of your speech. \n"
             + " Ignore the events occured after Dragonborn's appearance in the fourth era. \n"
-            + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
-            + " Do not send only __CONTINUE__, it's meaning is that you say something and you wish to continue. \n"
-            + " If you'd like to end your speech end session, RESPOND **__END_SESSION__** at the end of your response. \n"
-            + " == IMPORTANT == End your session when you've talked enough in your closing speech. Do not make it too long. \n"
-            + " == IMPORTANT == Either use __CONTINUE__ or __END_SESSION__ at the end of your response. Do not let your response lack either of these."
+            // + " == IMPORTANT ==> Please make short sentences(MAX 15 words). <== IMPORTANT == \n"
+            // + " Do not send only __CONTINUE__, it's meaning is that you say something and you wish to continue. \n"
+            // + " If you'd like to end your speech end session, RESPOND **__END_SESSION__** at the end of your response. \n"
+            + " RESPOND **__END_SESSION__** at the end of your response. \n"
+            // + " == IMPORTANT == End your session when you've talked enough in your closing speech. Do not make it too long. \n"
+            // + " == IMPORTANT == Either use __CONTINUE__ or __END_SESSION__ at the end of your response. Do not let your response lack either of these."
             + " == CURRENT EVENT => " + message
     }
 
@@ -304,6 +311,7 @@ export default class PromptManager {
 
     PrepareSummarizeEventsMessage(character, events) {
         return {message: "Please summarize these events from the point of view of " + character + ". \n"
+            + " Maximum output token count should be 1200. Please do not exceed this. \n" +
             + " Organize them by separating each day into different section. \n"
             + " In the given text, do not omit any event in the output if it seems significant. \n"
             + " Try to include all that happened in the summary. \n"

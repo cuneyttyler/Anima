@@ -95,7 +95,7 @@ export default  class Api {
 
         EventBus.GetSingleton().removeAllListeners('WEB_TARGET_RESPONSE')
         EventBus.GetSingleton().on('WEB_TARGET_RESPONSE', (message) => {
-           callback(message)
+            callback(message)
             SET_DEBUG(false)
         })
     }

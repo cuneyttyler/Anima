@@ -26,6 +26,7 @@ export default class DialogueManager {
     private isInteractionOngoing;
     private isEnding = false;
     public static currentCellActors;
+    private paused: boolean;
 
     currentCapabilities = {
         audio: true,
@@ -50,6 +51,12 @@ export default class DialogueManager {
                 }, 5000)
             }
         });
+
+        EventBus.GetSingleton().on("TARGET_CONTINUE", async (character, message) => {
+            // console.log("SENDING CONTINUE => " + character.name + ", " + message)
+            await this.WaitUntilPauseEnds();
+            await this.Say(message);
+        })
 
         EventBus.GetSingleton().on('INTERACTION_ONGOING', (val) => {
             this.isInteractionOngoing = val;
@@ -92,6 +99,7 @@ export default class DialogueManager {
         this.character.formId = formId;
         this.profile = playerName;
         this.voiceType = voiceType;
+        this.character.voiceType;
         this.currentDateTime = currentDateTime;
         this.isEnding = false;
         this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.voiceType, 0, this.profile, new SKSEController(socket));
@@ -129,7 +137,7 @@ export default class DialogueManager {
     }
 
    async Say(message : string) {
-        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, await this.fileManager.GetEvents(this.character.id, this.character.formId, this.profile), await this.fileManager.GetThoughts(this.character.id, this.character.formId, this.profile), message, BroadcastManager.currentLocation) 
+        let messageToSend = this.promptManager.PrepareDialogueMessage(this.profile, this.listener, this.character, this.fileManager.GetEvents(this.character.id, this.character.formId, this.profile), this.fileManager.GetThoughts(this.character.id, this.character.formId, this.profile), message, BroadcastManager.currentLocation) 
         
         this.googleController.Send(messageToSend)
         if(process.env.USING_NFF) {
@@ -142,6 +150,17 @@ export default class DialogueManager {
         if(this.googleController) {
             this.googleController.SendEndSignal()
         }
+    }
+
+    WaitUntilPauseEnds() {
+        return new Promise<void>(resolve => {
+            const intervalId = setInterval(() => {
+                if (!this.paused) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 100);
+        });
     }
 
     GetId() {

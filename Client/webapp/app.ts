@@ -136,10 +136,12 @@ export default function RunWebApp() {
 
         if(req.body.type == 0) {
             api.SendNormal(req.body.ids, req.body.speaker, req.body.text, (response) => {
+                if(!res) return
                 res.send(response)
             })
         } else if(req.body.type == 1) {
             api.SendBroadcast(req.body.ids, req.body.speaker, req.body.text, (response) => {
+                if(!res) return
                 res.send(response)
             })
         } else {

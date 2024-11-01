@@ -23,6 +23,8 @@ try {
 }
 
 
+export const LLM_PROVIDER = process.env.LLM_PROVIDER
+export const TTS_PROVIDER = process.env.TTS_PROVIDER
 export const KEY_FILE_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
 export const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID
 export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
@@ -30,6 +32,21 @@ export const GOOGLE_LLM_MODEL = process.env.GOOGLE_LLM_MODEL
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 export const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"
 export const OPENROUTER_LLM_MODEL = process.env.OPENROUTER_LLM_MODEL
+export const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1"
+export const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+export const OPENAI_LLM_MODEL = process.env.OPENAI_LLM_MODEL
+export const MISTRALAI_BASE_URL = process.env.MISTRALAI_BASE_URL || "https://api.mistral.ai/v1"
+export const MISTRALAI_API_KEY = process.env.MISTRALAI_API_KEY
+export const MISTRALAI_LLM_MODEL = process.env.MISTRALAI_LLM_MODEL
+export const PLAYHT_USER_ID = process.env.PLAYHT_USER_ID
+export const PLAYHT_API_KEY = process.env.PLAYHT_API_KEY
+export const XTTS_SERVICE = process.env.XTTS_SERVICE
+export const XTTS_URI = process.env.XTTS_URI
+export const OLLAMA_SERVICE = process.env.OLLAMA_SERVICE
+export const OLLAMA_MODEL = process.env.OLLAMA_MODEL
+export const OLLAMA_URI = process.env.OLLAMA_URI
+export const GROQ_API_KEY = process.env.GROQ_API_KEY
+export const GROQ_MODEL = process.env.GROQ_MODEL
 
 export let DEBUG = false;
 export function SET_DEBUG(debug) {
@@ -173,6 +190,9 @@ fastify.register(async function (fastify) {
             } else if (message.type == "start-lecture") {
                 lectureManager = new LectureManager(message.playerName, connection.socket)
                 lectureManager.StartLecture(message.teacher, message.teacherFormId, message.teacherVoiceType, message.lectureNo, message.lectureIndex, message.currentDateTime)
+                if(aliveCharacterManager) {
+                    aliveCharacterManager.SetLectureManager(lectureManager)
+                }
             }  else if (message.type == "end-lecture") {
                 if(lectureManager) lectureManager.SetEndSignal()
             } else if (message.type == "hard-reset") {

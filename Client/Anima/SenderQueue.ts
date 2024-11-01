@@ -71,6 +71,7 @@ export class SenderQueue extends EventEmitter{
     private skseController: SKSEController;
     private queue: Queue<SenderData>;
     public processing: boolean;
+    public waitTime : number = 0;
 
     constructor(id: number, type: number, skseController: SKSEController) {
         super();
@@ -124,8 +125,9 @@ export class SenderQueue extends EventEmitter{
                     console.error("ERROR during copying files.")
                 }
 
-                while(this.type == 0 && BROADCAST_QUEUE.doesHaveSpeechForCharacter(data.character)) {
+                while(this.type == 0 && BROADCAST_QUEUE.doesHaveSpeechForCharacter(data.character) && this.waitTime < 5) {
                     console.log("HAVE_SPEECH_FOR_CHARACTER. WAITING...")
+                    this.waitTime += 0.5
                     waitSync(0.5)
                 }
                 
@@ -146,7 +148,11 @@ export class SenderQueue extends EventEmitter{
                 }, data.duration * 1000 + 1500)
                 
                 setTimeout(() => {
-                    if((this.type == 1 || this.type == 2) && data.type != 4) {
+                    if(this.type == 0) {
+                        if(data._continue) {
+                            EventBus.GetSingleton().emit("TARGET_CONTINUE", data.character, data.text)
+                        }
+                    } if((this.type == 1 || this.type == 2) && data.type != 4) {
                         EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.text, data._continue)
                         EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
                         if(data._continue) {

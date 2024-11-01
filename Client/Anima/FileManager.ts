@@ -33,9 +33,9 @@ export default class FileManager {
                 return;
             }
             if(append)
-                fs.appendFileSync(file, log, 'utf8')
+                fs.appendFileSync(file, log ? log : "", 'utf8')
             else
-                fs.writeFileSync(file, log, 'utf8')
+                fs.writeFileSync(file, log ? log : "", 'utf8')
             return true
         } catch (err) {
         console.error('Error writing the file:', err);
