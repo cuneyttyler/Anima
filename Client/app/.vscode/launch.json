@@ -2,10 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/server/Anima.ts",
+      "preLaunchTask": "tsc: watch - src/server/tsconfig.json",
+      "outFiles": ["${workspaceFolder}/dist_electron/**/*.js"]
+    },
+    {
       "name": "Electron: Main",
       "type": "node",
       "request": "launch",
-      "protocol": "inspector",
       "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron",
       "windows": {
         "runtimeExecutable": "${workspaceRoot}/node_modules/.bin/electron.cmd"

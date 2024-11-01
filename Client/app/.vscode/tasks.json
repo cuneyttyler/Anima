@@ -29,6 +29,7 @@
     {
       "type": "typescript",
       "tsconfig": "src/server/tsconfig.json",
+      "option": "watch",
       "problemMatcher": [
         "$tsc-watch"
       ],
@@ -36,14 +37,14 @@
         "kind": "build",
         "isDefault": true
       },
-      "label": "tsc: watch - tsconfig.json"
+      "label": "tsc: watch - src/server/tsconfig.json"
     },
     {
       "label": "build",
       "dependsOrder": "sequence",
       "dependsOn": [
-          "electron-debug",
-          "tsc: watch - tsconfig.json"
+        "electron-debug",
+        "tsc: watch - src/server/tsconfig.json"
       ]
     }
   ]
