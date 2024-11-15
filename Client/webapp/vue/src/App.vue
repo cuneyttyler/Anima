@@ -5,10 +5,10 @@
 </template>
 
 <script>
-import CharacterList from './components/CharacterList'
-import Character from './components/Character'
-import Voices from './components/Voices'
-import api from './services/api'
+import CharacterList from './components/CharacterList.vue'
+import Character from './components/Character.vue'
+import Voices from './components/Voices.vue'
+import api from './services/api.js'
 
 export default {
   name: 'App',

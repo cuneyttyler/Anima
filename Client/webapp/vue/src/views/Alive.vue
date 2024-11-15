@@ -10,6 +10,7 @@
             <CharacterList :characters="characters" :page="page" @add-character="addCharacter" :key="listKey"/>
             <div  class ="alive-characters">
                 <table>
+                  <tbody>
                     <tr>
                         <th>Name</th>
                         <th>Form ID</th>
@@ -22,6 +23,7 @@
                         <td><a href="#" onclick="return false;" @click="saveCharacter(character)">Save</a></td>
                         <td><a href="#" onclick="return false;" @click="removeCharacter(i)">Remove</a></td>
                     </tr>
+                  </tbody>
                 </table>
             </div>
             <Character v-if="character" @character-saved="updateList" @play-sound="playSound" @character-view-update="updateCharacter" :character="character" :characters="characters" :voices="voices" :adding="adding" :key="characterKey"/>
@@ -30,8 +32,8 @@
   </template>
   
   <script>
-  import CharacterList from '../components/CharacterList'
-  import api from '../services/api'
+  import CharacterList from '../components/CharacterList.vue'
+  import api from '../services/api.js'
 
   export default {
     name: 'Alive',
@@ -105,6 +107,10 @@
   .router {
     text-align:left;
     margin: 0 20px 0 20px;
+  }
+
+  .router a {
+    margin-left: 5px;
   }
 
   #alive .alive-inner a {

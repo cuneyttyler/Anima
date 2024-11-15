@@ -1,11 +1,13 @@
 <template>
     <div class="voices">
         <table v-if="gender">
+          <tbody>
              <tr v-for="voice in voices">
                 <td class="">{{ voice }}</td>
                 <td><a href="#" onclick="return false;" @click="selectVoice(voice)">Select</a></td>
                 <td><a href="#" onclick="return false;" @click="playSound(voice)"><img class="play-button" src="@/assets/play_button.png"></a></td>
             </tr>
+          </tbody>
         </table>
         <span v-if="!gender">
           GENDER is not present.

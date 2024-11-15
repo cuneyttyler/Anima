@@ -5,6 +5,7 @@
       </div>
       <div class="list">
           <table>
+            <tbody>
               <tr>
                   <th>Name</th>
                   <th>Voice</th>
@@ -13,6 +14,7 @@
                   <td><a href="#" onclick="return false;" @click="openCharacter(character)">{{ character.name }}</a></td>
                   <td>{{ character.voice }}</td>
               </tr>
+            </tbody>
           </table>
       </div>
       <div class="button">

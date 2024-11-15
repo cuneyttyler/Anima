@@ -1,6 +1,7 @@
 <template>
     <div class="character">
         <table>
+          <tbody>
              <tr>
                 <td class="first">Id: </td>
                 <td><input v-model="character.id"/></td>
@@ -101,6 +102,7 @@
                 <td class="first">Personality::Extravert: </td>
                 <td><input v-model="character.personality.extravert"/></td>
             </tr>
+          </tbody>
         </table>
         <div class="update">
           <button @click="save()">Save</button>
@@ -113,7 +115,7 @@
   </template>
   
   <script>
-  import api from '../services/api'
+  import api from '../services/api.js'
 
   export default {
     name: 'Character',

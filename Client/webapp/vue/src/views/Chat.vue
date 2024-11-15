@@ -22,6 +22,7 @@
           <div class="inner">
             <div class="session-list">
               <table>
+                <tbody>
                 <tr>
                     <th>Name</th>
                     <th>==</th>
@@ -30,6 +31,7 @@
                     <td>{{character.name}}</td>
                     <td><a href="#" onclick="return false;" @click="removeCharacter(i)">Remove</a></td>
                 </tr>
+              </tbody>
             </table>
             <div class="response">
               <span class="info">{{ infoMessage }}</span>
@@ -59,8 +61,8 @@
   </template>
   
   <script>
-  import CharacterList from '../components/CharacterList'
-  import api from '../services/api'
+  import CharacterList from '../components/CharacterList.vue'
+  import api from '../services/api.js'
   import SocketioService from '../services/socketio.service.js';
 
   export default {
@@ -169,8 +171,9 @@
     text-align:left;
     margin: 0 20px 0 20px;
   }
-
-
+  .router a {
+    margin-left: 5px;
+  }
   .session .session-list table{
     width: 300px;
   }
