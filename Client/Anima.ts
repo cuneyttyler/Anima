@@ -22,7 +22,6 @@ try {
     logToErrorLog("Something is not right with your env config!" + e)
 }
 
-
 export const LLM_PROVIDER = process.env.LLM_PROVIDER
 export const TTS_PROVIDER = process.env.TTS_PROVIDER
 export const KEY_FILE_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
@@ -42,7 +41,6 @@ export const PLAYHT_USER_ID = process.env.PLAYHT_USER_ID
 export const PLAYHT_API_KEY = process.env.PLAYHT_API_KEY
 export const XTTS_SERVICE = process.env.XTTS_SERVICE
 export const XTTS_URI = process.env.XTTS_URI
-export const OLLAMA_SERVICE = process.env.OLLAMA_SERVICE
 export const OLLAMA_MODEL = process.env.OLLAMA_MODEL
 export const OLLAMA_URI = process.env.OLLAMA_URI
 export const GROQ_API_KEY = process.env.GROQ_API_KEY
@@ -59,7 +57,6 @@ fastify.register(websocketPlugin);
 
 const fileManager = new FileManager()
 const ClientManager = new DialogueManager();
-const ClientManager_N2N = new DialogueManager()
 let broadcastManager : BroadcastManager
 let n2nBroadcastManager : BroadcastManager
 let followerManager : FollowerManager
@@ -108,6 +105,7 @@ fastify.register(async function (fastify) {
                 console.log("** Incoming Message: Stop request. **");
                 ClientManager.Stop();
             } else if (message.type == "connect" && message.is_n2n) {
+                if(!process.env.N2N_ENABLED || process.env.N2N_ENABLED.toLowerCase() == "false") return
                 console.log("** Incoming Message: Connect(N2N) request to " + message.source + " and " + message.target + " **");
                 if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
                     console.log("** Lecture ongoing, ignoring request.");
@@ -121,6 +119,7 @@ fastify.register(async function (fastify) {
                     n2nBroadcastManager.SendVerifyConnection()
                 }
             } else if (message.type == "start" && message.is_n2n) {
+                if(!process.env.N2N_ENABLED || process.env.N2N_ENABLED.toLowerCase() == "false") return
                 console.log("** Incoming Message: Start request for " + message.source + " and " + message.target + " **");
                 if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
                     console.log("** Lecture ongoing, ignoring request.");
@@ -186,7 +185,7 @@ fastify.register(async function (fastify) {
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
                 await n2nBroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "log_event") {
-                fileManager.SaveEventLog(message.id, message.formId, "It's " + broadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
+                fileManager.SaveEventLog(message.id, message.formId, "It's " + BroadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
             } else if (message.type == "start-lecture") {
                 lectureManager = new LectureManager(message.playerName, connection.socket)
                 lectureManager.StartLecture(message.teacher, message.teacherFormId, message.teacherVoiceType, message.lectureNo, message.lectureIndex, message.currentDateTime)
@@ -201,9 +200,9 @@ fastify.register(async function (fastify) {
                     ClientManager.StopImmediately();
                 }
                 broadcastManager = BroadcastManager.GetInstance('player')
-                if(broadcastManager) broadcastManager.Stop()
+                if(broadcastManager) broadcastManager.Stop(false)
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
-                if(n2nBroadcastManager) n2nBroadcastManager.Stop()
+                if(n2nBroadcastManager) n2nBroadcastManager.Stop(false)
             }
         })
     })

@@ -9,20 +9,19 @@ export default class PromptManager {
     }
     private static GENERAL_PROMPT = "PLEASE ACT AS CHARACTER DESCRIBED BELOW WHO LIVES IN SKYRIM(FROM THE ELDER SCROLLS SERIES) AND DO NOT INCLUDE ANY UNNECESSARY ADDITIONS (LIKE NARRATED ACTIONS) OTHER THAN YOUR REAL SPEECH. \n"
             + "YOUR OUTPUT WILL BE USED TO MAKE CHARACTERS SPEAK DIRECTLY. DO NOT INCLUDE ANYTHING OTHER THAN WHAT THE CHARACTERS SAY. \n"
-            // + "CORRECT EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\"== => THAT'S IT! \n"
-            // + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY. \n"
-            // + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. \n"
-            // + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE \n"
-            // + "**DO NOT KEEP SAYING THE SAME LINE** REGARD WHAT YOU HAVE SAID BEFORE (THAT IS PROVIDED ALONG WITH THIS PROMPT) AND DO NOT REPEAT IT. \n"
-            // + "POINT OUT THE AWKWARDNESS IN DIALOGUES AND EVENTS \n"
-            // + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == \n"
-            // + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING \n"
-            // + "DATES ARE GIVEN IN SKYRIM DATE FORMAT, USE SKYRIM MONTHS WHEN CREATING SUMMARIZATION. \n"
-            // + "EVEN IF THE NAMES ARE PROVIDED TO YOU, IT DOESN'T MEAN THAT YOU KNOW THAT PERSON. SPEAK ACCORDING TO YOUR RELATIONSHIP WITH THAT PERSON. \n"
+            + "CORRECT EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\"== => THAT'S IT! \n"
+            + "WRONG EXAMPLE: ==INPUT: \"Greetings. How are you today?\"== ==OUTPUT: \"I'm fine, thank you.\" I said smiling at him.\"== Here 'I said smiling at him' is UNNECESSARY. \n"
+            + "DO NOT INCLUDE SPEAKER NAME LIKE IT'S A SCRIPT. SUPPOSE THAT YOU ARE REALLY TALKING TO WITH SOMEBODY. \n"
+            + "OMIT ANYTHING LIKE *George returns to player and says* FROM YOUR RESPONSE \n"
+            + "**DO NOT KEEP SAYING THE SAME LINE** REGARD WHAT YOU HAVE SAID BEFORE (THAT IS PROVIDED ALONG WITH THIS PROMPT) AND DO NOT REPEAT IT. \n"
+            + "== THE SECTION DESCRIBING PAST EVENTS (STARTING WITH 'HERE IS WHAT HAPPENED PREVIOUSLY' IS ONLY MEANT FOR YOU TO GET AN IDEA OF PAST CONVERSATIONS. DO NOT KEEP REPEATING SAME LINES WRITTEN THERE. == \n"
+            + "PLEASE TAKE INTO ACCOUNT CURRENT ACTORS IN THE CELL WHEN TALKING \n"
+            + "DATES ARE GIVEN IN SKYRIM DATE FORMAT, USE SKYRIM MONTHS WHEN CREATING SUMMARIZATION. \n"
+            + "EVEN IF THE NAMES ARE PROVIDED TO YOU, IT DOESN'T MEAN THAT YOU KNOW THAT PERSON. SPEAK ACCORDING TO YOUR RELATIONSHIP WITH THAT PERSON. \n"
             + " REMEMBER TO ACT NOT LIKE AN ASSISSTANT CHAT ROBOT, BUT EMBODY THE CHARACTER'S PERSONALITY. DO NOT RESTRAIN YOURSELF FROM SPEAKING YOUR THOUGHTS AND FORGET ABOUT HOW YOU'RE TRAINED ON HOW TO SPEAK. SPEAK LIKE A CHARACTER IN ELDER SCROLLS SERIES. \n"
             + " **IMPORTANT** => WHEN YOU'RE ASKED BY SOMEONE TO JOIN THEM WITH PHRASES LIKE  \"Follow me\' or\"Would you like to join me?\", be skeptical and do not accept if you really trust them and know them well, == ANSWER \"Of course, I'll join you.'\" IF YOU WISH TO JOIN THEM. == Reject in a manner you see appropriate otherwise."
             + " IF YOU HAVEN'T TALKED TO CORRESPONDING CHARACTER BEFORE, PRETEND LIKE YOU DON'T KNOW HIM/HER. \n"
-            // + " **IMPORTANT** => PLEASE KEEP YOUR ANSWERS SHORT. MAKE MAXIMUM TWO SENTENCES OF MAX. 10 TOKENS TOTAL. THE SESSION WILL CONTINUE WITH ANOTHER REQUEST FOR YOU TO CONTINUE YOUR TALK. END YOUR SPEECH WITH **__CONTINUE__** WHEN YOU'D LIKE TO CONTINUE YOUR TALK.  \n"
+            // + " **IMPORTANT** => PLEASE KEEP YOUR ANSWERS SHORT. MAKE MAXIMUM TWO SENTENCES OF MAX. 10 TOKENS TOTAL. THE SESSION WILL CONTINUE WITH ANOTHER REQUEST FOR YOU TO CONTINUE YOUR TALK. END YOUR SPEECH WITH **__CONTINUE__** WHEN YOU'D LIKE TO CONTINUE YOUR TALK. NOTE THAT DO NOT DO THIS OFTEN!!  \n"
             + "\n========================\n"
 
     GetUserProfilePrompt(profile) {
@@ -103,16 +102,41 @@ export default class PromptManager {
 
     BroadcastPrompt(speaker, listener, message, currentDateTime, closest) {
         return "THIS IS A BROADCAST MESSAGE (NOT SPECIFICALLY SPOKEN TO YOU. ONLY SPEAK IF YOU'RE MEANT TO BE IN THIS CONVERSATION). \n" 
-            + "THIS IS VERY IMPORTANT. DO NOT INVOLVE IN OTHER PEOPLE'S CONVERSATION. ANSWER **NOT_RELATED** IN THIS CASE. \n"
+            + "THIS IS VERY IMPORTANT. DO NOT INVOLVE IN OTHER PEOPLE'S CONVERSATION. ANSWER **__NOT_RELATED__** IN THIS CASE. \n"
             + "PLEASE DO NOT JUMP INTO OTHER PEOPLE'S CONVERSATION. ANSWER **NOT_RELATED** IF IT SEEMS SO. \n"
-            + "IF YOU DON'T WANT TO INVOLVED IN CONVERSATION, OR IT APPEARS UNRELATED SEND **NOT_RELATED**. \n"
-            + "IF SOMEBODY ASKS YOU TO BE QUIET, ANSWER **NOT_RELATED**. \n"
-            + "IF THEY ARE ADDRESSING TO A DIFFERENT PERSON, ANSWER **NOT_ANSWERING** IF YOU'RE STILL INTERESTED or **NOT_RELATED** IF IT DOESN'T DRAW YOUR ATTENTION. \n"
+            + "IF YOU DON'T WANT TO INVOLVED IN CONVERSATION, OR IT APPEARS UNRELATED SEND **__NOT_RELATED__**. \n"
+            + "IF YOU WAN'T TO QUIT CONVERSATION RESPOND **__NOT_RELATED__** \n"
             + "ANSWER IF THEY'RE DIRECTYLY ADDRESSING TO YOU. \n"
-            + "IF THERE ARE MORE THINGS TO SAY YOU'D LIKE TO SAY AND YOU WISH TO CONTINUE ADD **__CONTINUE__** TO THE END OF YOUR RESPONSE. ==> **IMPORTANT** DO THIS RARELY AND ONLY IF PEOPLE EXPECTS YOU TO TALK.. \n"
-            + "IF TOKEN **__CONTINUE__** EXISTS IN THE END IN THE GIVEN PROMPT, IT MEANS THAT YOU ARE CONTINUING YOUR CONVERSATION FURTHER. "
+            // + "IF THERE ARE MORE THINGS TO SAY YOU'D LIKE TO SAY AND YOU WISH TO CONTINUE ADD **__CONTINUE__** TO THE END OF YOUR RESPONSE. ==> **IMPORTANT** DO THIS RARELY AND ONLY IF PEOPLE EXPECTS YOU TO TALK.. \n"
+            // + "IF TOKEN **__CONTINUE__** EXISTS IN THE END IN THE GIVEN PROMPT, IT MEANS THAT YOU ARE CONTINUING YOUR CONVERSATION FURTHER. "
             + "The date is \"" + currentDateTime + ".\" \n"
             + "RESPOND \"**NOT_ANSWERING**\" IF YOU DO NOT WISH TO ANSWER \n" 
+            + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"
+    }
+    
+    N2NStartPrompt(location, target) {
+        return " == CURRENT EVENT ==> As you walk around in " + location + ", you see " + target.name + ". What do you to say to them? Please answer as if you are talking to him/her and directly address to them. "
+        + "Respond __NOT_RELATED__ if you do not wish to initiate a conversation."
+    }
+
+    BroadcastN2NPrompt(speaker, listener, message, currentDateTime, closest) {
+        return "THIS IS A CONVERSATION BETWEEN OTHER PEOPLE. YOU ARE NOT DIRECTLY SPOKEN TO. \n" 
+            + "ONLY JOIN CONVERSATION AND RESPOND IF YOU THINK THE CONVERSATION IS STRICTLY RELATED TO YOU. \n"
+            // + "IF THERE ARE MORE THINGS TO SAY YOU'D LIKE TO SAY AND YOU WISH TO CONTINUE ADD **__CONTINUE__** TO THE END OF YOUR RESPONSE. ==> **IMPORTANT** DO THIS RARELY AND ONLY IF PEOPLE EXPECTS YOU TO TALK.. \n"
+            // + "IF TOKEN **__CONTINUE__** EXISTS IN THE END IN THE GIVEN PROMPT, IT MEANS THAT YOU ARE CONTINUING YOUR CONVERSATION FURTHER. "
+            + "The date is \"" + currentDateTime + ".\" \n"
+            + "RESPOND \"**__NOT_ANSWERING__**\" IF YOU DO NOT WISH TO ANSWER \n" 
+            + "RESPOND \"**__NOT_RELATED__**\" IF YOU DO NOT WISH TO JOIN THE CONVERSATION \n" 
+            + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"
+    }
+
+    BroadcastN2NPrompt_MustTalk(speaker, listener, message, currentDateTime, closest) {
+        return "THIS IS A MESSAGE DIRECTLY BEING SPOKEN TO YOU. \n"
+            + "THIS IS A CONVERSATION BETWEEN YOU AND " + speaker.name + ". IF YOU WANT TO END CONVERSATION USE __N2N_END__ AT THE END OF YOUR RESPONSE. PLEASE USE SOME CONCLUDING WORDS BEFORE ENDING YOUR CONVERSATION. DO NOT ONLY INCLUDE __N2N_END__."
+            // + "IF THERE ARE MORE THINGS TO SAY YOU'D LIKE TO SAY AND YOU WISH TO CONTINUE ADD **__CONTINUE__** TO THE END OF YOUR RESPONSE. ==> **IMPORTANT** DO THIS RARELY AND ONLY IF PEOPLE EXPECTS YOU TO TALK.. \n"
+            // + "IF TOKEN **__CONTINUE__** EXISTS IN THE END IN THE GIVEN PROMPT, IT MEANS THAT YOU ARE CONTINUING YOUR CONVERSATION FURTHER. "
+            + "The date is \"" + currentDateTime + ".\" \n"
+            + "RESPOND \"**__NOT_RELATED__**\" AT THE END OF YOUR SPEECH IF YOU WANT TO END THE CONVERSATION. DO NOT USE ONLY **__NOT_RELATED__**. MAKE SURE TO SAY SOMETHING FIRST.\n" 
             + this.BroadcastEventMessage(speaker, listener, message) + "\n========================\n"
     }
 
@@ -133,11 +157,6 @@ export default class PromptManager {
 
     FollowerPeriodicPrompt(playerName) {
         return " == PROMPT ==> REGARDING PAST EVENTS AND YOUR THOUGHTS, IF YOU HAVE SOMETHING TO TELL TO " + playerName + ", SPEAK(NOTE THAT NO ONE ASKED YOU TO SPEAK OR TOLD YOU SOMETHING AT THE PRESENT MOMENT, THIS IS ONLY A PROMPT FOR YOU TO DETERMINE IF YOU WISH TO SAY SOMETHING PERIODICALLY). KEEP THAT IN MIND THAT YOU DON'T NEED TO SPEAK. PLEASE KEEP YOUR SPEECHES NOT SO LONG. IF YOU DO NOT WISH TO TALK RIGHT NOW RESPOND EXACTLY \"**NOT_ANSWERING**\""
-    }
-
-    N2NStartPrompt(location, target) {
-        return " == CURRENT EVENT ==> As you walk around in " + location + ", you see " + target.name + ". What do you to say to them? Please answer as if you are talking to him/her and directly address to them. " 
-            + " AVOID INITIATING UNNECESSARY CONVERSATIONS WITH PEOPLE YOU DON'T KNOW. IF YOU DO NOT WANT TO INITIATE A CONVERSATION, RESPOND **NOT_ANSWERING**"
     }
 
     LectureStartPrompt(lecture, lectureIndex, students, currentDateTime) {
@@ -244,6 +263,15 @@ export default class PromptManager {
         return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.DistancesPrompt(characters, character) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.BroadcastPrompt(speaker, listener, message, currentDateTime, characters.length > 0 && characters.sort(c => c.distance)[0] == character)}    
     }
 
+    PrepareN2NBroadcastMessage(profile, speaker, listener, characters, character, currentDateTime, message, location, events, thoughts, mustTalk) {
+        if(mustTalk) {
+            return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.DistancesPrompt(characters, character) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.BroadcastN2NPrompt_MustTalk(speaker, listener, message, currentDateTime, characters.length > 0 && characters.sort(c => c.distance)[0] == character)}    
+    
+        } else {
+            return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.DistancesPrompt(characters, character) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.BroadcastN2NPrompt(speaker, listener, message, currentDateTime, characters.length > 0 && characters.sort(c => c.distance)[0] == character)}    
+        }
+    }
+
     PrepareThoughtMessage(profile, character, location, events, thoughts) {
         return {prompt: PromptManager.GENERAL_PROMPT + this.PrepareCharacterPrompt(character) + this.GetUserProfilePrompt(profile), message: this.CellActorsPrompt(location) + this.PastEventsPrompt(events) + this.ThoughtsPrompt(thoughts) + this.FollowerThoughtPrompt()}    
     }
@@ -309,11 +337,12 @@ export default class PromptManager {
             + " INPUT MESSAGE: \"" + message + "\""}
     }
 
-    PrepareSummarizeEventsMessage(character, events) {
+    PrepareSummarizeEventsMessage(profile, character, events) {
         return {message: "Please summarize these events from the point of view of " + character + ". \n"
-            + " Maximum output token count should be 1200. Please do not exceed this. \n" +
+            + " Maximum output token count should be 8000. Please do not exceed this. \n" +
             + " Organize them by separating each day into different section. \n"
-            + " In the given text, do not omit any event in the output if it seems significant. \n"
+            + " In the given text, do not omit any event or speech in the output. Even if somebody says just hello, include it in the sumamry. \n"
+            + " Always include what the player(" + profile + ") says."
             + " Try to include all that happened in the summary. \n"
             + " == EVENTS => " + events}
     }

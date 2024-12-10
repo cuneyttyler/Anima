@@ -1,6 +1,8 @@
 import {GoogleGenAIController} from './GenAIController.js';
 import OpenRouter from './OpenRouter.js'
 import GoogleGenAI from './GoogleGenAI.js'
+import GroqAPI from './GroqAPI.js';
+import Ollama from './Ollama.js';
 import SKSEController from './SKSEController.js';
 import CharacterManager from './CharacterManager.js';
 import PromptManager from './PromptManager.js';
@@ -116,10 +118,14 @@ export default class FollowerManager {
         // console.log("SENDING FOLLOWER COMMAND.")
         let messageToSend = this.promptManager.PrepareFollowerCommandMessage(FollowerManager.GetInstance().GetCharacerNames(), message)
         let response = null;
-        if(process.env.LLM_PROVIDER == "OPENROUTER") {
+        if(process.env.LLM_PROVIDER == "OPENROUTER" || process.env.LLM_PROVIDER == "OPENAI" || process.env.LLM_PROVIDER == "MISTRALAI") {
             response = await OpenRouter.SendMessage(messageToSend)
-        } else if(process.env.LLM_PROVIDER == "GOOGLE") {
+        } else if(process.env.LLM_PROVIDER == "GROQ") {
+            response = await GroqAPI.SendMessage(messageToSend)
+        }else if(process.env.LLM_PROVIDER == "GOOGLE") {
             response = await GoogleGenAI.SendMessage(messageToSend)
+        }  else if(process.env.LLM_PROVIDER == "OLLAMA" || process.env.LLM_PROVIDER == "OLLAMA-COLLAB") {
+            response = await Ollama.SendMessage(messageToSend)
         } else {
             console.error("LLM_PROVIDER is missing in your .env file")
             return

@@ -11,6 +11,7 @@ export default class CharacterManager {
     GetMoodText(character) {
         let text: string = ""
 
+        if(!character.mood) return text;
         if(!character.mood.joy) {
             text += ""
         } else if(character.mood.joy < -75) {
@@ -105,6 +106,7 @@ export default class CharacterManager {
     GetPersonalityText(character) {
         let text = ""
 
+        if(!character.personality) return text;
         if(!character.personality.kind) {
             text += ""
         } else if(character.personality.kind < -75) {

@@ -86,11 +86,11 @@ export default  class Api {
         }
     }
 
-    async SendNormal(ids, speaker, text, callback) {
+    async SendNormal(names, speaker, text, callback) {
         SET_DEBUG(true)
 
         let dialogueManager = new DialogueManager()
-        await dialogueManager.ConnectToCharacter(ids[0], "0", "MaleNord", speaker, speaker, "", null)
+        await dialogueManager.ConnectToCharacter(names[0], "0", "MaleNord", speaker, speaker, "", null)
         dialogueManager.Say(text)
 
         EventBus.GetSingleton().removeAllListeners('WEB_TARGET_RESPONSE')
@@ -100,56 +100,54 @@ export default  class Api {
         })
     }
 
-    async SendN2N(ids, text, io) {
+    async SendN2N(names, text, io) {
         SET_DEBUG(true)
 
         let formIds = []
         let voiceTypes = []
         let distances = []
 
-        for(let i in ids) {
+        for(let i in names) {
             formIds.push(0)
             voiceTypes.push("MaleNord")
             distances.push(parseInt(i) + 1)
         }
 
         let broadcastManager = await new BroadcastManager('Adventurer', null)
-        broadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
+        broadcastManager.SetCharacters(names, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
         
-
-        // const ClientManager_N2N = new DialogueManager(true)
-        // await ClientManager_N2N.ConnectToCharacter(ids[0], "0", "MaleNord", ids[1], "Adventurer", null);
-        // ClientManager_N2N.StartN2N("Riverwood", ids[1])
+        broadcastManager.ConnectToCharacters(false)
+        broadcastManager.StartN2N(names[0], "0", names[1],  "0", "Riverwood", "First of the First Seed")
 
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
         EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
-            let response = ids[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
+            let response = names[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
 
             io.emit('chat_response', response + '\n==========\n')
         })
     }
 
-    async SendBroadcast(ids, speaker, text, io) {
+    async SendBroadcast(names, speaker, text, io) {
         SET_DEBUG(true)
 
         let formIds = []
         let voiceTypes = []
         let distances = []
 
-        for(let i in ids) {
+        for(let i in names) {
             formIds.push(0)
             voiceTypes.push("MaleNord")
             distances.push(parseInt(i) + 1)
         }
 
         let broadcastManager = new BroadcastManager(speaker, null)
-        broadcastManager.SetCharacters(ids, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
+        broadcastManager.SetCharacters(names, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
         await broadcastManager.ConnectToCharacters()
         await broadcastManager.Say(text, speaker, null)
 
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
         EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
-            let response = ids[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
+            let response = names[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
 
             io.emit('chat_response', response + '\n==========\n')
         })

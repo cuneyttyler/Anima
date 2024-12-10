@@ -122,10 +122,10 @@
         this.sessionCharacters.splice(i, 1)
       },
       send() {
-        let ids = this.sessionCharacters.map(c => c.id)
+        let names = this.sessionCharacters.map(c => c.name)
         if(this.selectedType == 0) {
           this.response = "Awaiting response..."
-          api().post('chat', {type: this.selectedType, speaker: this.speaker, text: this.text, ids: ids}) 
+          api().post('chat', {type: this.selectedType, speaker: this.speaker, text: this.text, names: names}) 
             .then((response) => {
               if(response.status != 200) {
                 this.response = "An error occured."
@@ -140,10 +140,10 @@
           this.response = "Awaiting response..."
           this.infoMessage = "First two characters in the list will be used to initiate conversation."
           this.errorMessage = ""
-          SocketioService.send('chat', {type: this.selectedType, text: this.text, ids: ids})
+          SocketioService.send('chat', {type: this.selectedType, text: this.text, names: names})
         } else if(this.selectedType == 2) {
           this.response = "Awaiting response..."
-          SocketioService.send('chat', {type: this.selectedType, speaker: this.speaker, text: this.text, ids: ids})
+          SocketioService.send('chat', {type: this.selectedType, speaker: this.speaker, text: this.text, names: names})
         }
       }
     }

@@ -7,6 +7,7 @@ import GoogleVertexAPI from './GoogleVertexAPI.js'
 import XTTSAPI from './XTTSAPI.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
+import { getAudioDurationInSeconds } from 'get-audio-duration'
 import waitSync from 'wait-sync'
 
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -97,14 +98,14 @@ export class AudioProcessor extends EventEmitter {
     }
 
     private async processAudioStream(data: AudioData): Promise<void> {
-        // Your audio processing logic here.
-        // Simulating async processing with a timeout.
         return new Promise(async (resolve) => {
             try {
-                let output = await this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.voicePitch, data.stepCount, data.temp_file_suffix, (output) => {
+                let output = this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.voicePitch, data.stepCount, data.temp_file_suffix, (output) => {
                     if(!output) {
                         data.callback(false)
                     } else {
+                        // console.log("** AudioProcessor ** AUDIO PROCESSED.")
+                        waitSync(1)
                         data.callback(true, data.text, output[0], output[1], output[2]);
                     }
                     this.processing = false;
@@ -115,8 +116,47 @@ export class AudioProcessor extends EventEmitter {
             }
         });
     }
+    
+    private async saveAudio(msg: string, voiceFileName: string, voiceModel, pitch, stepCount, temp_file_suffix: string, callback) {
+        const fileName = `temp-${temp_file_suffix}_${stepCount}.mp3`;
+        const tempFilename = `./Audio/Temp/${fileName}`;
 
-    private async getAudioDuration(filePath: string) {
+        if(TTS_PROVIDER == "LOCAL") {
+            XTTSAPI.TTS(msg, tempFilename, voiceModel, (status) => {
+                if(status == 0) {
+                    console.error("ERROR during TTS.")
+                    callback()
+                    return
+                }
+    
+                this.afterTTS('./Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount, tempFilename, pitch, msg, callback)
+            })    
+        } else if(TTS_PROVIDER == "GOOGLE") {
+            GoogleVertexAPI.TTS(msg, tempFilename, voiceModel)
+            this.afterTTS('./Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount, tempFilename, pitch, msg, callback)
+        } else {
+            console.error("TTS_PROVIDER IS WRONG OR MISSING.")
+        }  
+    }
+
+    private getAudioDurationFromBuffer(buffer) : Promise<Number> {
+        return new Promise((resolve, reject) => {
+            ffmpeg.ffprobe(buffer, (err, metadata) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                resolve(metadata.format.duration as Number);
+            });
+        });
+    }
+
+    private async getAudioDuration(filePath) : Promise<Number> {
+        return await getAudioDurationInSeconds(filePath)
+        
+    }
+
+    private async getAudioDuration_Old(filePath: string) {
         let metaData = await parseFile(filePath);
         return metaData.format.duration;
     }
@@ -129,7 +169,7 @@ export class AudioProcessor extends EventEmitter {
 
         syncExec(executablePath + " " + args.join(' '));
     }
-
+    
     convertAudio(inputFile, outputFile, pitch, callback) {
         try {
             const rate = 22050 * Math.pow(2, pitch / 12)
@@ -160,7 +200,7 @@ export class AudioProcessor extends EventEmitter {
 
     private afterTTS(filename, tempFilename, pitch, msg, callback) {
         
-        let duration: number = 0;
+        let duration: Number = 0;
         try {
             let audioFile =  filename + '.wav';
             let lipFile = filename + '.lip';
@@ -182,27 +222,5 @@ export class AudioProcessor extends EventEmitter {
             console.error("ERROR during processing audio!" + e);
             return
         }
-    }
-    
-    private async saveAudio(msg: string, voiceFileName: string, voiceModel, pitch, stepCount, temp_file_suffix: string, callback) {
-        const fileName = `temp-${temp_file_suffix}_${stepCount}.mp3`;
-        const tempFilename = `./Audio/Temp/${fileName}`;
-
-        if(TTS_PROVIDER == "LOCAL") {
-            XTTSAPI.TTS(msg, tempFilename, voiceModel, (status) => {
-                if(status == 0) {
-                    console.error("ERROR during TTS.")
-                    callback()
-                    return
-                }
-    
-                this.afterTTS('./Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount, tempFilename, pitch, msg, callback)
-            })    
-        } else if(TTS_PROVIDER == "GOOGLE") {
-            GoogleVertexAPI.TTS(msg, tempFilename, voiceModel)
-            this.afterTTS('./Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount, tempFilename, pitch, msg, callback)
-        } else {
-            console.error("TTS_PROVIDER IS WRONG OR MISSING.")
-        }  
     }
 }

@@ -4,18 +4,18 @@ import { BROADCAST_QUEUE } from '../Anima.js';
 import { SenderQueue, SenderData } from './SenderQueue.js';
 import SKSEController from './SKSEController.js';
 
-class Queue<T> {
-    private items: T[] = [];
+class Queue {
+    private items: BroadcastData[] = [];
 
-    enqueue(item: T): void {
+    enqueue(item: BroadcastData): void {
         this.items.push(item);
     }
 
-    dequeue(): T | undefined {
+    dequeue(): BroadcastData | undefined {
         return this.items.shift();
     }
 
-    peek(): T | undefined {
+    peek(): BroadcastData | undefined {
         return this.items[0];
     }
 
@@ -40,13 +40,13 @@ export class BroadcastData {
 
 export class BroadcastQueue extends EventEmitter {
     private eventName: string;
-    private queue: Queue<BroadcastData>;
+    private queue: Queue;
     private senderQueue: SenderQueue;
 
     constructor(type: number, socket: WebSocket) {
         super()
         this.eventName = 'processNext_broadcast';
-        this.queue = new Queue<BroadcastData>();
+        this.queue = new Queue();
         this.senderQueue = new SenderQueue(3, type, new SKSEController(socket))
         this.senderQueue.processing = false;
         this.on(this.eventName, this.processNext);
@@ -85,7 +85,9 @@ export class BroadcastQueue extends EventEmitter {
         return new Promise(async (resolve) => {
             try {
                 this.senderQueue.addData(data.senderData)
-                EventBus.GetSingleton().emit(this.eventName);
+                setTimeout(() => {
+                    EventBus.GetSingleton().emit(this.eventName);
+                }, 1000)
             } catch(e) {
                 console.error("ERROR: " + e);
             }

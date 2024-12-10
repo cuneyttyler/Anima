@@ -36,9 +36,9 @@ export default function RunWebApp() {
         
         socket.on('chat', (data) => {
             if(data.type == 1) {
-                api.SendN2N(data.ids, data.text, io)
+                api.SendN2N(data.names, data.text, io)
             } else if(data.type == 2) {
-                api.SendBroadcast(data.ids, data.speaker, data.text, io)
+                api.SendBroadcast(data.names, data.speaker, data.text, io)
             }
         });
       });
@@ -129,18 +129,18 @@ export default function RunWebApp() {
     })
 
     app.post('/api/chat', async function(req,res) {
-        if(!req.body.ids || !req.body.text || req.body.ids.length == 0) {
+        if(!req.body.names || !req.body.text || req.body.names.length == 0) {
             res.sendStatus(400)
             return
         }
 
         if(req.body.type == 0) {
-            api.SendNormal(req.body.ids, req.body.speaker, req.body.text, (response) => {
+            api.SendNormal(req.body.names, req.body.speaker, req.body.text, (response) => {
                 if(!res) return
                 res.send(response)
             })
         } else if(req.body.type == 1) {
-            api.SendBroadcast(req.body.ids, req.body.speaker, req.body.text, (response) => {
+            api.SendBroadcast(req.body.names, req.body.speaker, req.body.text, (response) => {
                 if(!res) return
                 res.send(response)
             })

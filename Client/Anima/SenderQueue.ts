@@ -66,7 +66,7 @@ export class SenderData extends EventEmitter {
 
 export class SenderQueue extends EventEmitter{
     public id: number;
-    private type: number;
+    public type: number;
     private eventName: string;
     private skseController: SKSEController;
     private queue: Queue<SenderData>;
@@ -146,29 +146,6 @@ export class SenderQueue extends EventEmitter{
                     this.emit(this.eventName);
                     EventBus.GetSingleton().emit('processNext_broadcast')
                 }, data.duration * 1000 + 1500)
-                
-                setTimeout(() => {
-                    if(this.type == 0) {
-                        if(data._continue) {
-                            EventBus.GetSingleton().emit("TARGET_CONTINUE", data.character, data.text)
-                        }
-                    } if((this.type == 1 || this.type == 2) && data.type != 4) {
-                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', data.character, data.text, data._continue)
-                        EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', data.speaker, data.text)
-                        if(data._continue) {
-                            EventBus.GetSingleton().emit("BROADCAST_CONTINUE", data.character, data.text)
-                        }
-                    } else if(this.type == 3) {
-                        EventBus.GetSingleton().emit('LECTURE_RESPONSE', data.character, data.text, data._continue)
-                        if(data._continue) {
-                            EventBus.GetSingleton().emit("LECTURE_CONTINUE", data.character, data.text)
-                        }
-                        if(data.readyForQuestions) {
-                            EventBus.GetSingleton().emit("READY_FOR_QUESTIONS", data.character, data.text)
-                        }
-                    }
-                    
-                }, this.CalculateResponseDelay(data.duration))
             } catch(e) {
                 console.error("ERROR: " + e);
             }

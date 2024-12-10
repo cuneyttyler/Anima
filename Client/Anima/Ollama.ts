@@ -1,15 +1,29 @@
-import { OLLAMA_MODEL } from '../Anima.js';
+import { LLM_PROVIDER, OLLAMA_URI, OLLAMA_MODEL } from '../Anima.js';
 
 import http from 'http'
+import https from 'https'
 
 export default class Ollama {
     private static DoRequest(message) {
         return new Promise((resolve, reject) => {
             const postData = JSON.stringify({"model": OLLAMA_MODEL, "prompt": message.prompt + message.message, "stream": false})
 
+            var service
+            var port
+            var uri
+            if(LLM_PROVIDER == "OLLAMA") {
+                service = http
+                port = 11434
+                uri = "localhost"
+            } else if(LLM_PROVIDER == "OLLAMA-COLLAB") {
+                service = https
+                port = 443
+                uri = OLLAMA_URI
+            }
+
             const options = { 
-                hostname: "localhost",
-                port: 11434, 
+                hostname: uri,
+                port: port, 
                 path: '/api/generate',
                 method: 'POST',
                 headers: {
@@ -19,7 +33,7 @@ export default class Ollama {
             };
 
             var data = [];
-            const req = http.request(options, (res) => {
+            const req = service.request(options, (res) => {
                 if(res.statusCode != 200) {
                     console.error("Problem with OLLAMA Server: " + res.statusCode)
                     reject({status: 2})
