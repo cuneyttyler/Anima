@@ -209,9 +209,9 @@ public:
                     // [ key
                 } else if (buttonEvent->IsDown() && dxScanCode == 26) {
                     conversationPair = nullptr;
+                    AnimaCaller::HardReset();
                     SocketManager::getInstance().SendN2NStopSignal();
                     SocketManager::getInstance().SendHardReset();
-                    AnimaCaller::HardReset();
                     // ] key
                 } else if (buttonEvent->IsDown() && dxScanCode == 27) {
                     AnimaCaller::Stop();

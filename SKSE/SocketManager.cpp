@@ -310,12 +310,12 @@ public:
                 AnimaCaller::SpeakBroadcast(message, speaker, formId, duration);
             } else if (type == "end" && dial_type == 0) {
                 AnimaCaller::Stop();
-            } else if (type == "follow_request_accepted" && dial_type == 0) {
-                AnimaCaller::SendFollowRequestAcceptedSignal();
             } else if (type == "end" && dial_type == 1) {
                 AnimaCaller::N2N_Stop();
             } else if (type == "stop" && dial_type == 1) {
                 AnimaCaller::StopBroadcastForSpeaker(formId);
+            } else if (type == "follow_request_accepted" && dial_type == 0) {
+                AnimaCaller::SendFollowRequestAcceptedSignal();
             } else if (type == "look-at") {
                 if (targetFormId != 0) {
                     AnimaCaller::SendLookAt(formId, targetFormId);

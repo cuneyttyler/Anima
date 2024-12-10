@@ -123,7 +123,7 @@ public:
     static void ConsoleLog(std::string log) { RE::ConsoleLog::GetSingleton()->Print(log.c_str()); }
     
     static void WriteLog(const std::string& message, int level = 3) {
-        if (level > LOG_LEVEL) {
+        if (LOG_LEVEL < level) {
             return;
         }
 
@@ -416,7 +416,6 @@ public:
                 return;
             }
 
-            Util::WriteLog("SpeakBroadcast: " + string(actor->GetName()) + "(" + to_string(speaker) + ")", 4);
             SKSE::ModCallbackEvent modEvent{"BLC_Speak_Broadcast", "", speaker, actor};
             SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
             SubtitleManager::ShowSubtitle(actor, message, duration);
@@ -432,7 +431,7 @@ public:
         RE::Actor* sourceActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
         RE::Actor* targetActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(targetFormId));
 
-        Util::WriteLog("SendLookAt: " + string(sourceActor->GetName()) + " => " + targetActor->GetName(), 4);
+        //Util::WriteLog("SendLookAt: " + string(sourceActor->GetName()) + " => " + targetActor->GetName(), 4);
         SKSE::ModCallbackEvent modEvent{"BLC_Send_LookAt", "", 0, sourceActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         this_thread::sleep_for(250ms);
@@ -443,7 +442,7 @@ public:
     static void StopLookAt(int formId) {
         RE::Actor* sourceActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
 
-        Util::WriteLog("StopLookAt: " + string(sourceActor->GetName()), 4);
+        //Util::WriteLog("StopLookAt: " + string(sourceActor->GetName()), 4);
         SKSE::ModCallbackEvent modEvent{"BLC_Send_LookAt", "", 0, sourceActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         this_thread::sleep_for(250ms);
@@ -452,6 +451,7 @@ public:
     }
 
     static void HardReset() {
+        Util::WriteLog("HardReset");
         SKSE::ModCallbackEvent modEvent{"BLC_HardReset", "", 0, nullptr};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         AnimaCaller::conversationOngoing = false;
@@ -474,7 +474,7 @@ public:
             return;
         }
         AnimaCaller::ForceGreetActor = actor;
-        Util::WriteLog("ForceGreetPlayer => " + string(actor->GetName()));
+        //Util::WriteLog("ForceGreetPlayer => " + string(actor->GetName()));
         SKSE::ModCallbackEvent modEvent{"BLC_ForceGreetPlayer", "", 0, actor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
@@ -525,7 +525,7 @@ public:
                         actorsStr += Util::GetActorName(actor) + ", ";
                     }
                     if (actorsStr.length() > 0) actorsStr = actorsStr.substr(0, actorsStr.length() - 2);
-                    Util::WriteLog("Sending player event text == " + playerEventText + " == to [" + actorsStr + "] ==", 4);
+                    //Util::WriteLog("Sending player event text == " + playerEventText + " == to [" + actorsStr + "] ==", 4);
 
                     lines.insert(playerEventText);
                 }
@@ -544,8 +544,8 @@ public:
                         actorsStr += Util::GetActorName(actor) + ", ";
                     }
                     if (actorsStr.length() > 0) actorsStr = actorsStr.substr(0, actorsStr.length() - 2);
-                    Util::WriteLog(
-                        "Sending character event text == " + playerEventText + " == to [" + actorsStr + "]", 4);
+                    /*Util::WriteLog(
+                        "Sending character event text == " + playerEventText + " == to [" + actorsStr + "]", 4);*/
                     lines.insert(fullResponse);
                 }
             }
@@ -558,7 +558,7 @@ public:
                 return _ProcessMessage(this, a_message);
             RE::Actor* speaker = static_cast<RE::Actor*>(topicManager->speaker.get().get());
             if (speaker == nullptr) {
-                Util::WriteLog("SPEAKER is not ACTOR. RETURNING.", 1);
+                //Util::WriteLog("SPEAKER is not ACTOR. RETURNING.", 1);
                 return _ProcessMessage(this, a_message);
             }
 
@@ -688,7 +688,7 @@ public:
     }
 
     static bool N2N_Stop(RE::StaticFunctionTag*) {
-        Util::WriteLog("SENDING BROADCAST STOP SIGNAL");
+        //Util::WriteLog("SENDING BROADCAST STOP SIGNAL");
         SocketManager::getInstance().SendN2NStopSignal();
 
         return true;
@@ -750,8 +750,10 @@ public:
     static bool SendActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance,
                           string currentDateTime) {
         try {
+            if(actor == nullptr) return false;
+
             EventWatcher::actors.insert(actor);
-            EventWatcher::voiceMap.insert(pair(actor->GetName(), voice));
+            EventWatcher::voiceMap.insert(pair(Util::GetActorName(actor), voice));
             AnimaCaller::cellActors.clear();
             for (RE::Actor* actor : EventWatcher::actors) {
                 AnimaCaller::cellActors.insert(actor);
@@ -777,7 +779,6 @@ public:
 
     static bool SetBroadcastActor(RE::StaticFunctionTag*, RE::Actor* actor, string voice, float distance) {
         try {
-            Util::WriteLog("Setting broadcast actor: " + string(actor->GetName()));
             ActorData* actorData = new ActorData(voice, distance);
             AnimaCaller::broadcastActors.insert(std::pair(actor, actorData));
         } catch (const exception& e) {
@@ -892,14 +893,12 @@ public:
     }
 
     static bool OpenTextBox(RE::StaticFunctionTag*) {
-        Util::WriteLog("OpenTextBox.");
         EventProcessor::GetSingleton()->OnPlayerRequestInput("UITextEntryMenu");
 
         return true;
     }
 
     static bool ShowForceGreetSubtitles(RE::StaticFunctionTag*, string subtitle, float duration) {
-        Util::WriteLog("ShowForceGreetSubtitles.");
         SubtitleManager::ShowSubtitle(AnimaCaller::ForceGreetActor, subtitle, duration);
 
         return true;

@@ -33,7 +33,8 @@ private:
             }
             
         }
-        if ((isEmpty && SubtitleManager::HideSignal) || (!newSubtitle.empty() && CheckHangingSubtitle())) {
+        if ((isEmpty && SubtitleManager::HideSignal && CheckHangingSubtitle()) ||
+            (!newSubtitle.empty() && CheckHangingSubtitle())) {
             SubtitleManager::HideSubtitle();
             SubtitleManager::HideSignal = false;
         }
@@ -49,7 +50,7 @@ private:
     static bool CheckHangingSubtitle() { 
         auto now = std::chrono::high_resolution_clock::now();
         int diff = Util::TimeDiffInSeconds(subtitleUpdateTime, now);
-        return diff > 20;
+        return diff > 10;
     }
 
     static inline REL::Relocation<decltype(UpdatePCMod)> UpdatePC;
