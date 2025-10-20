@@ -22,9 +22,11 @@ Event OnTriggerEnter(ObjectReference akActionRef)
 		isTeacher = true
 	EndIf
 	If isJzargo && isOnmund && isBrelyna && isTeacher
+		Debug.Trace("Waiting for participants...")
 		While CurrentTeacher.GetActorRef().GetCurrentLocation() != Game.GetPlayer().GetCurrentLocation() &&  (AnimaCollegeLectureOngoing.GetValueInt() == 1 || AnimaCollegeLectureOngoing_2.GetValueInt() == 1)
 			; idle wait
 		EndWhile
+		Debug.Trace("All participants arrived. Starting lecture.")
 		If (AnimaCollegeLectureOngoing.GetValueInt() == 1 || AnimaCollegeLectureOngoing_2.GetValueInt() == 1) && AnimaCollegeLectureStarted.GetValueInt() == 0
 			AnimaSKSE.StartLecture(CurrentTeacher.GetActorRef(), _GetVoiceType(CurrentTeacher.GetActorRef()), AnimaCurrentLecture.GetValueInt(), AnimaLectureIndex.GetValueInt(), Utility.GameTimeToString(Utility.GetCurrentGameTime()))
 			AnimaCollegeLectureStarted.SetValueInt(1)

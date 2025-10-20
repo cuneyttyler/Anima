@@ -18,30 +18,41 @@ Event OnInit()
             AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
         EndIf
         
-        _actor = FollowerExtra1.GetActorRef()
-        If _actor != None
-            AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+        If FollowerExtra1 != None
+            _actor = FollowerExtra1.GetActorRef()
+            If _actor != None
+                AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+            EndIf
         EndIf
         
-        _actor = FollowerExtra2.GetActorRef()
-        If _actor != None
-            AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+        If FollowerExtra2 != None
+            _actor = FollowerExtra2.GetActorRef()
+            If _actor != None
+                AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+            EndIf
         EndIf
         
-        _actor = FollowerExtra3.GetActorRef()
-        If _actor != None
-            AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+        If FollowerExtra3 != None
+            _actor = FollowerExtra3.GetActorRef()
+            If _actor != None
+                AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+            EndIf
         EndIf
         
-        _actor = FollowerExtra4.GetActorRef()
-        If _actor != None
-            AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+        If FollowerExtra4 != None
+            _actor = FollowerExtra4.GetActorRef()
+            If _actor != None
+                AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+            EndIf
         EndIf
         
-        _actor = FollowerExtra5.GetActorRef()
-        If _actor != None
-            AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+        If FollowerExtra5 != None
+            _actor = FollowerExtra5.GetActorRef()
+            If _actor != None
+                AnimaSKSE.SendFollower(_actor, GetVoiceType(_actor), Game.GetPlayer().GetDistance(_actor) / 71)
+            EndIf
         EndIf
+        
         Utility.Wait(10)
     EndWhile
 EndEvent

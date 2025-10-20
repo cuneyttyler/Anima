@@ -29,10 +29,11 @@ function CheckN2NDialogue()
        int _time = Utility.GetCurrentRealTime() as int
         _time = _time % 1000
 
+
         If N2N_ConversationOnGoing != None && N2N_ConversationOnGoing.GetValueInt() == 0
             Actor sourceActor = game.FindRandomActorFromRef(Game.GetPlayer(), 1000)
             If sourceActor != None && sourceActor != Game.GetPlayer() && IsAvailableForDialogue(sourceActor)
-                Actor targetActor = game.FindRandomActorFromRef(sourceActor, 350)
+                Actor targetActor = game.FindRandomActorFromRef(sourceActor, 1000)
 
                 If targetActor != None && targetActor != sourceActor && targetActor != Game.GetPlayer() && IsAvailableForDialogue(targetActor)               
                     Int interval = initiateTimeInterval

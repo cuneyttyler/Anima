@@ -51,7 +51,7 @@ public:
         }
 
         try {
-            string name = actor->GetName();
+            string name = actor->GetDisplayFullName();
             if (name.length() > 0) {
                 return name;
             }
@@ -338,8 +338,9 @@ public:
     }
 
     static void StopBroadcastForSpeaker(int formId) {
+        if(formId == 0) return;
         RE::Actor* actor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
-        Util::WriteLog("Stopping broadcast for " + string(actor->GetName()));
+        Util::WriteLog("Stopping broadcast for " + string(actor->GetDisplayFullName()));
         SKSE::ModCallbackEvent modEvent{"BLC_Stop_Broadcast", "", 0, actor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
@@ -431,7 +432,7 @@ public:
         RE::Actor* sourceActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
         RE::Actor* targetActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(targetFormId));
 
-        //Util::WriteLog("SendLookAt: " + string(sourceActor->GetName()) + " => " + targetActor->GetName(), 4);
+        //Util::WriteLog("SendLookAt: " + string(sourceActor->GetDisplayFullName()) + " => " + targetActor->GetDisplayFullName(), 4);
         SKSE::ModCallbackEvent modEvent{"BLC_Send_LookAt", "", 0, sourceActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         this_thread::sleep_for(250ms);
@@ -442,7 +443,7 @@ public:
     static void StopLookAt(int formId) {
         RE::Actor* sourceActor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
 
-        //Util::WriteLog("StopLookAt: " + string(sourceActor->GetName()), 4);
+        //Util::WriteLog("StopLookAt: " + string(sourceActor->GetDisplayFullName()), 4);
         SKSE::ModCallbackEvent modEvent{"BLC_Send_LookAt", "", 0, sourceActor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
         this_thread::sleep_for(250ms);
@@ -467,16 +468,17 @@ public:
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
     }
 
-    static void ForceGreetPlayer(int formId) {
+    static void ForceGreetPlayer(int formId, std::string message, float duration) {
         RE::Actor* actor = RE::TESForm::LookupByID<RE::Actor>(RE::FormID(formId));
         if (actor == nullptr) {
             Util::WriteLog("ForceGreetPlayer => Actor NULL. RETURNING.");
             return;
         }
         AnimaCaller::ForceGreetActor = actor;
-        //Util::WriteLog("ForceGreetPlayer => " + string(actor->GetName()));
-        SKSE::ModCallbackEvent modEvent{"BLC_ForceGreetPlayer", "", 0, actor};
+        Util::WriteLog("ForceGreetPlayer => " + string(actor->GetDisplayFullName()));
+        SKSE::ModCallbackEvent modEvent{"BLC_ForceGreetPlayer", "", duration, actor};
         SKSE::GetModCallbackEventSource()->SendEvent(&modEvent);
+        SubtitleManager::ShowSubtitle(actor, message, 0.25);
     }
 };
 
@@ -515,8 +517,9 @@ public:
                 }
 
                 string characterEventText = "";
-                string playerEventText = "== DON'T REPEAT THIS ==" + string(RE::PlayerCharacter::GetSingleton()->GetName()) + " said \"" +
-                                   string(topicManager->lastSelectedDialogue->topicText.c_str()) + "\". <== DON'T REPEAT THIS ==";
+                string playerEventText = string(RE::PlayerCharacter::GetSingleton()->GetDisplayFullName()) +
+                                         " said \"" +
+                                   string(topicManager->lastSelectedDialogue->topicText.c_str());
                 
                 if (!contains(playerEventText)) {
                     string actorsStr = "";
@@ -534,10 +537,10 @@ public:
                     string actorsStr = "";
                     for (RE::Actor* actor : actors) {
                         if (Util::GetActorName(actor) == Util::GetActorName(speaker)) {
-                            characterEventText = "== DON'T REPEAT THIS ==> You said \"" + string(fullResponse) + "\". <== DON'T REPEAT THIS ==";
+                            characterEventText = "You said \"" + string(fullResponse) + "\".";
                         } else {
-                            characterEventText = "== DON'T REPEAT THIS ==> " + Util::GetActorName(speaker) + " said \"" +
-                                                 string(fullResponse) + "\". <== DON'T REPEAT THIS ==";
+                            characterEventText = Util::GetActorName(speaker) + " said \"" +
+                                                 string(fullResponse);
                         }
 
                         SocketManager::getInstance().SendLogEvent(actor, characterEventText);
@@ -591,9 +594,9 @@ public:
         for (RE::Actor* actor : actors) {
             string eventText = "";
             if (Util::GetActorName(actor) == Util::GetActorName(speaker)) {
-                eventText = "== DON'T REPEAT THIS ==> You said \"" + string(subtitle) + "\". <== DON'T REPEAT THIS ==";
+                eventText = "You said \"" + string(subtitle) + "\"";
             } else {
-                eventText = "== DON'T REPEAT THIS ==> " + Util::GetActorName(speaker) + " said \"" + subtitle + "\". <== DON'T REPEAT THIS ==";
+                eventText = Util::GetActorName(speaker) + " said \"" + subtitle + "\".";
             }
             SocketManager::getInstance().SendLogEvent(actor, eventText);
             actorsStr += Util::GetActorName(actor) + ", ";
@@ -677,7 +680,9 @@ public:
     }
 
     static bool N2N_Start(RE::StaticFunctionTag*, string currentDateTime) {
+        Util::WriteLog("N2N_Start");
         if (AnimaCaller::N2N_SourceActor == nullptr || AnimaCaller::N2N_TargetActor == nullptr) {
+            Util::WriteLog("Actor null. Returning.");
             return false;
         }
 
@@ -878,7 +883,8 @@ public:
     }
 
     static bool StartLecture(RE::StaticFunctionTag*, RE::Actor* teacher, string teacherVoiceType, int lectureNo, int lectureIndex, string currentDateTime) {
-        Util::WriteLog(string(teacher->GetName()) + " started lecture " + to_string(lectureNo) + ". LectureIndex => " + to_string(lectureIndex));
+        Util::WriteLog(string(teacher->GetDisplayFullName()) + " started lecture " + to_string(lectureNo) +
+                       ". LectureIndex => " + to_string(lectureIndex));
 
         SocketManager::getInstance().SendStartLecture(teacher, teacherVoiceType, lectureNo, lectureIndex, currentDateTime);
 

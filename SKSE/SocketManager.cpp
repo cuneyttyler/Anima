@@ -289,6 +289,7 @@ public:
             std::string message = j["message"];
             std::string type = j["type"];
             int dial_type = !j["dial_type"].is_null() ? (int)j["dial_type"] : 0;
+            int broadcast_type = !j["broadcast_type"].is_null() ? (int)j["broadcast_type"] : 0;
             int speaker = !j["speaker"].is_null() ? (int)j["speaker"] : 0;
             int listener = !j["listener"].is_null() ? (int)j["listener"] : 0;
             int formId = !j["formId"].is_null() ? (int) j["formId"] : 0;
@@ -342,7 +343,7 @@ public:
             } else if (type == "end_lecture") {
                 AnimaCaller::EndLecture();
             } else if (type == "force-greet-player") {
-                AnimaCaller::ForceGreetPlayer(formId);
+                AnimaCaller::ForceGreetPlayer(formId, message, duration);
             }
         } 
         catch (const exception& e) {
@@ -375,7 +376,7 @@ public:
     }
 
     void SendInit() {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         Message* messageObj = new Message("init", "", "", "", "", playerName, "", "", false);
         soc->send_message(messageObj);
     }
@@ -383,10 +384,10 @@ public:
     void sendMessage(std::string message, RE::Actor* conversationActor, bool stop) {
         if (conversationActor == nullptr) return;
 
-        auto id = conversationActor->GetName();
+        auto id = conversationActor->GetDisplayFullName();
         auto form_id = conversationActor->GetFormID();
         
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
 
         if (lastConnected != id) {
             lastConnected = id;
@@ -412,7 +413,7 @@ public:
     void SendBroadcastActors(map<RE::Actor*, ActorData*> actors, string currentDateTime, string currentLocation) {
         if (actors.size() == 0) return;
 
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
 
         vector<string> names;
         vector<string> formIds;
@@ -421,7 +422,8 @@ public:
 
         map<RE::Actor*, ActorData*>::iterator iter;
         for (iter = actors.begin(); iter != actors.end(); iter++) {
-            names.push_back(iter->first->GetName());
+            if (iter->first == nullptr || dynamic_cast<RE::Actor*>(iter->first) == nullptr) continue;
+            names.push_back(iter->first->GetDisplayFullName());
             formIds.push_back(to_string(iter->first->GetFormID()));
             voiceTypes.push_back(iter->second->voice);
             distances.push_back(iter->second->distance);
@@ -435,7 +437,7 @@ public:
     void SendN2NBroadcastActors(map<RE::Actor*, ActorData*> actors, string currentDateTime, string currentLocation) {
         if (actors.size() == 0) return;
 
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
 
         vector<string> names;
         vector<string> formIds;
@@ -444,7 +446,8 @@ public:
 
         map<RE::Actor*, ActorData*>::iterator iter;
         for (iter = actors.begin(); iter != actors.end(); iter++) {
-            names.push_back(iter->first->GetName());
+            if (iter->first == nullptr || dynamic_cast<RE::Actor*>(iter->first) == nullptr) continue;
+            names.push_back(iter->first->GetDisplayFullName());
             formIds.push_back(to_string(iter->first->GetFormID()));
             voiceTypes.push_back(iter->second->voice);
             distances.push_back(iter->second->distance);
@@ -456,7 +459,7 @@ public:
     }
 
     void ClearFollowers() {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
 
         vector<string> names;
         vector<string> formIds;
@@ -469,14 +472,14 @@ public:
     }
 
     void SendFollower(Follower* follower) {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
 
         vector<string> names;
         vector<string> formIds;
         vector<string> voiceTypes;
         vector<float> distances;
 
-        names.push_back(follower->actor->GetName());
+        names.push_back(follower->actor->GetDisplayFullName());
         formIds.push_back(to_string(follower->actor->GetFormID()));
         voiceTypes.push_back(follower->voiceType);
         distances.push_back(follower->distance);
@@ -487,7 +490,7 @@ public:
     }
 
     void SendCellActors(set<RE::Actor*> actors) {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
 
         if (actors.size() == 0) return;
 
@@ -497,7 +500,13 @@ public:
         vector<float> distances;
 
         for (auto actor : actors) {
-            names.push_back(actor->GetName());
+            if (actor == nullptr || dynamic_cast<RE::Actor*>(actor) == nullptr) continue;
+            try {
+                names.push_back(actor->GetDisplayFullName());
+            } catch (...) {
+                continue;
+            }
+            
         }
 
         BroadcastMessage* messageObj = new BroadcastMessage("cellactors-set", "", names, formIds, voiceTypes, distances,
@@ -506,7 +515,7 @@ public:
     }
 
     void SendBroadcast(std::string message, std::string speaker, std::string listener) {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         auto playerFormId = RE::PlayerCharacter::GetSingleton()->GetFormID();
         auto location = RE::PlayerCharacter::GetSingleton()->GetCurrentLocation() != nullptr
                             ? RE::PlayerCharacter::GetSingleton()->GetCurrentLocation()->GetName()
@@ -523,8 +532,8 @@ public:
     }
 
     void SendStartLecture(RE::Actor* teacher, string teacherVoiceType, int lectureNo, int lectureIndex, string currentDateTime) {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        Lecture* lecture = new Lecture("start-lecture", teacher->GetName(), to_string(teacher->GetFormID()),
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
+        Lecture* lecture = new Lecture("start-lecture", teacher->GetDisplayFullName(), to_string(teacher->GetFormID()),
                                        teacherVoiceType, lectureNo, lectureIndex, currentDateTime, playerName);
 
         soc->send_message(lecture);
@@ -538,29 +547,29 @@ public:
 
     void SendStopSignal() {
         ValidateSocket();
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         Message* message = new Message("stop", "stop", "", "", playerName);
         soc->send_message(message);
     }
 
     void SendBroadcastStopSignal() {
         ValidateSocket();
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         Message* message = new Message("broadcast-stop", "broadcast-stop", "", "", playerName);
         soc->send_message(message);
     }
 
     void SendBroadcastStopSignalForActor(RE::Actor* actor) {
         ValidateSocket();
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        Message* message = new Message("broadcast-stop", "broadcast-stop", actor->GetName(), "", playerName);
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
+        Message* message = new Message("broadcast-stop", "broadcast-stop", actor->GetDisplayFullName(), "", playerName);
         soc->send_message(message);
     }
 
     void SendLogEvent(RE::Actor* actor, string log) { 
         try {
             ValidateSocket();
-            auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+            auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
             Message* message = new Message("log_event", log, Util::GetActorName(actor),
                                            std::to_string(actor->GetFormID()), "", playerName);
             soc->send_message(message);
@@ -575,8 +584,9 @@ public:
 
     void SendN2NStartSignal(RE::Actor* source, RE::Actor* target, string currentDateTime) {
         if (source == nullptr|| target == nullptr) return;
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
-        N2NMessage* message = new N2NMessage("start", "", source->GetName(), target->GetName(), to_string(source->GetFormID()),
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
+        N2NMessage* message = new N2NMessage(
+            "start", "", source->GetDisplayFullName(), target->GetDisplayFullName(), to_string(source->GetFormID()),
             to_string(target->GetFormID()), "", "", playerName, 0,
                            source->GetCurrentLocation() != nullptr ? source->GetCurrentLocation()->GetName()
                            : "", currentDateTime);
@@ -584,7 +594,7 @@ public:
     }
 
     void SendN2NStopSignal() {
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         N2NMessage* message = new N2NMessage("stop", "", "", "", "", "", "", "", playerName, 0, "");
         soc->send_message(message);
     }
@@ -603,7 +613,7 @@ public:
     void controlVoiceInput(bool talk, RE::Actor* conversationActor) {
         try {
             ValidateSocket();
-            auto id = conversationActor->GetName();
+            auto id = conversationActor->GetDisplayFullName();
             auto form_id = conversationActor->GetFormID();
             
             if (id == nullptr || id == "") return;
@@ -627,12 +637,12 @@ public:
     void connectTo(RE::Actor* conversationActor, string voiceType, string currentDateTime) {
         if (conversationActor == nullptr) return;
         ValidateSocket();
-        auto id = conversationActor->GetName();
+        auto id = conversationActor->GetDisplayFullName();
         auto form_id = conversationActor->GetFormID();
         auto location = conversationActor->GetCurrentLocation() != nullptr
                             ? conversationActor->GetCurrentLocation()->GetName()
                             : "";
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         if (id == nullptr || id == "") return;
         Util::WriteLog("Connecting to " + Util::GetActorName(conversationActor) + ".", 4);
         AnimaCaller::conversationActor = conversationActor;
@@ -645,15 +655,15 @@ public:
     void connectTo_N2N(RE::Actor* sourceActor, RE::Actor* targetActor, string source_voice_type, string target_voice_type, string currentDateTime) {
         if (sourceActor == nullptr || targetActor == nullptr) return;
         ValidateSocket();
-        auto source_id = sourceActor->GetName();
-        auto target_id = targetActor->GetName();
+        auto source_id = sourceActor->GetDisplayFullName();
+        auto target_id = targetActor->GetDisplayFullName();
         auto source_form_id = sourceActor->GetFormID();
         auto target_form_id = targetActor->GetFormID();
         if (source_id == nullptr || source_id == "" || target_id == nullptr || target_id == "") return;
         Util::WriteLog("Connecting(N2N) to " + string(source_id) + " and " + string(target_id) + ".", 4);
         AnimaCaller::N2N_SourceActor = sourceActor;
         AnimaCaller::N2N_TargetActor = targetActor;
-        auto playerName = RE::PlayerCharacter::GetSingleton()->GetName();
+        auto playerName = RE::PlayerCharacter::GetSingleton()->GetDisplayFullName();
         const string location =
             sourceActor->GetCurrentLocation() != nullptr ? sourceActor->GetCurrentLocation()->GetName() : "";
         N2NMessage* message = new N2NMessage("connect", "connect", source_id, target_id, to_string(source_form_id),

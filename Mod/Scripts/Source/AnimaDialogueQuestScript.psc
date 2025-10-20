@@ -116,6 +116,7 @@ function Speak(String eventName, String strArg, Float numArg, Form sender)
     If sender == None
         Return
     EndIf
+    target.GetActorRef().SetLookAt(Game.GetPlayer())
     target.GetActorRef().Say(target_topic)
 endFunction
 
@@ -206,13 +207,11 @@ function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
         If sender == None || (sender as Actor) == None
             Return
         EndIf
-        Debug.Trace("Send_LookAt " + numArg + ", " + (sender as Actor).GetDisplayName())
         lookAtSource = sender as Actor
     ElseIf numArg == 1
         If sender == None || (sender as Actor) == None || lookAtSource == None
             Return
         EndIf
-        Debug.Trace("Send_LookAt " + numArg + ", " + (sender as Actor).GetDisplayName())
         lookAtSource.SetLookAt(sender as Actor)
     ElseIf numArg == 2
         lookAtSource.ClearLookAt()
@@ -220,17 +219,22 @@ function Send_LookAt(String eventName, String strArg, Float numArg, Form sender)
 endFunction
 
 function Start_N2N_Source(String eventName, String strArg, Float numArg, Form sender)
+    Debug.Trace("** Anima ** Start N2N Source for " + (sender as Actor).GetDisplayName())
     If n2n_SourceRefAlias == None
         Return
     EndIf
     n2n_SourceRefAlias.ForceRefTo(sender as Actor)
-    N2N_ConversationOnGoing.SetValue(1)
-    N2N_LastSuccessfulStart.SetValueInt((Utility.GetCurrentRealTime() as int) % 1000)
     ActorUtil.AddPackageOverride((sender as Actor), AnimaTravelToNPCPackage, 1)
     (sender as Actor).EvaluatePackage()
+    Utility.Wait(30)
+    If N2N_ConversationOngoing.GetValueInt() == 0
+        Debug.Trace("** Anima ** Conversation hasn't started in 30 seconds. Resetting.")
+        Reset()
+    EndIf 
 endFunction
 
 function Start_N2N_Target(String eventName, String strArg, Float numArg, Form sender)
+    Debug.Trace("** Anima ** Start N2N Target for " + (sender as Actor).GetDisplayName())
     Utility.Wait(0)
     If n2n_TargetRefAlias == None
         Return
@@ -239,11 +243,13 @@ function Start_N2N_Target(String eventName, String strArg, Float numArg, Form se
 endFunction
 
 function Stop_N2N(String eventName, String strArg, Float numArg, Form sender)
-    N2N_ConversationOnGoing.SetValue(1)
+    Debug.Trace("** Anima ** Stop_N2N")
     ActorUtil.ClearPackageOverride(n2n_SourceRefAlias.GetActorRef())
     ActorUtil.ClearPackageOverride(n2n_TargetRefAlias.GetActorRef())
     n2n_SourceRefAlias.Clear()
     n2n_TargetRefAlias.Clear()
+    Utility.Wait(5)
+    N2N_ConversationOnGoing.SetValue(0)
 endFunction
 
 function Reset()
@@ -271,25 +277,18 @@ function Reset_N2N()
 endFunction
 
 function HardReset(String eventName, String strArg, Float numArg, Form sender)
+    Debug.Trace("==== ANIMA: HARD RESET ====")
+
     ConversationOnGoing.SetValueInt(0)
     N2N_ConversationOnGoing.SetValueInt(0)
     N2N_LastSuccessfulStart.SetValueInt(N2N_LastSuccessfulStart.GetValueInt() - 120)
     If target.GetActorRef() != None
-        target.GetActorRef().Disable()
-        Utility.Wait(0.1)
-        target.GetActorRef().Enable()
     EndIf
     If n2n_SourceRefAlias.GetActorRef() != None
         ActorUtil.ClearPackageOverride(n2n_SourceRefAlias.GetActorRef())
-        n2n_SourceRefAlias.GetActorRef().Disable()
-        Utility.Wait(0.1)
-        n2n_SourceRefAlias.GetActorRef().Enable()
     EndIf
     If n2n_TargetRefAlias.GetActorRef() != None
         ActorUtil.ClearPackageOverride(n2n_TargetRefAlias.GetActorRef())
-        n2n_TargetRefAlias.GetActorRef().Disable()
-        Utility.Wait(0.1)
-        n2n_TargetRefAlias.GetActorRef().Enable()
     EndIf
     target.Clear()
 endfunction
