@@ -17,6 +17,7 @@ function OverrideConsole() {
         const args = Array.prototype.slice.call(arguments);
         args.unshift(`[${timestamp}]`);
         originalLog.apply(console, args);
+        logToLog(args);
     };
     const originalError = console.error;
     console.error = function () {

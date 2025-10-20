@@ -6,6 +6,7 @@ import SKSEController from './SKSEController.js';
 import BroadcastManager from './BroadcastManager.js';
 import PromptManager from './PromptManager.js';
 import FileManager from './FileManager.js';
+import { logToLog } from './LogUtil.js';
 
 class Queue {
     private items: BroadcastData[] = [];
@@ -47,10 +48,12 @@ export class BroadcastData {
     public character;
     public speakerName: string;
     public speakerFormId: string;
+    public topics: string;
     public location: string;
     public message: string;
+    public ending: boolean
 
-    constructor(index, type, profile, characters, character, speakerName: string, speakerFormId: string, message: string, location: string) {
+    constructor(index, type, profile, characters, character, speakerName: string, speakerFormId: string, message: string, topics: string, location: string, ending) {
         this.index = index;
         this.type = type;
         this.profile = profile;
@@ -59,7 +62,9 @@ export class BroadcastData {
         this.speakerName = speakerName;
         this.speakerFormId = speakerFormId;
         this.message = message;
+        this.topics = topics;
         this.location = location;
+        this.ending = ending;
     }
 }
 
@@ -73,13 +78,12 @@ export class BroadcastSendQueue extends EventEmitter {
 
     constructor() {
         super()
-        this.eventName = 'processNext_broadcastSend';
+        this.eventName = 'processNext_broadcast';
         this.queue = new Queue();
         this.processing = false;
         this.promptManager = new PromptManager();
         this.fileManager = new FileManager();
         this.on(this.eventName, this.processNext);
-        this.CheckIfHanging()
     }
 
     addData(data: BroadcastData): void {
@@ -110,24 +114,25 @@ export class BroadcastSendQueue extends EventEmitter {
         this.InitResponseEvent(data);
 
         return new Promise(async (resolve) => {
-            await this.Send(data.type, data.profile, data.characters, data.character, data.speakerName, data.speakerFormId, data.message, data.location)
+            await this.Send(data.type, data.profile, data.characters, data.character, data.speakerName, data.speakerFormId, data.message, data.topics, data.location, data.ending)
         });
     }
 
-    async Send(type, profile, characters, character, speakerName, speakerFormId, message : string, location) {
+    async Send(type, profile, characters, character, speakerName, speakerFormId, message : string, topics: string, location, ending: boolean) {
         if(!character || !character.name) {
-            console.error("BroadcastManager::Send: CHARACTER OR CHARACER NAME DOESN'T EXIST. RETURNING.");
+            console.error("** BroadcastSendQueue ** Send: CHARACTER OR CHARACER NAME DOESN'T EXIST. RETURNING.");
+            this.processing = false
             return;
         }
         let messageToSend
         if(type == 2) {
-            messageToSend = this.promptManager.PrepareN2NStartMessage(character, BroadcastManager.N2N_LISTENER, location, this.fileManager.GetEvents(character.id, character.formId, profile), this.fileManager.GetThoughts(character.id, character.formId, profile));
+            messageToSend = this.promptManager.PrepareN2NStartMessage(character, BroadcastManager.N2N_LISTENER, topics, location, this.fileManager.GetEvents(character.id, character.formId, profile), this.fileManager.GetThoughts(character.id, character.formId, profile));
         } else {
             if ((BroadcastManager.N2N_SPEAKER && character.name == BroadcastManager.N2N_SPEAKER.name) || (BroadcastManager.N2N_LISTENER && character.name == BroadcastManager.N2N_LISTENER.name)) {
-                messageToSend = this.promptManager.PrepareN2NBroadcastMessage(profile, character.name, speakerName, characters, character, BroadcastManager.currentDateTime, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, profile), this.fileManager.GetThoughts(character.name, character.formId, profile), true);
+                messageToSend = this.promptManager.PrepareN2NBroadcastMessage(profile, character.name, speakerName, characters, character, BroadcastManager.currentDateTime, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, profile), this.fileManager.GetThoughts(character.name, character.formId, profile), true, ending);
             } else {
                 if(BroadcastManager.N2N_SPEAKER) {
-                    messageToSend = this.promptManager.PrepareN2NBroadcastMessage(profile, character.name, speakerName, characters, character, BroadcastManager.currentDateTime, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, profile), this.fileManager.GetThoughts(character.name, character.formId, profile), false);
+                    messageToSend = this.promptManager.PrepareN2NBroadcastMessage(profile, character.name, speakerName, characters, character, BroadcastManager.currentDateTime, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, profile), this.fileManager.GetThoughts(character.name, character.formId, profile), false, ending);
                 } else {
                     messageToSend = this.promptManager.PrepareBroadcastMessage(profile, character.name, speakerName, characters, character, BroadcastManager.currentDateTime, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", BroadcastManager.currentLocation, this.fileManager.GetEvents(character.name, character.formId, profile), this.fileManager.GetThoughts(character.name, character.formId, profile));
                 }
@@ -135,15 +140,16 @@ export class BroadcastSendQueue extends EventEmitter {
         }
         let newListener = characters.find(c => c.name && speakerName && c.name.replaceAll("'","").toLowerCase() == speakerName.replaceAll("'","").toLowerCase() && c.formId == speakerFormId);
         character.awaitingResponse = true;
-        console.log("** BroadcastManager ** Sending message to " + character.name + (BroadcastManager.N2N_SPEAKER ? ". ( == " + BroadcastManager.N2N_SPEAKER.name + " <=> " + BroadcastManager.N2N_LISTENER.name + " == " + ")" : ""));
+        // console.log("** BroadcastManager ** Sending message to " + character.name + (BroadcastManager.N2N_SPEAKER ? ". ( == " + BroadcastManager.N2N_SPEAKER.name + " <=> " + BroadcastManager.N2N_LISTENER.name + " == " + ")" : ""));
         character.googleController.Send(messageToSend, type);
+        this.processing = false
         if(speakerFormId) character.googleController.SendLookAt(speakerFormId);
     }
 
     CheckIfHanging() {
-        setInterval(() => {
-            if(this.queue.isEmpty()) this.processing = false;
-        }, 5000)
+        // setInterval(() => {
+        //     if(this.queue.isEmpty()) this.processing = false;
+        // }, 5000)
     }
 
     InitResponseEvent(data) {
@@ -165,6 +171,10 @@ export class BroadcastSendQueue extends EventEmitter {
                 EventBus.GetSingleton().emit("BROADCAST_SAY", message, character.name, character.formId)
             }
         })
+        EventBus.GetSingleton().removeAllListeners('BRODCAST_SEND_DONE')
+        EventBus.GetSingleton().on('BRODCAST_SEND_DONE', async () => {
+            this.processing = false
+        })
     }
 
     WaitUntilPauseEnds() {
@@ -182,8 +192,3 @@ export class BroadcastSendQueue extends EventEmitter {
         return characters.find((c) => c.name.replaceAll("'","").toLowerCase() == name.replaceAll("'","").toLowerCase());
     }
 }
-
-// if(!this.IsRunning()){
-                //     await this.ConnectToCharacters();
-                //     this.Run();
-                // }

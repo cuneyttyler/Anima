@@ -1,12 +1,15 @@
 import CharacterManager from './CharacterManager.js';
 import PromptManager from './PromptManager.js';
 import FileManager from './FileManager.js';
-import {GetPayload, GoogleGenAIController} from './GenAIController.js';
+import {GoogleGenAIController} from './GenAIController.js';
 import EventBus from './EventBus.js';
 import { DEBUG } from '../Anima.js';
-import SKSEController from './SKSEController.js';
+import SKSEController, { GetPayload } from './SKSEController.js';
 import FollowerManager from './FollowerManager.js';
 import { BroadcastData, BroadcastSendQueue } from './BroadcastSendQueue.js';
+import { NUM_MAX_CHARACTERS, CONV_LENGTH } from '../Anima.js'
+import { logToLog } from './LogUtil.js';
+import { AudioProcessor } from './AudioProcessor.js';
 
 export default class BroadcastManager {
     private static playerInstance;
@@ -17,10 +20,10 @@ export default class BroadcastManager {
     private skseController: SKSEController;
     private sendQueue: BroadcastSendQueue;
     public static MAX_SPEAKER_COUNT = 15;
-    public names;
-    private formIds;
-    private voiceTypes;
-    private distances;
+    public names: Array<String>;
+    private formIds: Array<String>;
+    private voiceTypes: Array<String>;
+    private distances: Array<Number>;
     public static currentLocation;
     public static currentDateTime;
     public static cellNames;
@@ -28,13 +31,14 @@ export default class BroadcastManager {
     private profile;
     private stop : boolean = true;
     public static paused;
+    private connecting: boolean = false;
     public static N2N_SPEAKER;
     public static N2N_LISTENER;
     private anyResponse : boolean = false;
-    private characters = [];
+    private characters : Array<any> = [];
     private lock = { isLocked: false };
 
-    constructor(playerName: string, socket: WebSocket) {
+    constructor(playerName: string, socket: WebSocket, private audioProcessor: AudioProcessor) {
         this.characterManager = new CharacterManager();
         this.promptManager = new PromptManager();
         this.fileManager = new FileManager();
@@ -69,7 +73,7 @@ export default class BroadcastManager {
 
         EventBus.GetSingleton().removeAllListeners('FORCE_GREET_MESSAGE');
         EventBus.GetSingleton().on("FORCE_GREET_MESSAGE", (character, message) => {
-            this.fileManager.SaveEventLog(character.id, character.formId, "== DON'T REPEAT THIS ==> " + message + " <== DON'T REPEAT THIS ==", this.profile);
+            this.fileManager.SaveEventLog(character.id, character.formId, message, this.profile);
         })
 
         EventBus.GetSingleton().removeAllListeners('N2N_END');
@@ -82,20 +86,18 @@ export default class BroadcastManager {
         })
     }
 
-    static GetInstance(type: string, playerName?: string, socket?: WebSocket) {
+    static GetInstance(type: string, playerName?: string, socket?: WebSocket, audioProcessor?: AudioProcessor) {
         if(type == 'player') {
             if(!BroadcastManager.playerInstance && (!playerName || !socket)) {
-                // console.error("NO BROADCAST INSTANCE FOUND. NEED INIT PARAMETERS.");
                 return
             }
-            if(!BroadcastManager.playerInstance) BroadcastManager.playerInstance = new BroadcastManager(playerName, socket)
+            if(!BroadcastManager.playerInstance) BroadcastManager.playerInstance = new BroadcastManager(playerName, socket, audioProcessor)
             return BroadcastManager.playerInstance;
         } else if(type == 'n2n') {
             if(!BroadcastManager.n2nInstance && (!playerName || !socket)) {
-                // console.error("NO BROADCAST INSTANCE FOUND. NEED INIT PARAMETERS.");
                 return
             }
-            if(!BroadcastManager.n2nInstance) BroadcastManager.n2nInstance = new BroadcastManager(playerName, socket)
+            if(!BroadcastManager.n2nInstance) BroadcastManager.n2nInstance = new BroadcastManager(playerName, socket, audioProcessor)
             return BroadcastManager.n2nInstance;
         }
         
@@ -107,34 +109,47 @@ export default class BroadcastManager {
         }
         this.lock.isLocked = true;
         try{
-            this.names = names;
-            this.formIds = formIds;
-            this.voiceTypes = voiceTypes;
-            this.distances = distances;
+            this.names = [], this.formIds = [], this.voiceTypes = [], this.distances = [];
+            for(var i in names) {
+                if(voiceTypes[i]) {
+                    this.names.push(names[i])
+                    this.formIds.push(formIds[i])
+                    this.voiceTypes.push(voiceTypes[i])
+                    this.distances.push(distances[i])
+                }
+            }
             BroadcastManager.currentDateTime = currentDateTime;
             BroadcastManager.currentLocation = currentLocation;
         } finally {
             this.lock.isLocked = false;
         }
-        await this.ConnectToCharacters()
+        if(!this.connecting) {
+            await this.ConnectToCharacters()
+        }
     }
 
-    async ConnectToCharacters(log? : boolean) {
+    async ConnectToCharacters(log? : boolean, source?: string, target?: string) {
         while (this.lock.isLocked) {
             await new Promise(resolve => setTimeout(resolve, 50));  // Wait and try again
         }
         this.lock.isLocked = true;
         try {
             if(!this.names) return
-            if(log) console.log(`Trying to connect to ${this.names.join(', ')}`);
+            if(!this.names.includes(source)) {
+                this.names.push(source)
+            }
+            if(!this.names.includes(target)) {
+                this.names.push(target)
+            }
+            if(log) console.log(`** BroadcastManager ** Trying to connect to ${this.names.join(', ')}`);
             this.characters = []
             for(let i in this.names) {
-                if(!this.names[i] || !this.profile || this.names[i].toLowerCase() == this.profile) continue;
-                if(this.names[i].toLowerCase() == this.profile.toLowerCase()) continue;
+                if(!this.names[i] || !this.profile || this.CheckName(this.names[i]) == this.CheckName(this.profile)) continue;
+                if(this.CheckName(this.names[i]) == this.CheckName(this.profile)) continue;
                 if(log) (console as any).logToLog(`Trying to connect to ${this.names[i]}`);
                 let character = Object.assign({}, this.characterManager.GetCharacter(this.names[i]));
                 if (!character) {
-                    console.log(`${this.names[i]} is not included in DATABASE`);
+                    console.log(`** BroadcastManager ** ${this.names[i]} is not included in DATABASE`);
                     continue
                 }
                 character.stop = false;
@@ -145,10 +160,10 @@ export default class BroadcastManager {
                 character.awaitingResponse = false;
                 character.eventBuffer = this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile);
                 character.thoughtBuffer = this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile);
-                character.googleController = new GoogleGenAIController(4, 1, character, character.voiceType,  parseInt(i), this.profile, this.skseController);
-                // console.log("ADDED CHARACTER " + character.name + ", " + character.voiceType);
+                character.googleController = new GoogleGenAIController(4, 1, character, character.voiceType,  parseInt(i), this.profile, this.skseController, this.audioProcessor);
                 if(character.id && character.name) this.characters.push(character);
             }
+            // logToLog("** BroadcastManager ** Connected to " + this.characters.map((c) => c.name).join(', '))
         } finally {
             this.lock.isLocked = false;
         }
@@ -162,7 +177,7 @@ export default class BroadcastManager {
         } else if(existingCharacter) {
             return true;
         } else {
-            // console.log("ADDING CHARACTER " + name + ", " + voiceType)
+            logToLog("** BroadcastManager ** Adding character " + name)
             let character = Object.assign({}, this.characterManager.GetCharacter(name));
             if(!character) return false;
             character.stop = false;
@@ -173,7 +188,7 @@ export default class BroadcastManager {
             character.awaitingResponse = false;
             character.eventBuffer = this.fileManager.GetEvents(name, formId, this.profile);
             character.thoughtBuffer = this.fileManager.GetThoughts(name, formId, this.profile);
-            character.googleController = new GoogleGenAIController(4, 1, character, character.voiceType,  this.characters.length, this.profile, this.skseController);
+            character.googleController = new GoogleGenAIController(4, 1, character, character.voiceType,  this.characters.length, this.profile, this.skseController, this.audioProcessor);
             this.characters.push(character);
             return true;
         }
@@ -186,6 +201,7 @@ export default class BroadcastManager {
         }
         
         if(this.characters.length == 0) {
+            this.skseController.Send(GetPayload("Nobody heard you.", "notification", 0, 1, 0, 0, ""))
             console.log("** BroadcastManager ** No characters found.");
             return false;
         }
@@ -200,15 +216,37 @@ export default class BroadcastManager {
             BroadcastManager.N2N_LISTENER = null;
         }
 
+        let sentCount = 0
         this.anyResponse = false;
-        console.log("Broadcasting ==> " + speakerName + ": \"" + message + "\"");
+        console.log("** BroadcastManager ** Broadcasting ==> " + speakerName + ": \"" + message + "\"");
+        if(BroadcastManager.N2N_SPEAKER && this.CheckName(BroadcastManager.N2N_SPEAKER.name) == this.CheckName(speakerName)) {
+            sentCount = 2
+            console.log("** BroadcastManager ** Broadcasting to " + BroadcastManager.N2N_LISTENER.name)
+            this.sendQueue.addData(new BroadcastData(this.index, speakerName == this.profile ? 0 : 1, this.profile, this.characters,  BroadcastManager.N2N_LISTENER, speakerName, speakerFormId, message, "", BroadcastManager.currentLocation, Math.floor(Math.random() * CONV_LENGTH) == 0))
+        } else if(BroadcastManager.N2N_LISTENER && this.CheckName(BroadcastManager.N2N_LISTENER.name) == this.CheckName(speakerName)) {
+            console.log("** BroadcastManager ** Broadcasting to " + BroadcastManager.N2N_SPEAKER.name)
+            this.sendQueue.addData(new BroadcastData(this.index, speakerName == this.profile ? 0 : 1, this.profile, this.characters, BroadcastManager.N2N_SPEAKER, speakerName, speakerFormId, message, "", BroadcastManager.currentLocation, Math.floor(Math.random() * CONV_LENGTH) == 0))
+            sentCount = 2
+        } else if(BroadcastManager.N2N_SPEAKER && BroadcastManager.N2N_LISTENER){
+            console.log("** BroadcastManager ** Broadcasting to " + BroadcastManager.N2N_LISTENER.name)
+            console.log("** BroadcastManager ** Broadcasting to " + BroadcastManager.N2N_SPEAKER.name)
+            this.sendQueue.addData(new BroadcastData(this.index, speakerName == this.profile ? 0 : 1, this.profile, this.characters, BroadcastManager.N2N_LISTENER, speakerName, speakerFormId, message, "", BroadcastManager.currentLocation, Math.floor(Math.random() * CONV_LENGTH) == 0))
+            this.sendQueue.addData(new BroadcastData(this.index, speakerName == this.profile ? 0 : 1, this.profile, this.characters, BroadcastManager.N2N_SPEAKER, speakerName, speakerFormId, message, "", BroadcastManager.currentLocation, Math.floor(Math.random() * CONV_LENGTH) == 0))
+            sentCount = 2
+        } else {
+            sentCount = 0
+        }
         for(let i in this.characters) {
+            if(sentCount >= NUM_MAX_CHARACTERS) break;
+            if((BroadcastManager.N2N_SPEAKER && BroadcastManager.N2N_LISTENER) && (this.CheckName(this.characters[i].name) == this.CheckName(BroadcastManager.N2N_SPEAKER.name) || this.CheckName(this.characters[i].name) == this.CheckName(BroadcastManager.N2N_LISTENER.name))) continue;
             if(this.characters[i].name.toLowerCase() == speakerName.toLowerCase()) continue;
             if(this.characters[i].stop) {
                 console.log(`** BroadcastManager ** ${this.characters[i].name} stopped talking. Not sending to him/her.`)
                 continue
             }
-            this.sendQueue.addData(new BroadcastData(this.index, speakerName == this.profile ? 0 : 1, this.profile, this.characters, this.characters[i], speakerName, speakerFormId, message, BroadcastManager.currentLocation))
+            console.log("** BroadcastManager ** Broadcasting to " + this.characters[i].name)
+            this.sendQueue.addData(new BroadcastData(this.index, speakerName == this.profile ? 0 : 1, this.profile, this.characters, this.characters[i], speakerName, speakerFormId, message, "", BroadcastManager.currentLocation, Math.floor(Math.random() * CONV_LENGTH) == 0))
+            sentCount++
         }     
         this.index++
         
@@ -223,16 +261,39 @@ export default class BroadcastManager {
     }
 
     async StartN2N(name : string, formId: string, listenerName: string, listenerFormId: string, location: string, currentDateTime: string) {
-        BroadcastManager.N2N_SPEAKER = this.characters.find(c => c.name && c.name.replaceAll("'","").toLowerCase() == name.replaceAll("'","").toLowerCase() && c.formId + '' == formId);
-        BroadcastManager.N2N_LISTENER = this.characters.find(c => c.name && c.name.replaceAll("'","").toLowerCase() == listenerName.replaceAll("'","").toLowerCase() && c.formId + '' == listenerFormId);
+        console.log("** BroadcastManager ** Starting N2N between " + name + " and " + listenerName)
+        this.characters.forEach((c) => {
+            if(this.CheckName(c.name) == this.CheckName(name)) {
+                BroadcastManager.N2N_SPEAKER = c
+            }
+        })
+        this.characters.forEach((c) => {
+            if(this.CheckName(c.name) == this.CheckName(listenerName)) {
+                BroadcastManager.N2N_LISTENER = c
+            }
+        })
         if(!BroadcastManager.N2N_SPEAKER || !BroadcastManager.N2N_LISTENER) {
+            console.log("** BroadcastManager ** Speaker or listener is null. Returning.")
+            this.connecting = false;
+            this.SendEndSignal()
             return false;
         }
+        if(!BroadcastManager.N2N_SPEAKER.voiceType || !BroadcastManager.N2N_LISTENER.voiceType) {
+            console.log("** BroadcastManager ** Voice type null. Returning.")
+            this.connecting = false;
+            this.SendEndSignal();
+            return false;
+        }
+
         const initMessage = "You are at " + location + ". It's " + currentDateTime + ". Please keep your answers short if possible.";
-        this.fileManager.SaveEventLog(BroadcastManager.N2N_SPEAKER.id, BroadcastManager.N2N_LISTENER.formId, initMessage, this.profile);
+        // this.fileManager.SaveEventLog(BroadcastManager.N2N_SPEAKER.id, BroadcastManager.N2N_LISTENER.formId, initMessage, this.profile);
 
-        this.sendQueue.addData(new BroadcastData(this.index, 2, this.profile, this.characters, BroadcastManager.N2N_SPEAKER, name, formId, "", location))
-
+        let topics = await BroadcastManager.N2N_SPEAKER.googleController.SendTopicPrompt(this.profile, BroadcastManager.N2N_SPEAKER, BroadcastManager.N2N_LISTENER, location, this.fileManager.GetEvents(BroadcastManager.N2N_SPEAKER.id, BroadcastManager.N2N_SPEAKER.formId, this.profile))
+        this.fileManager.SaveThoughts(BroadcastManager.N2N_SPEAKER.id, BroadcastManager.N2N_SPEAKER.formId, "\n" + topics + "\n", this.profile, true)
+        this.connecting = false;
+        this.sendQueue.addData(new BroadcastData(this.index, 2, this.profile, this.characters, BroadcastManager.N2N_SPEAKER, name, formId, "", topics, location, Math.floor(Math.random() * CONV_LENGTH) == 0))
+        this.Run()
+        
         return true;
     }
 
@@ -242,8 +303,9 @@ export default class BroadcastManager {
         }
         this.lock.isLocked = true;
         try {    
+            this.connecting = false;
             this.stop = true;
-            console.log("** FINALIZING CONVERSATION **.");
+            console.log("** BroadcastManager ** Finalizing conversation **.");
             for(let i in this.characters) {
                 if(!this.characters[i] || !this.characters[i].id) continue;
                 setTimeout(async () => {
@@ -257,10 +319,18 @@ export default class BroadcastManager {
         }
     }
 
+    SaveMessage(id: string, formId: string, message: string) { 
+        this.fileManager.SaveEventLog(id, formId, message, this.profile);
+    }
+
+    SetConnecting(b: boolean) {
+        this.connecting = b
+    }
+
     async StopCharacter(index, summarize=true) {
         if(!this.characters[index]) return
-        const _events = await this.characters[index].googleController.SummarizeEvents(this.characters[index], this.fileManager.GetEvents(this.characters[index].id, this.characters[index].formId, this.profile));
-        this.fileManager.SaveEventLog(this.characters[index].id, this.characters[index].formId, _events, this.profile, false);
+        // const _events = await this.characters[index].googleController.SummarizeEvents(this.characters[index], this.fileManager.GetEvents(this.characters[index].id, this.characters[index].formId, this.profile));
+        // this.fileManager.SaveEventLog(this.characters[index].id, this.characters[index].formId, _events, this.profile, false);
         this.characters[index].googleController.Stop();
         this.characters[index].stop = true;
         this.CheckExistingCharacters()
@@ -286,7 +356,7 @@ export default class BroadcastManager {
         for(let i in this.characters) {
             let found: boolean = false;
             for(let j in names) {
-                if(this.characters[i].name && names[j] && this.characters[i].name.toLowerCase() == names[j].toLowerCase()) {
+                if(this.characters[i].name && names[j] && this.CheckName(this.characters[i].name) == this.CheckName(names[j])) {
                     found = true;
                     break;
                 }
@@ -296,6 +366,10 @@ export default class BroadcastManager {
                 this.StopCharacter(this.characters[i])
             }
         }
+    }
+
+    CheckName(name) {
+        return name.replaceAll("'",'').replaceAll("-", '').toLowerCase()
     }
 
     CheckCharacterStillInScene(i, character) {
@@ -324,17 +398,14 @@ export default class BroadcastManager {
     SendVerifyConnection() {
         let verifyConnection = {"message": "connection established", "type": "established", "dial_type": 1};
 
-        console.log("SENDING VERIFY CONNECTION (N2N).");
+        console.log("** BroadcastManager ** Sending verify connection (N2N).");
         if(!DEBUG)
             this.skseController.Send(verifyConnection);
     }
 
     SendEndSignal() {
-        if(!BroadcastManager.N2N_SPEAKER) return;
-        let speaker = this.FindCharacterByName(BroadcastManager.N2N_SPEAKER)
-        if(!speaker) return;
-        console.log("SENDING N2N END SIGNAL.");
-        speaker.googleController.SendEndSignal(1);
+        console.log("** BroadcastManager ** Sending N2N End Signal.");
+        this.skseController.Send(GetPayload("", "end", 0, 1, 0));
     }
 
     GetCharacters() {
@@ -342,11 +413,11 @@ export default class BroadcastManager {
     }
 
     FindCharacterByName(name) {
-        return this.characters.find((c) => c.name.replaceAll("'","").toLowerCase() == name.replaceAll("'","").toLowerCase());
+        return this.characters.find((c) => this.CheckName(c.name) == this.CheckName(name));
     }
 
     FindCharacterIndexByName(name) {
-        return this.characters.findIndex((c) => c.name.replaceAll("'","").toLowerCase() == name.replaceAll("'","").toLowerCase());
+        return this.characters.findIndex((c) => this.CheckName(c.name) == this.CheckName(name));
     }
 
     Run() {

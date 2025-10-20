@@ -3,11 +3,12 @@ import CharacterManager from './CharacterManager.js';
 import PromptManager from './PromptManager.js';
 import FileManager from './FileManager.js';
 import BroadcastManager from './BroadcastManager.js';
-import {GoogleGenAIController, GetPayload} from './GenAIController.js';
+import {GoogleGenAIController} from './GenAIController.js';
 import EventBus from './EventBus.js'
 import { DEBUG } from '../Anima.js'
-import SKSEController from './SKSEController.js';
+import SKSEController, { GetPayload } from './SKSEController.js';
 import FollowerManager from './FollowerManager.js';
+import { AudioProcessor } from './AudioProcessor.js';
 
 export default class DialogueManager {
     private managerId: number;
@@ -49,6 +50,9 @@ export default class DialogueManager {
                 setTimeout(() => {
                     EventBus.GetSingleton().emit('END')
                 }, 5000)
+            }
+            if(DEBUG) {
+                this.fileManager.SaveEventLog(this.character.id, this.formId, this.character.name + " said: \"" + msg + "\"", this.profile, true)
             }
         });
 
@@ -102,7 +106,7 @@ export default class DialogueManager {
         this.character.voiceType;
         this.currentDateTime = currentDateTime;
         this.isEnding = false;
-        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.voiceType, 0, this.profile, new SKSEController(socket));
+        this.googleController = new GoogleGenAIController(this.managerId, 0, this.character, this.voiceType, 0, this.profile, new SKSEController(socket), new AudioProcessor(2));
 
         this.conversationOngoing = true;
 
@@ -128,8 +132,8 @@ export default class DialogueManager {
     }
 
     async Finalize() {
-        let events = await this.googleController.SummarizeEvents(this.profile, this.character, this.fileManager.GetEvents(this.id, this.formId, this.profile))
-        this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, false)
+        // let events = await this.googleController.SummarizeEvents(this.profile, this.character, this.fileManager.GetEvents(this.id, this.formId, this.profile))
+        // this.fileManager.SaveEventLog(this.id, this.formId, events, this.profile, false)
         this.conversationOngoing = false;
         this.profile = null;
         this.id = null;

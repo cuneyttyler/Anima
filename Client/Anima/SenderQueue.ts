@@ -1,10 +1,9 @@
 import { VoiceTypes } from './Helpers/VoiceTypes.js'
 import { EventEmitter } from 'events'
 import EventBus from './EventBus.js';
-import { GetPayload } from './GenAIController.js';
 import * as fs from 'fs';
 import { BROADCAST_QUEUE, DEBUG } from '../Anima.js'
-import SKSEController from './SKSEController.js';
+import SKSEController, { GetPayload } from './SKSEController.js';
 import waitSync from 'wait-sync'
 
 class Queue<T> {
@@ -99,11 +98,6 @@ export class SenderQueue extends EventEmitter{
     }
 
     private async processNext(): Promise<void> {
-        if (this.queue.isEmpty()) {
-            this.processing = false;
-            return;
-        }
-
         const data = this.queue.dequeue();
         if (data) {
             try {
@@ -130,22 +124,23 @@ export class SenderQueue extends EventEmitter{
                     this.waitTime += 0.5
                     waitSync(0.5)
                 }
-                
+
+                EventBus.GetSingleton().emit('BROADCAST_SEND_DONE')
                 if(data.type == 0 || data.type == 1 || data.type == 2 || data.type == 3) {
                     setTimeout(() => {
                         let payload = GetPayload(data.text, "chat", data.duration, this.type, data.speaker, parseInt(data.character.formId));
                         if(!DEBUG) this.skseController.Send(payload);
-                    }, 250)
+                    }, 1000)
                 } else if(data.type == 4){
                     EventBus.GetSingleton().emit("FORCE_GREET_MESSAGE", data.character, data.text)
-                    this.skseController.Send({type: "force-greet-player", message: "Force greet player", formId: parseInt(data.character.formId)})
+                    this.skseController.Send({type: "force-greet-player", message: data.text, formId: parseInt(data.character.formId), duration: data.duration + 5})
                 }
             
                 setTimeout(() => {
                     this.processing = false;
                     this.emit(this.eventName);
                     EventBus.GetSingleton().emit('processNext_broadcast')
-                }, data.duration * 1000 + 1500)
+                }, data.duration * 1000)
             } catch(e) {
                 console.error("ERROR: " + e);
             }

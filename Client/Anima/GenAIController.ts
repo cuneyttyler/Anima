@@ -3,7 +3,7 @@ import GroqAPI from './GroqAPI.js'
 import GoogleGenAI from './GoogleGenAI.js'
 import Ollama from './Ollama.js'
 import {AudioData, AudioProcessor} from './AudioProcessor.js'
-import SKSEController from './SKSEController.js'
+import SKSEController, { GetPayload } from './SKSEController.js'
 import EventBus from './EventBus.js'
 import { SenderData, SenderQueue } from './SenderQueue.js';
 import { BROADCAST_QUEUE, LECTURE_QUEUE } from '../Anima.js';
@@ -13,27 +13,16 @@ import BroadcastManager from './BroadcastManager.js'
 import PromptManager from './PromptManager.js'
 import TextUtil from './TextUtil.js'
 import waitSync from 'wait-sync'
-export function GetPayload(message: string, type: string, duration, dialogue_type: number, speaker: number, formId?: number, listenerName?: string) {
-    return {"message": message, "type": type, "duration": duration, "dial_type": dialogue_type, "speaker": speaker, "formId": formId, "listenerName": listenerName}
-}
 
 let stepCount = 0
 
 export class GoogleGenAIController {
     private promptManager = new PromptManager();
     private FollowAcceptResponse = "I'll join you.";
-    private audioProcessor: AudioProcessor;
     private senderQueue: SenderQueue;
 
-    constructor(private id: number, private type: number, private character, private voiceType: string, private speaker: number, private playerName: String, private skseController: SKSEController) {
-        this.audioProcessor = new AudioProcessor(id);
+    constructor(private id: number, private type: number, private character, private voiceType: string, private speaker: number, private playerName: String, private skseController: SKSEController, private audioProcessor: AudioProcessor) {
         this.senderQueue = new SenderQueue(id, type, skseController);
-
-        EventBus.GetSingleton().removeAllListeners("TTS_ERROR")
-        EventBus.GetSingleton().on("TTS_ERROR", () => {
-            let payload = GetPayload("  TTS Error.", "notification", 0, 1, 0, 0, "")
-                this.skseController.Send(payload)
-        })
     }
 
     async SendThought(message,) {
@@ -74,8 +63,14 @@ export class GoogleGenAIController {
             return
         }
         if(response.status == 1) {
-            this.ProcessMessage(response.text, type)
-            // console.log("RESPONSE RECEIVED: " + response.text)
+            try {
+                this.ProcessMessage(response.text, type)
+            } catch(e) {
+                console.error("** GenAIController ** Error during ProcessMessage.")
+                console.error(e)
+                EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
+            }
+            
         } else {
             console.error("ERROR connecting to LLM Provider.")
             this.ProcessMessage("Let's talk about this later.", type)
@@ -102,7 +97,29 @@ export class GoogleGenAIController {
         return response.text;
     }
 
+    async SendTopicPrompt(profile, speaker, listener, location, events) {
+        let response
+        if(process.env.LLM_PROVIDER == "OPENROUTER" || process.env.LLM_PROVIDER == "OPENAI" || process.env.LLM_PROVIDER == "MISTRALAI") {
+            response = await OpenRouter.SendMessage(this.promptManager.PrepareTopicMessage(profile, speaker.name, listener.name, location, events))
+        } else if(process.env.LLM_PROVIDER == "GROQ") {
+            response = await GroqAPI.SendMessage(this.promptManager.PrepareTopicMessage(profile, speaker.name, listener.name, location, events))
+        } else if(process.env.LLM_PROVIDER == "GOOGLE") {
+            response = await GoogleGenAI.SendMessage(this.promptManager.PrepareTopicMessage(profile, speaker.name, listener.name, location, events))
+        } else if(process.env.LLM_PROVIDER == "OLLAMA" || process.env.LLM_PROVIDER == "OLLAMA-COLLAB") {
+            response = await Ollama.SendMessage(this.promptManager.PrepareTopicMessage(profile, speaker.name, listener.name, location, events))
+        }  else {
+            console.error("LLM_PROVIDER is missing in your .env file")
+            return
+        }
+        if(response.status == 2) {
+            return events
+        }
+        return response.text;
+    }
+
     async ProcessMessage(message : any, type) {
+        logToLog("** GenAIController ** Incoming message \"" + message + "\"")
+
         if(message.toLowerCase().includes("not_answering") || message.toLowerCase().includes("not answering") || message == "Let's talk about this later.") {
             console.log(`${this.character.name} NOT ANSWERING.`)
 
@@ -115,12 +132,14 @@ export class GoogleGenAIController {
                 let payload = GetPayload(this.character.name + "  not answering.", "notification", 0, 1, this.speaker, 0, "")
                 // this.skseController.Send(payload)
                 EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
-                EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
+                EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.character, this.speaker, null)
                 return
             } else if (this.type == 2) {
                 return
             } else if (this.type == 3) {
                 EventBus.GetSingleton().emit("LECTURE_NOT_ANSWERING", this.character)
+                return
+            } else if (this.type == 4) {
                 return
             } else {
                 console.error("UNKNOWN TYPE: " + this.type)
@@ -145,16 +164,26 @@ export class GoogleGenAIController {
             if(this.type == 1) {
                 EventBus.GetSingleton().emit("BROADCAST_RESPONSE", this.character, null)
                 EventBus.GetSingleton().emit("BROADCAST_STOP", this.character)
-                EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, null)
+                EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.character, this.speaker, null)
                 return
             } 
             return
         }
 
+        let ending = false
+        if(message.toLowerCase().includes("ending")) {
+            console.log(this.character.name + " is ending conversation.")
+            if(type == 1 || type == 2) {
+                EventBus.GetSingleton().emit('N2N_END')
+                EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.character, this.speaker, message.replace("__ENDING__", ""))
+            }
+            ending = true
+        }
+
         if(this.type == 1 && message.toLowerCase().includes("stop_signal") || message.toLowerCase().includes('stop signal')) {
             console.log("STOP_SIGNAL => SENDING STOP SIGNAL")
             EventBus.GetSingleton().emit("BROADCAST_STOP", this.character)
-            EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.speaker, " **STOPPING DIALOGUE**")
+            EventBus.GetSingleton().emit("WEB_BROADCAST_RESPONSE", this.character, this.speaker, " **STOPPING DIALOGUE**")
             return
         }
 
@@ -191,8 +220,8 @@ export class GoogleGenAIController {
         message = message.replaceAll("**__START_LECTURE__**", "").replaceAll("__START_LECTURE__", "")
         message = message.replaceAll("**__READY_FOR_QUESTIONS__**", "").replaceAll("__READY_FOR_QUESTIONS__", "")
         message = message.replaceAll("**__END_SESSION__**", "").replaceAll("__END_SESSION__", "")
+        message = message.replaceAll("**__ENDING__**", "").replaceAll("__ENDING__", "")
         message = message.replaceAll("\n","").replaceAll("**","")
-        message = message.replaceAll("eh?", "")
         
         var temp_file_suffix = "0"
         var topic_filename = ""
@@ -294,10 +323,10 @@ export class GoogleGenAIController {
             if(_continue) {
                 EventBus.GetSingleton().emit("TARGET_CONTINUE", this.character, message)
             }
-        } if((this.senderQueue.type == 1 || this.type == 2) && this.senderQueue.type != 4) {
+        } if((this.senderQueue.type == 1 || this.type == 2) && this.senderQueue.type != 4 && !ending) {
             if(!_continue) {
                 EventBus.GetSingleton().emit('BROADCAST_RESPONSE', this.character, message, _continue)
-                EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', this.speaker, message)
+                EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', this.character, this.speaker, message)
             } else {
                 EventBus.GetSingleton().emit("BROADCAST_CONTINUE", this.character, message)
             }
@@ -311,48 +340,55 @@ export class GoogleGenAIController {
             }
         }
         
-        let sentences = TextUtil.SplitToSentences(message)
-        for(let i in sentences) {
-            let sentence = sentences[i]
-            this.audioProcessor.addAudioStream(new AudioData(sentence, topic_filename, this.voiceType.toLowerCase(), this.character.voicePitch, ++stepCount, temp_file_suffix, (status, text, audioFile, lipFile, duration) => {
-                if(!status) {
-                    console.error("AUDIO COULD NOT BE PROCESSED.")
-                    if(this.type == 0) {
-                        EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
-                        EventBus.GetSingleton().emit('TARGET_RESPONSE', "");
-                    } else if(this.type == 1 || this.type == 2 || this.type == 4) {
-                        EventBus.GetSingleton().emit('BROADCAST_RESPONSE', this.character, text, _continue)
-                        EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', this.speaker, text)
-                        if(_continue) {
-                            EventBus.GetSingleton().emit("BROADCAST_CONTINUE", this.character, text)
-                        }
-                    } else if(this.type == 3) {
-                        EventBus.GetSingleton().emit('LECTURE_RESPONSE', this.character, text, _continue)
-                        if(_continue) {
-                            EventBus.GetSingleton().emit("LECTURE_CONTINUE", this.character, text)
-                        }
-                        if(readyForQuestions) {
-                            EventBus.GetSingleton().emit("READY_FOR_QUESTIONS", this.character, text)
-                        }
-                    }
-                    return
-                }
-                if(this.type == 0) {
-                    this.senderQueue.addData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue));
-                    setTimeout(() => { 
-                        EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
-                        EventBus.GetSingleton().emit('TARGET_RESPONSE', sentence);
-                    }, duration * 1000 + 500)
-                } else if(this.type == 1 || this.type == 2 || this.type == 4) {
-                    BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue), duration));
-                    // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, sentence);
-                } else if(this.type == 3) {
-                    LECTURE_QUEUE.addData(new BroadcastData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue, readyForQuestions), duration));
-                }
-            }))
+        logToLog("** GenAIController ** Sending message to audio processor")
+        if(this.type == 4) {
+            this.SendToAudioProcessor(message, topic_filename, temp_file_suffix, _continue,readyForQuestions)
+        } else {
+            let sentences = TextUtil.SplitToSentences(message)
+            for(let i in sentences) {
+                let sentence = sentences[i]
+                this.SendToAudioProcessor(sentence, topic_filename, temp_file_suffix, _continue,readyForQuestions)
+            }
         }
+    }
 
-        
+    SendToAudioProcessor(text: String, topic_filename: string, temp_file_suffix: string, _continue, readyForQuestions) {
+        this.audioProcessor.addAudioStream(new AudioData(text, topic_filename, this.voiceType.toLowerCase(), this.character.voicePitch, ++stepCount, temp_file_suffix, (status, text, audioFile, lipFile, duration) => {
+            if(!status) {
+                console.error("AUDIO COULD NOT BE PROCESSED.")
+                if(this.type == 0) {
+                    EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
+                    EventBus.GetSingleton().emit('TARGET_RESPONSE', "");
+                } else if(this.type == 1 || this.type == 2 || this.type == 4) {
+                    EventBus.GetSingleton().emit('BROADCAST_RESPONSE', this.character, text, _continue)
+                    EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', this.character, this.speaker, text)
+                    if(_continue) {
+                        EventBus.GetSingleton().emit("BROADCAST_CONTINUE", this.character, text)
+                    }
+                } else if(this.type == 3) {
+                    EventBus.GetSingleton().emit('LECTURE_RESPONSE', this.character, text, _continue)
+                    if(_continue) {
+                        EventBus.GetSingleton().emit("LECTURE_CONTINUE", this.character, text)
+                    }
+                    if(readyForQuestions) {
+                        EventBus.GetSingleton().emit("READY_FOR_QUESTIONS", this.character, text)
+                    }
+                }
+                return
+            }
+            if(this.type == 0) {
+                this.senderQueue.addData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue));
+                setTimeout(() => { 
+                    EventBus.GetSingleton().emit("INTERACTION_ONGOING", false)
+                    EventBus.GetSingleton().emit('TARGET_RESPONSE', text);
+                }, duration * 1000 + 500)
+            } else if(this.type == 1 || this.type == 2 || this.type == 4) {
+                BROADCAST_QUEUE.addData(new BroadcastData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue), duration));
+                // EventBus.GetSingleton().emit('WEB_BROADCAST_RESPONSE', 0, sentence);
+            } else if(this.type == 3) {
+                LECTURE_QUEUE.addData(new BroadcastData(new SenderData(text, this.type, audioFile, lipFile, this.voiceType, topic_filename, duration, this.speaker, this.character, _continue, readyForQuestions), duration));
+            }
+        }))
     }
 
     SendLookAt(targetFormId) {

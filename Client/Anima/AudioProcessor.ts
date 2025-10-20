@@ -2,9 +2,8 @@ import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import { parseFile } from 'music-metadata';
 import syncExec from 'sync-exec';
-import { TTS_PROVIDER } from '../Anima.js';
 import GoogleVertexAPI from './GoogleVertexAPI.js'
-import XTTSAPI from './XTTSAPI.js';
+import TTSAPI from './TTSAPI.js';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import { getAudioDurationInSeconds } from 'get-audio-duration'
@@ -62,6 +61,8 @@ export class AudioProcessor extends EventEmitter {
     private eventName: string;
     private queue: Queue<AudioData>;
     private processing: boolean;
+    private itemCount: number = 0;
+    private MAX_ITEM_COUNT:number = 1
 
     constructor(id?: number) {
         super();
@@ -81,18 +82,13 @@ export class AudioProcessor extends EventEmitter {
     }
 
     private async processNext(): Promise<void> {
-        if (this.queue.isEmpty()) {
-            this.processing = false;
-            return;
-        }
-
-        this.processing = true;
         const audioData = this.queue.dequeue();
         if (audioData) {
             try {
                 await this.processAudioStream(audioData);
             } catch (error) {
                 console.error('Error processing audio stream:', error);
+                this.processing = false
             }
         }
     }
@@ -100,19 +96,21 @@ export class AudioProcessor extends EventEmitter {
     private async processAudioStream(data: AudioData): Promise<void> {
         return new Promise(async (resolve) => {
             try {
+                this.processing = true
+                let stime = performance.now()
                 let output = this.saveAudio(data.text, data.voiceFileName, data.voiceModel, data.voicePitch, data.stepCount, data.temp_file_suffix, (output) => {
                     if(!output) {
                         data.callback(false)
                     } else {
-                        // console.log("** AudioProcessor ** AUDIO PROCESSED.")
-                        waitSync(1)
-                        data.callback(true, data.text, output[0], output[1], output[2]);
+                        let ftime = performance.now()
+                        data.callback(true, data.text, output[0], output[1], Math.max(0, output[2] - (ftime - stime) / 1000 + 4));
                     }
-                    this.processing = false;
+                    this.processing = false
                     this.emit(this.eventName);
                 });
             } catch(e) {
                 console.error(e);
+                this.processing = false
             }
         });
     }
@@ -121,22 +119,15 @@ export class AudioProcessor extends EventEmitter {
         const fileName = `temp-${temp_file_suffix}_${stepCount}.mp3`;
         const tempFilename = `./Audio/Temp/${fileName}`;
 
-        if(TTS_PROVIDER == "LOCAL") {
-            XTTSAPI.TTS(msg, tempFilename, voiceModel, (status) => {
-                if(status == 0) {
-                    console.error("ERROR during TTS.")
-                    callback()
-                    return
-                }
-    
-                this.afterTTS('./Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount, tempFilename, pitch, msg, callback)
-            })    
-        } else if(TTS_PROVIDER == "GOOGLE") {
-            GoogleVertexAPI.TTS(msg, tempFilename, voiceModel)
+        TTSAPI.TTS(msg, tempFilename, voiceModel, (status) => {
+            if(status == 0) {
+                console.error("ERROR during TTS.")
+                callback()
+                return
+            }
+
             this.afterTTS('./Audio/Temp/' + voiceFileName + "_" + temp_file_suffix + '_' + stepCount, tempFilename, pitch, msg, callback)
-        } else {
-            console.error("TTS_PROVIDER IS WRONG OR MISSING.")
-        }  
+        })    
     }
 
     private getAudioDurationFromBuffer(buffer) : Promise<Number> {
@@ -195,6 +186,7 @@ export class AudioProcessor extends EventEmitter {
                     .save(outputFile);
         } catch(err) {
             console.error("ERROR during audio conversion:", err);
+            this.processing = false
         }
     }
 
@@ -220,6 +212,7 @@ export class AudioProcessor extends EventEmitter {
             
         } catch(e) {
             console.error("ERROR during processing audio!" + e);
+            this.processing = false
             return
         }
     }

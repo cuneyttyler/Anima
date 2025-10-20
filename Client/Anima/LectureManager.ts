@@ -5,6 +5,7 @@ import SKSEController from './SKSEController.js';
 import {GoogleGenAIController} from './GenAIController.js';
 import EventBus from './EventBus.js';
 import { DEBUG } from '../Anima.js'
+import { AudioProcessor } from './AudioProcessor.js';
 
 export default class LectureManager{
     private characterManager : CharacterManager;
@@ -29,7 +30,7 @@ export default class LectureManager{
     private state = 0;
     private expectingAnswers : number = 0;
 
-    constructor(playerName: string, socket: WebSocket) {
+    constructor(playerName: string, socket: WebSocket, private audioProcessor: AudioProcessor) {
         this.characterManager = new CharacterManager();
         this.promptManager = new PromptManager();
         this.fileManager = new FileManager();
@@ -144,7 +145,7 @@ export default class LectureManager{
                 this.fileManager.SaveLectureLog(this.names[i], this.formIds[i], "==LECTURE_START== On " + this.currentDateTime + ", you started " + this.lecture.name + " class in the College of Winterhold.", this.profile)
                 character.eventBuffer = this.fileManager.GetEvents(this.names[i], this.formIds[i], this.profile);
                 character.thoughtBuffer = this.fileManager.GetThoughts(this.names[i], this.formIds[i], this.profile);
-                character.googleController = new GoogleGenAIController(4, 3, character, character.voiceType,  parseInt(i), this.profile, this.skseController);
+                character.googleController = new GoogleGenAIController(4, 3, character, character.voiceType,  parseInt(i), this.profile, this.skseController, this.audioProcessor);
                 if(character.id && character.name) {
                     this.characters.push(character);
                     if(character.name == this.teacherName) {
@@ -273,14 +274,14 @@ export default class LectureManager{
 
     private DetermineLecture(no: number) {
         switch (no) {
-            case 0: return {name: "History of World and Magic", content: "== THIS IS A LECTURE ON ALL SCHOOLS OF MAGIC, NOT JUST RESTORATION, DON'T TALK ABOUT RESTORATION == Starts with the mythology and how gods shaped the world. Tries to answer the question: \"What's the role of magic in the creation act?\". After that, applies a chronological approach. Continues on with general history of races, how they settled in different regions etc up to this day. Gives a summary of which races populate Nirn. Goes on with bigger forces like Aedra and Daedra and their role in the fate of Nirn and it's habitants. After giving sufficient amount of overview on these subjects, goes on to tell about important events regarding magical phenomena and actors that dealed with magic. What did they contribute to the world of magic? Approaches critically, putting pros and cons of different approaches. Analyses each event with intricate detail. Leaves some open points for students to think about."};
-            case 1: return {name: "Illusion Magic", content: "How did Illusion Magic first appear? From where it draws it's vitilizing energy? Applies a chronological approach. What are it's core principles? What are some important Illusion Masters? What is the fundamental principle that one should take into account when studying Illusion magic. How is it performed?"};
-            case 2: return {name: "Magical Artefacts", content: "What makes an artefact magical? History of magical artefacts and objects. What consideration should we take when we are dealign with a magical object?"};
-            case 3: return {name: "Destruction Magic", content: "How did Destruction Magic first appear? From where it draws it's vitilizing energy? Applies a chronological approach. What are it's core principles? What are some important Destruction Masters? What is the fundamental principle that one should take into account when studying Destruction magic. How is it performed?"};
-            case 4: return {name: "Restoration Magic", content: "How did Restoration Magic first appear? From where it draws it's vitilizing energy? Applies a chronological approach. What are it's core principles? What are some important Restoration Masters? What is the fundamental principle that one should take into account when studying Restoration magic. How is it performed?"};
-            case 5: return {name: "Alteration Magic", content: "How did Alteration Magic first appear? From where it draws it's vitilizing energy? Applies a chronological approach. What are it's core principles? What are some important Alteration Masters? What is the fundamental principle that one should take into account when studying Alteration magic. How is it performed?"};
-            case 6: return {name: "Enchantments", content: "History of Enchantment. How do you enchant an object? Applies a chronological approach. How do we deal with magical energies to imbue objects with magic? Is there any dangers to it?"};
-            case 7: return {name: "Conjuration Magic", content: "How did Conjuration Magic first appear? From where it draws it's vitilizing energy? Applies a chronological approach. What are it's core principles? What are some important Conjuration Masters? What is the fundamental principle that one should take into account when studying Conjuration magic. How is it performed?"};
+            case 0: return {name: "History of World and Magic", content: "== THIS IS A LECTURE ON ALL SCHOOLS OF MAGIC, NOT JUST RESTORATION, DON'T TALK ABOUT RESTORATION == PROGRAMME => 1st Lecture: 1st Era World and Magic History. 2nd Lecture: 2nd Era World and Magic History. 2nd Lecture: 3rd Era World and Magic History. 2nd Lecture: 4th Era World and Magic History. 5th Lecture: Recap of history in general through all eras. 6th Lecture: How 1st era events shaped 2nd era events. 7th Lecture: How 2nd era events shaped 3rd era events. 8th Lecture: How 3rd era events shaped 4th era events. 9th Lecture and after: Improvise, take questions and move on accordingly."};
+            case 1: return {name: "Illusion Magic", content: "1st Lecture: What is reality regarding Illusion magic? 2nd Lecture: How do we manipulate reality? 3rd Lecture: Explanations through spell examples. 4th Lecture: Examples from history. 5th Lecture and after: Improvise, take questions."};
+            case 2: return {name: "Magical Artefacts", content: "1st Lecture: What is a magical artefact? 2nd Lecture: What is magical aura and it's relation to artefacts? 3rd Lecture: Artefact examples throughout history. 4th Lecture: How to determine if an artefact has benign or malign magic? 5th Lecture and after: Improvise, take questions."};
+            case 3: return {name: "Destruction Magic", content: "1st Lecture: Introduction to elements of fire, water, air, earth. 2nd Lecture: How do we train our body to be a communicator of destruction magic? 3rd Lecture: How do we draw magickal source from spiritual realms and turn them into destruction magic? 4th Lecture: What is fire magic? 5th Lecture: What is air magic? 6th Lecture: What is water magic? 7th Lecture: Explanations through spell examples. 8th Lecture and after: Improvise, take questions."};
+            case 4: return {name: "Restoration Magic", content: "1st Lecture: How does our physical body relates to our spiritual body? 2nd Lecture: Anatomical organs and their relations to spiritual phenomena (fire, water elements and etc) 3rd Lecture: How do we draw life force from spiritual realms and turm them into restoration magic? 4th lecture: Does knowing medicine helps restoration magic? 5th Lecture: Potions and potion making. 6th Lecture: Advanced topics. 7th Lecture and after: Improvise and take questions."};
+            case 5: return {name: "Alteration Magic", content: "1st Lecture: What is reality? 2nd Lecture: What is spirutual reality. 3rd Lecture: How do we connect phsyical and spiritual realms? 4th Lecture: How do we alter physical and spiritual realities? 5th Lecture: Alteration spell examples and applications to demonstrate how do we alter reality. 6th Lecture: Advanced topics, examples from history. 7th Lecture and after: Improvise, take questions."};
+            case 6: return {name: "Enchantments", content: "1st Lecture: What is an enchantment? 2nd Lecture: How do spiritual realms relate to phyiscal artefacts? 3rd Lecture: How to imbue objects with magic? 4th Lecture: How to imbue objects with magic? 5th Lecture: How to imbue objects with magic? 6th Lecture and after: Improvise, take questions."};
+            case 7: return {name: "Conjuration Magic", content: "1st Lecture: Psychic phenomena. 2nd Lecture: How do we communicate with other beings? 3rd Lecture: Spiritual beings and their definitions. 4th Lecture: How does summoning works, what are basic principles? 5th Lecture: Fire atronachs and their spiritual structure. 6th Lecture: Ice atronachs and their spiritual structure. 7th Lecture: Strom atronachs and their spiritual structure. 8th Lecture: Nature spirits and their spiritual structure. 9th Lecture: Necromancy 10th Lecture and after. Improvise, take questions."};
         }
     }
 

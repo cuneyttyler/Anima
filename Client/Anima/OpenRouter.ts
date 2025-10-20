@@ -24,10 +24,12 @@ export default class OpenRouter {
       baseURL: uri
     })
 
+    let temperature = Math.random()
     try {
       const completion = await openai.chat.completions.create({
         messages: [{ role: "user", content: prompt.prompt + " " + prompt.message }],
         model: model,
+        temperature: temperature
       })
     
       if(!completion || !completion.choices || completion.choices.length == 0 || !completion.choices[0].message || !completion.choices[0].message.content) {

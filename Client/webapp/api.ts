@@ -96,7 +96,6 @@ export default  class Api {
         EventBus.GetSingleton().removeAllListeners('WEB_TARGET_RESPONSE')
         EventBus.GetSingleton().on('WEB_TARGET_RESPONSE', (message) => {
             callback(message)
-            SET_DEBUG(false)
         })
     }
 
@@ -113,16 +112,19 @@ export default  class Api {
             distances.push(parseInt(i) + 1)
         }
 
-        let broadcastManager = await new BroadcastManager('Adventurer', null)
+        let broadcastManager = await new BroadcastManager('Adventurer', null, new AudioProcessor(0))
         broadcastManager.SetCharacters(names, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
         
-        broadcastManager.ConnectToCharacters(false)
-        broadcastManager.StartN2N(names[0], "0", names[1],  "0", "Riverwood", "First of the First Seed")
+        broadcastManager.ConnectToCharacters(true)
+        broadcastManager.StartN2N(names[0], "0", names[1],  "1", "Riverwood", "First of the First Seed")
 
+        let characters = broadcastManager.GetCharacters()
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
-        EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
+        EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (character, speaker, message) => {
             let response = names[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
-
+            for(let i in characters) {
+                broadcastManager.SaveMessage(characters[i].id, characters[i].formId, character.name + " said: \'" + message + "\"")
+            }
             io.emit('chat_response', response + '\n==========\n')
         })
     }
@@ -140,13 +142,13 @@ export default  class Api {
             distances.push(parseInt(i) + 1)
         }
 
-        let broadcastManager = new BroadcastManager(speaker, null)
+        let broadcastManager = new BroadcastManager(speaker, null, new AudioProcessor(0))
         broadcastManager.SetCharacters(names, formIds, voiceTypes, distances, "First of the First Seed", "Riverwood")
         await broadcastManager.ConnectToCharacters()
         await broadcastManager.Say(text, speaker, null)
 
         EventBus.GetSingleton().removeAllListeners('WEB_BROADCAST_RESPONSE')
-        EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (speaker, message) => {
+        EventBus.GetSingleton().on('WEB_BROADCAST_RESPONSE', (character, speaker, message) => {
             let response = names[speaker] + ": " + (message ? message : " ==NOT ANSWERED==")
 
             io.emit('chat_response', response + '\n==========\n')

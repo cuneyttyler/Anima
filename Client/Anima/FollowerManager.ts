@@ -8,6 +8,7 @@ import CharacterManager from './CharacterManager.js';
 import PromptManager from './PromptManager.js';
 import BroadcastManager from './BroadcastManager.js';
 import FileManager from './FileManager.js';
+import { AudioProcessor } from './AudioProcessor.js';
 
 export default class FollowerManager {
     private characterManager: CharacterManager = new CharacterManager();
@@ -21,19 +22,20 @@ export default class FollowerManager {
     private skseController: SKSEController;
     private static instance: FollowerManager;
 
-    constructor(playerName: string, socket: WebSocket) {
+    constructor(playerName: string, socket: WebSocket, private audioProcessor: AudioProcessor) {
         this.profile = playerName
         this.socket = socket;
         this.skseController = new SKSEController(socket)
+        this.audioProcessor = new AudioProcessor(3)
     }
 
-    static GetInstance(playerName?: string, socket?: WebSocket) {
+    static GetInstance(playerName?: string, socket?: WebSocket, audioProcessor?: AudioProcessor) {
         if(!FollowerManager.instance && !playerName && !socket) {
             console.error("FollowerManager instance is not present. Initialization parameters must be provided.")
             return
         }
         if(!FollowerManager.instance) {
-            FollowerManager.instance = new FollowerManager(playerName, socket)
+            FollowerManager.instance = new FollowerManager(playerName, socket, audioProcessor)
         }
         return FollowerManager.instance
     }
@@ -59,7 +61,7 @@ export default class FollowerManager {
         character.voiceType = voiceType
         character.distance = distance
         character.voicePitch = character.voicePitch ? parseFloat(character.voicePitch) : 0 
-        let googleController = new GoogleGenAIController(4, 2, character, character.voiceType, this.characterCount + BroadcastManager.MAX_SPEAKER_COUNT, this.profile, this.skseController);
+        let googleController = new GoogleGenAIController(4, 2, character, character.voiceType, this.characterCount + BroadcastManager.MAX_SPEAKER_COUNT, this.profile, this.skseController, this.audioProcessor);
         character.googleController = googleController
         this.characters.push(character)
         this.characterCount++

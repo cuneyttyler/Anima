@@ -13,6 +13,8 @@ import { BroadcastQueue } from './Anima/BroadcastQueue.js';
 import FollowerManager from './Anima/FollowerManager.js';
 import LectureManager from './Anima/LectureManager.js';
 import AliveCharacterManager from './Anima/AliveCharacterManager.js';
+import { AudioProcessor } from './Anima/AudioProcessor.js';
+import SKSEController, { GetPayload } from './Anima/SKSEController.js';
 
 const resolved = path.resolve(".env");
 logToLog("Reading .env from location: " + resolved);
@@ -23,7 +25,6 @@ try {
 }
 
 export const LLM_PROVIDER = process.env.LLM_PROVIDER
-export const TTS_PROVIDER = process.env.TTS_PROVIDER
 export const KEY_FILE_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS
 export const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID
 export const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY
@@ -39,12 +40,16 @@ export const MISTRALAI_API_KEY = process.env.MISTRALAI_API_KEY
 export const MISTRALAI_LLM_MODEL = process.env.MISTRALAI_LLM_MODEL
 export const PLAYHT_USER_ID = process.env.PLAYHT_USER_ID
 export const PLAYHT_API_KEY = process.env.PLAYHT_API_KEY
-export const XTTS_SERVICE = process.env.XTTS_SERVICE
-export const XTTS_URI = process.env.XTTS_URI
+export const TTS_SERVICE = process.env.TTS_SERVICE
+export const TTS_URL = !process.env.TTS_SERVICE || process.env.TTS_SERVICE.toLowerCase() == 'local' ? 'localhost' : process.env.TTS_URL
+export const CAMBAI_API_KEY = process.env.CAMBAI_API_KEY
+export const ASYNCAI_API_KEY = process.env.ASYNCAI_API_KEY
 export const OLLAMA_MODEL = process.env.OLLAMA_MODEL
 export const OLLAMA_URI = process.env.OLLAMA_URI
 export const GROQ_API_KEY = process.env.GROQ_API_KEY
 export const GROQ_MODEL = process.env.GROQ_MODEL
+export const NUM_MAX_CHARACTERS = parseInt(process.env.N2N_NUM_MAX_CHARACTERS)
+export const CONV_LENGTH = parseInt(process.env.N2N_CONV_LENGTH)
 
 export let DEBUG = false;
 export function SET_DEBUG(debug) {
@@ -57,6 +62,7 @@ fastify.register(websocketPlugin);
 
 const fileManager = new FileManager()
 const ClientManager = new DialogueManager();
+let audioProcessor: AudioProcessor = new AudioProcessor(0)
 let broadcastManager : BroadcastManager
 let n2nBroadcastManager : BroadcastManager
 let followerManager : FollowerManager
@@ -65,6 +71,15 @@ let aliveCharacterManager : AliveCharacterManager
 
 export let BROADCAST_QUEUE = new BroadcastQueue(1, null)
 export let LECTURE_QUEUE = new BroadcastQueue(3, null)
+export let SKSE_CONTROLLER:SKSEController
+
+EventBus.GetSingleton().removeAllListeners("TTS_ERROR")
+EventBus.GetSingleton().on("TTS_ERROR", () => {
+    let payload = GetPayload("Text-to=speech failed.", "notification", 0, 1, 0, 0, "")
+    if(!DEBUG) {
+        SKSE_CONTROLLER.Send(payload)
+    }
+})
 
 RunInformation();
 
@@ -82,9 +97,10 @@ fastify.register(async function (fastify) {
         DEBUG = false
         BROADCAST_QUEUE = new BroadcastQueue(1, connection.socket)
         LECTURE_QUEUE = new BroadcastQueue(3, connection.socket)
+        SKSE_CONTROLLER = new SKSEController(connection.socket)
 
         connection.socket.on('message', async (msg) => {
-
+            DEBUG = false
             let message = JSON.parse(msg.toString());
             if(message.type == 'init') {
             } else if (message.type == "connect" && !message.is_n2n) {
@@ -93,7 +109,7 @@ fastify.register(async function (fastify) {
                 if(result) {
                     ClientManager.InititializeSession('In ' + message.location + ', on ' + message.currentDateTime + ', you started to talk with ' + message.playerName + '. ');
                 }
-                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket, audioProcessor)
                 if(n2nBroadcastManager) n2nBroadcastManager.Stop()
             } else if (message.type == "message" && !message.is_n2n) {
                 console.log("** Incoming Message: Player saying: " + message.message + " **");
@@ -111,9 +127,10 @@ fastify.register(async function (fastify) {
                     console.log("** Lecture ongoing, ignoring request.");
                     return;
                 }
-                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
-                await n2nBroadcastManager.ConnectToCharacters(true)
-                await n2nBroadcastManager.Run()
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket, audioProcessor)
+                n2nBroadcastManager.SetConnecting(true)
+                await n2nBroadcastManager.ConnectToCharacters(true, message.source, message.target)
+                n2nBroadcastManager.Run()
                 let result = n2nBroadcastManager.IsCharactersPresent([message.source, message.target])
                 if(result) {
                     n2nBroadcastManager.SendVerifyConnection()
@@ -126,9 +143,8 @@ fastify.register(async function (fastify) {
                     return;
                 }
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
-                await n2nBroadcastManager.Run()
                 await n2nBroadcastManager.StartN2N(message.source, message.sourceFormId, message.target, message.targetFormId, message.location, message.currentDateTime)
-            }else if (message.type == "pause") {
+            } else if (message.type == "pause") {
                 broadcastManager = BroadcastManager.GetInstance('player')
                 if(broadcastManager) broadcastManager.Pause()
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
@@ -141,7 +157,7 @@ fastify.register(async function (fastify) {
                 if(n2nBroadcastManager) n2nBroadcastManager.Continue()
                 if(lectureManager) lectureManager.Continue()
             } else if (message.type == "followers-clear") {
-                FollowerManager.GetInstance(message.playerName, connection.socket).Clear()
+                FollowerManager.GetInstance(message.playerName, connection.socket, audioProcessor).Clear()
             } else if (message.type == "followers-set") {
                 followerManager = FollowerManager.GetInstance(message.playerName, connection.socket)
                 if(!followerManager.IsRunning())followerManager.Run()
@@ -150,23 +166,23 @@ fastify.register(async function (fastify) {
                     followerManager.Run()
                 }
             } else if (message.type == "cellactors-set") {
-                broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
+                broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket, audioProcessor)
                 broadcastManager.SetCellCharacters(message.ids)
-                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket, audioProcessor)
                 n2nBroadcastManager.SetCellCharacters(message.ids)
                 if(!aliveCharacterManager) {
-                    aliveCharacterManager = new AliveCharacterManager(message.playerName, connection.socket)
+                    aliveCharacterManager = new AliveCharacterManager(message.playerName, connection.socket, audioProcessor)
                     aliveCharacterManager.Run()
                 }
             } else if (message.type == "broadcast-stop") {
                 broadcastManager = BroadcastManager.GetInstance('player')
-                if(broadcastManager && !message.id) broadcastManager.Stop()
+                // if(broadcastManager && !message.id) broadcastManager.Stop()
                 if(broadcastManager && message.id) broadcastManager.StopForCharacter(message.id)
                 n2nBroadcastManager = BroadcastManager.GetInstance('n2n')
-                if(n2nBroadcastManager && !message.id) n2nBroadcastManager.Stop()
+                // if(n2nBroadcastManager && !message.id) n2nBroadcastManager.Stop()
                 if(n2nBroadcastManager && message.id) n2nBroadcastManager.StopForCharacter(message.id)
             }  else if (message.type == "broadcast-set") {
-                broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
+                broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket, audioProcessor)
                 await broadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
                 if(aliveCharacterManager) {
                     aliveCharacterManager.SetBroadcastManager(broadcastManager)
@@ -176,18 +192,18 @@ fastify.register(async function (fastify) {
                 if(lectureManager && lectureManager.IsRunning() && message.location == "Hall of the Elements") {
                     lectureManager.Say(message.message, message.playerName, message.playerFormId, true)
                 } else {
-                    broadcastManager = BroadcastManager.GetInstance('player', message.playerName, connection.socket)
+                    broadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket, audioProcessor)
                     broadcastManager.ConnectToCharacters(true)
                     broadcastManager.Run()
                     broadcastManager.Say(message.message, message.playerName, message.playerFormId)
                 }
             } else if (message.type == "broadcast-n2n-set") {
-                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket)
+                n2nBroadcastManager = BroadcastManager.GetInstance('n2n', message.playerName, connection.socket, audioProcessor)
                 await n2nBroadcastManager.SetCharacters(message.ids, message.formIds, message.voiceTypes, message.distances, message.currentDateTime, message.location)
             } else if (message.type == "log_event") {
                 fileManager.SaveEventLog(message.id, message.formId, "It's " + BroadcastManager.currentDateTime + ". " + message.message + " ", message.playerName);
             } else if (message.type == "start-lecture") {
-                lectureManager = new LectureManager(message.playerName, connection.socket)
+                lectureManager = new LectureManager(message.playerName, connection.socket, audioProcessor)
                 lectureManager.StartLecture(message.teacher, message.teacherFormId, message.teacherVoiceType, message.lectureNo, message.lectureIndex, message.currentDateTime)
                 if(aliveCharacterManager) {
                     aliveCharacterManager.SetLectureManager(lectureManager)

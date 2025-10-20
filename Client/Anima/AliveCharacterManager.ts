@@ -5,6 +5,7 @@ import FileManager from "./FileManager.js";
 import PromptManager from "./PromptManager.js";
 import {GoogleGenAIController} from './GenAIController.js';
 import SKSEController from "./SKSEController.js";
+import { AudioProcessor } from "./AudioProcessor.js";
 
 export default class AliveCharacterManager {
     private characterManager: CharacterManager;
@@ -16,15 +17,18 @@ export default class AliveCharacterManager {
     private profile: string;
     private characters = [];
 
-    constructor(profile, socket) {
+    constructor(profile, socket, private audioProcessor: AudioProcessor) {
         this.profile = profile;
         this.characterManager = new CharacterManager()
         this.fileManager = new FileManager();
         this.promptManager = new PromptManager();
         this.skseController = new SKSEController(socket)
-        let characters = this.characterManager.GetAliveCharacterList()
+        this.audioProcessor = new AudioProcessor(4);
+        let characters = this.characterManager.GetCharacterList()
         for(let i in characters) {
-            this.characters.push(Object.assign({}, characters[i]))
+            let c = Object.assign({}, characters[i])
+            c.lastSentTime = 0
+            this.characters.push(c)
         }
     }
 
@@ -35,7 +39,7 @@ export default class AliveCharacterManager {
         // }, 60 * 10000)
         setInterval(() => {
             this.CheckNearCharacters()
-        }, 5000)
+        }, 20000)
     }
 
     async SendThought() {
@@ -45,7 +49,7 @@ export default class AliveCharacterManager {
                 return
             }
             let thoughtPrompt = this.promptManager.PrepareThoughtMessage(this.profile,c, BroadcastManager.currentLocation, this.fileManager.GetEvents(c.id, c.formId, this.profile), this.fileManager.GetThoughts(c.id, c.formId, this.profile))
-            c.googleController = new GoogleGenAIController(4, 4, c, null, 0, this.profile, this.skseController);
+            c.googleController = new GoogleGenAIController(4, 4, c, null, 0, this.profile, this.skseController, this.audioProcessor);
             let thoughts = await c.googleController.SendThought(thoughtPrompt)
             this.fileManager.SaveThoughts(c.id, c.formId, thoughts, this.profile, false)
             this.fileManager.SaveThoughts_WholeMemory(c.id, c.formId, thoughts, this.profile)
@@ -58,14 +62,14 @@ export default class AliveCharacterManager {
         for(let i in nearCharacters) {
             let aliveCharacter = this.characters.find((c) => c.name == nearCharacters[i].name)
             if(!aliveCharacter) return
-            if(aliveCharacter.lastTryTime && (Date.now() - aliveCharacter.lastTryTime) / 1000 < 60 * 10) return
-            aliveCharacter.lastTryTime = Date.now()
-            if(Math.random() < 0.5) return
+            if(aliveCharacter.lastSentTime && (Date.now() - aliveCharacter.lastSentTime) / 1000 > 120) return
+            if(Math.random() < 0.8) return
             console.log("**AliveCharacterManager** Sending trigger to " + aliveCharacter.name)
+            aliveCharacter.lastSentTime = Date.now()
             if(!this.lectureManager || !this.lectureManager.running) {
                 let triggerPrompt = this.promptManager.PrepareTriggerMessage(this.profile, aliveCharacter, BroadcastManager.currentLocation, this.fileManager.GetEvents(aliveCharacter.id, aliveCharacter.formId, this.profile), this.fileManager.GetThoughts(aliveCharacter.id, aliveCharacter.formId, this.profile))
-                aliveCharacter.googleController = new GoogleGenAIController(4, 4, aliveCharacter, nearCharacters[i].voiceType, 0, this.profile, this.skseController);
-                aliveCharacter.googleController.Send(triggerPrompt)        
+                aliveCharacter.aliveGoogleController = new GoogleGenAIController(4, 4, aliveCharacter, nearCharacters[i].voiceType, 0, this.profile, this.skseController, this.audioProcessor);
+                aliveCharacter.aliveGoogleController.Send(triggerPrompt)        
             }
         }
     }
